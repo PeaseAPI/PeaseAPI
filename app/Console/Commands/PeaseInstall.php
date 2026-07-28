@@ -109,13 +109,13 @@ class PeaseInstall extends Command
      */
     protected function checkEnvironment(): void
     {
+        // 必须通过的检查（缺失会导致框架无法运行）
         $checks = [
             'PHP 版本 >= 8.2' => version_compare(PHP_VERSION, '8.2.0', '>='),
             'PDO 扩展' => extension_loaded('pdo'),
             'PDO MySQL 驱动' => extension_loaded('pdo_mysql'),
             'MBString 扩展' => extension_loaded('mbstring'),
             'GMP 扩展' => extension_loaded('gmp'),
-            'Redis 扩展' => extension_loaded('redis'),
             'OpenSSL 扩展' => extension_loaded('openssl'),
             'Tokenizer 扩展' => extension_loaded('tokenizer'),
             'CType 扩展' => extension_loaded('ctype'),
@@ -125,6 +125,11 @@ class PeaseInstall extends Command
             'bootstrap/cache 目录可写' => is_writable(base_path('bootstrap/cache')),
         ];
 
+        // 可选扩展（缺失不阻断安装，仅警告）
+        $optionalChecks = [
+            'Redis 扩展' => extension_loaded('redis'),
+        ];
+
         $allPassed = true;
         foreach ($checks as $name => $passed) {
             if ($passed) {
@@ -132,6 +137,14 @@ class PeaseInstall extends Command
             } else {
                 $this->line("  <fg=red>✗</> {$name}");
                 $allPassed = false;
+            }
+        }
+
+        foreach ($optionalChecks as $name => $passed) {
+            if ($passed) {
+                $this->line("  <fg=green>✓</> {$name}");
+            } else {
+                $this->line("  <fg=yellow>⚠</> {$name}（可选，未安装可通过 predis 包使用 Redis）");
             }
         }
 

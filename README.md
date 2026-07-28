@@ -633,6 +633,19 @@ php artisan migrate:rollback
 
 ## 常见问题
 
+### Q: 安装后访问页面报 502 Bad Gateway？
+
+**A:** 502 表示 Nginx 已转发请求到 PHP-FPM，但 PHP 进程崩溃/超时。最常见原因：
+
+1. **依赖未安装**：服务器 `git pull` 后未执行 `composer install`，`vendor/autoload.php` 不存在导致 PHP fatal error。
+   - 本项目已在 `public/index.php` 增加前置检查，此时会返回 503 + 友好提示页而非 502；若仍 502，请检查 PHP-FPM 是否正常运行。
+2. **PHP-FPM 未启动 / 崩溃**：`systemctl status php8.2-fpm` 查看，必要时 `systemctl restart php8.2-fpm`。
+3. **Nginx fastcgi_pass 配置错误**：sock 路径与实际不符（如宝塔常为 `/tmp/php-cgi-82.sock`），需按实际 PHP 版本调整。
+4. **PHP 致命错误**：查看 `storage/logs/laravel.log` 与 PHP-FPM 日志（`/var/log/php-fpm/error.log` 或宝塔「PHP 日志」）。
+5. **OPcache 缓存旧代码**：更新代码后执行 `systemctl reload php8.2-fpm` 或 `opcache_reset`。
+
+> 排查顺序：先 `php artisan up`（退出维护模式）→ 再 `curl -I http://127.0.0.1/up` 看 `/up` 健康检查 → 最后看 Laravel 日志。
+
 ### Q: 安装后访问页面报 500 错误？
 
 **A:** 请检查：

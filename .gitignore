@@ -15,6 +15,11 @@
 .env
 .env.*
 !.env.example
+
+# Install lock / runtime markers
+public/install.lock
+public/install_step3
+storage/install_step3
 .idea
 .php-cs-fixer.cache
 .phpunit.cache

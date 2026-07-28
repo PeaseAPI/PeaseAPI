@@ -53,8 +53,8 @@
         nav{position:sticky;top:0;z-index:100;background:rgba(15,23,42,0.8);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
         nav .container{display:flex;align-items:center;justify-content:space-between;height:64px}
         .nav-brand{display:flex;align-items:center;gap:12px}
-        .nav-logo{width:36px;height:36px;border-radius:10px;background:var(--gradient);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(99,102,241,0.4)}
-        .nav-logo svg{width:20px;height:20px;color:#fff}
+        .nav-logo{width:36px;height:36px;border-radius:10px;overflow:hidden;flex-shrink:0}
+        .nav-logo img{width:100%;height:100%;object-fit:cover}
         .nav-name{font-size:18px;font-weight:700;color:#fff;letter-spacing:-0.5px}
         .nav-links{display:flex;align-items:center;gap:8px}
         .nav-links a{padding:8px 16px;font-size:14px;color:var(--text-muted);transition:color 0.2s,background 0.2s;border-radius:8px}
@@ -67,8 +67,8 @@
         .hero{padding:80px 0 60px;text-align:center;position:relative}
         .hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;margin-bottom:28px;background:var(--gradient-soft);border:1px solid rgba(99,102,241,0.3);border-radius:999px;font-size:13px;color:var(--primary-light)}
         .hero-badge .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
-        .hero-logo{width:88px;height:88px;margin:0 auto 32px;border-radius:24px;background:var(--gradient);display:flex;align-items:center;justify-content:center;box-shadow:0 20px 50px rgba(99,102,241,0.5)}
-        .hero-logo svg{width:44px;height:44px;color:#fff}
+        .hero-logo{width:88px;height:88px;margin:0 auto 32px;border-radius:24px;overflow:hidden;box-shadow:0 20px 50px rgba(99,102,241,0.5)}
+        .hero-logo img{width:100%;height:100%;object-fit:cover}
         .hero h1{font-size:clamp(36px,6vw,64px);font-weight:800;line-height:1.1;letter-spacing:-2px;margin-bottom:24px;background:linear-gradient(135deg,#fff 0%,#cbd5e1 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
         .hero h1 .grad{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
         .hero p{font-size:clamp(16px,2vw,20px);color:var(--text-muted);max-width:680px;margin:0 auto 40px;line-height:1.7}
@@ -128,7 +128,7 @@
         <div class="container">
             <a href="/" class="nav-brand">
                 <div class="nav-logo">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <img src="{{ $systemLogo ?: '/logo.png' }}" alt="{{ $systemName }}">
                 </div>
                 <span class="nav-name">{{ $systemName }}</span>
             </a>
@@ -157,7 +157,7 @@
                 <span>40+ 主流 AI 模型 · 统一 API 接口</span>
             </div>
             <div class="hero-logo">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <img src="{{ $systemLogo ?: '/logo.png' }}" alt="{{ $systemName }}">
             </div>
             <h1>强大的 AI API <span class="grad">中转网关</span></h1>
             <p>提供 OpenAI、Claude、Gemini、Midjourney 等 40+ 主流模型的统一访问接口，支持 Token 计费、渠道管理、负载均衡，让 AI 开发更简单高效。</p>

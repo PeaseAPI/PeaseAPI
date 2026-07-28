@@ -22,11 +22,16 @@ use App\Http\Controllers\RankingController;
 use App\Http\Middleware\AdminAuth;
 use App\Http\Middleware\RootAuth;
 
-// Install route
-Route::get('/install', [InstallController::class, 'index'])->name('install');
-Route::post('/install', [InstallController::class, 'process']);
-Route::post('/install/migrate', [InstallController::class, 'runMigration']);
-Route::get('/install/step3', [InstallController::class, 'step3']);
+// Install route - 如果 install.lock 存在则禁止访问安装页面
+Route::get('/install', function () {
+    if (\App\Http\Controllers\InstallController::isInstalled()) {
+        return response()->view('errors.install-locked', [], 403);
+    }
+    return app(\App\Http\Controllers\InstallController::class)->index();
+})->name('install.index');
+Route::post('/install', [InstallController::class, 'process'])->name('install.process');
+Route::post('/install/migrate', [InstallController::class, 'runMigration'])->name('install.migrate');
+Route::get('/install/step3', [InstallController::class, 'step3'])->name('install.step3');
 
 // Public content pages
 Route::view('/about', 'about')->name('about');
@@ -35,10 +40,10 @@ Route::view('/rankings', 'rankings')->name('rankings');
 Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy');
 Route::view('/user-agreement', 'user-agreement')->name('user-agreement');
 
-// Public home page
+// Public home page - 检查 public/install.lock 文件
 Route::get('/', function () {
-    if (!file_exists(storage_path('installed'))) {
-        return redirect()->route('install');
+    if (!\App\Http\Controllers\InstallController::isInstalled()) {
+        return redirect()->route('install.index');
     }
     // 已登录用户直接进入控制台
     if (Auth::check()) {

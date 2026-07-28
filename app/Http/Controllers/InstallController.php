@@ -13,10 +13,11 @@ class InstallController extends Controller
 {
     /**
      * Check if the application is already installed.
+     * 使用 public/install.lock 文件，与传统 PHP 习惯一致
      */
     public static function isInstalled(): bool
     {
-        return File::exists(storage_path('installed'));
+        return File::exists(public_path('install.lock'));
     }
 
     /**
@@ -136,14 +137,28 @@ class InstallController extends Controller
         $this->updateEnv(['SESSION_DRIVER' => 'file']);
         config(['session.driver' => 'file']);
 
-        // Write database config to .env
+        // Write database config to .env (force MySQL connection)
         $this->updateEnv([
+            'DB_CONNECTION' => 'mysql',
             'DB_HOST' => $validated['db_host'],
             'DB_PORT' => $validated['db_port'],
             'DB_DATABASE' => $validated['db_database'],
             'DB_USERNAME' => $validated['db_username'],
             'DB_PASSWORD' => $validated['db_password'] ?? '',
         ]);
+
+        // Apply runtime config immediately so subsequent operations use MySQL
+        config([
+            'database.default' => 'mysql',
+            'database.connections.mysql.host' => $validated['db_host'],
+            'database.connections.mysql.port' => $validated['db_port'],
+            'database.connections.mysql.database' => $validated['db_database'],
+            'database.connections.mysql.username' => $validated['db_username'],
+            'database.connections.mysql.password' => $validated['db_password'] ?? '',
+        ]);
+        DB::purge('sqlite');
+        DB::purge('mysql');
+        DB::reconnect('mysql');
 
         // Create file marker BEFORE migration
         File::put(storage_path('install_step3'), 'pending');
@@ -169,14 +184,18 @@ class InstallController extends Controller
             return response()->json(['status' => 'done']);
         }
 
-        // Update runtime config from .env
-        config(['database.connections.mysql.host' => env('DB_HOST', '127.0.0.1')]);
-        config(['database.connections.mysql.port' => env('DB_PORT', '3306')]);
-        config(['database.connections.mysql.database' => env('DB_DATABASE', 'pease_api')]);
-        config(['database.connections.mysql.username' => env('DB_USERNAME', 'root')]);
-        config(['database.connections.mysql.password' => env('DB_PASSWORD', '')]);
+        // Update runtime config from .env and force MySQL as default connection
+        config([
+            'database.default' => 'mysql',
+            'database.connections.mysql.host' => env('DB_HOST', '127.0.0.1'),
+            'database.connections.mysql.port' => env('DB_PORT', '3306'),
+            'database.connections.mysql.database' => env('DB_DATABASE', 'pease_api'),
+            'database.connections.mysql.username' => env('DB_USERNAME', 'root'),
+            'database.connections.mysql.password' => env('DB_PASSWORD', ''),
+        ]);
 
-        // Purge and reconnect with new credentials
+        // Purge and reconnect with new credentials (purge sqlite too in case it was default)
+        DB::purge('sqlite');
         DB::purge('mysql');
         DB::reconnect('mysql');
 
@@ -214,6 +233,9 @@ class InstallController extends Controller
             'admin_username' => 'required|string|min:3|max:32|alpha_num',
             'admin_email' => 'required|email|max:191',
             'admin_password' => 'required|string|min:6|confirmed',
+            'system_name' => 'nullable|string|max:100',
+            'server_address' => 'nullable|string|max:255|url',
+            'system_logo' => 'nullable|string|max:500|url',
         ]);
 
         try {
@@ -230,12 +252,27 @@ class InstallController extends Controller
                 'request_count' => 0,
                 'group' => 'default',
                 'aff_code' => $this->generateAffCode(),
-                'created_time' => time(),
+                'created_at' => time(),
                 'last_login_at' => time(),
             ]);
 
-        // Mark as installed
-        File::put(storage_path('installed'), json_encode([
+        // Save system settings to options table
+        $options = [];
+        if (!empty($validated['system_name'])) {
+            $options['SystemName'] = $validated['system_name'];
+        }
+        if (!empty($validated['server_address'])) {
+            $options['ServerAddress'] = $validated['server_address'];
+        }
+        if (!empty($validated['system_logo'])) {
+            $options['SystemLogo'] = $validated['system_logo'];
+        }
+        if (!empty($options)) {
+            \App\Services\OptionService::setMany($options);
+        }
+
+        // Mark as installed - 创建 public/install.lock 文件
+        File::put(public_path('install.lock'), json_encode([
             'installed_at' => now()->toIso8601String(),
             'version' => config('pease-api.version', '1.0.0'),
         ]));
@@ -264,10 +301,8 @@ class InstallController extends Controller
             ]);
         }
 
-        return view('install', [
-            'step' => 'done',
-            'admin_username' => $validated['admin_username'],
-        ]);
+        // Redirect to home page directly after installation
+        return redirect('/')->with('success', '安装成功！欢迎使用 PeaseAPI');
     }
 
     /**

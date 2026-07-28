@@ -388,8 +388,9 @@ class AuthController extends Controller
      */
     public function verify(Request $request): JsonResponse
     {
+        $allowedTypes = ['email', 'sms', 'totp', 'passkey', 'password'];
         $validator = Validator::make($request->all(), [
-            'type' => 'required|string',
+            'type' => 'required|string|in:' . implode(',', $allowedTypes),
             'target' => 'nullable|string',
             'code' => 'required|string',
         ]);

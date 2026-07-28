@@ -1,4 +1,4 @@
-<![CDATA[<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -360,16 +360,18 @@
                 })();
                 </script>
 
-            {{-- Step 3: Admin Account --}}
+            {{-- Step 3: Admin Account & System Settings --}}
             @elseif($step === 3)
-                <h2>第三步：创建管理员账号</h2>
-                <p style="color:#6c757d;font-size:14px;margin-bottom:20px;">数据库已连接成功，数据表已创建。请设置超级管理员账号。</p>
+                <h2>第三步：管理员与系统配置</h2>
+                <p style="color:#6c757d;font-size:14px;margin-bottom:20px;">数据库已连接成功，数据表已创建。请设置管理员账号和系统基本信息。</p>
 
                 <div class="alert alert-success">✓ 数据库连接成功，数据迁移已完成！</div>
 
                 <form method="POST" action="{{ route('install.process') }}">
                     @csrf
                     <input type="hidden" name="step" value="3">
+
+                    <h3 style="font-size:15px;margin-bottom:12px;color:#495057;border-bottom:1px solid #e9ecef;padding-bottom:8px;">👤 管理员账号</h3>
 
                     <div class="form-group">
                         <label>管理员用户名</label>
@@ -395,26 +397,35 @@
                         </div>
                     </div>
 
+                    <h3 style="font-size:15px;margin:24px 0 12px;color:#495057;border-bottom:1px solid #e9ecef;padding-bottom:8px;">⚙️ 系统基本信息</h3>
+
+                    <div class="form-group">
+                        <label>系统名称</label>
+                        <input type="text" name="system_name" value="{{ old('system_name', 'Pease API') }}" placeholder="例如：My AI Gateway">
+                        <div style="font-size:12px;color:#6c757d;margin-top:4px;">显示在页面标题和导航栏的系统名称</div>
+                        @error('system_name')<div class="form-error">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label>服务器地址</label>
+                        <input type="url" name="server_address" value="{{ old('server_address') }}" placeholder="例如：https://api.example.com">
+                        <div style="font-size:12px;color:#6c757d;margin-top:4px;">系统的公网访问地址，用于生成回调链接等</div>
+                        @error('server_address')<div class="form-error">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label>系统 Logo URL</label>
+                        <input type="url" name="system_logo" value="{{ old('system_logo') }}" placeholder="例如：https://example.com/logo.png">
+                        <div style="font-size:12px;color:#6c757d;margin-top:4px;">系统 Logo 图片地址，留空则使用默认样式</div>
+                        @error('system_logo')<div class="form-error">{{ $message }}</div>@enderror
+                    </div>
+
                     <div class="actions">
                         <button type="submit" class="btn btn-success">完成安装 🎉</button>
                     </div>
                 </form>
-
-            {{-- Done --}}
-            @elseif($step === 'done')
-                <div class="done-text">
-                    <div class="done-icon">🎉</div>
-                    <h2>安装完成！</h2>
-                    <p>PeaseAPI 已成功安装，您可以开始使用了。</p>
-                    <p>管理员账号：<strong>{{ $admin_username }}</strong></p>
-                    <p style="margin-top:16px;font-size:12px;color:#adb5bd;">为安全起见，安装完成后安装向导将不再可用。</p>
-                </div>
-                <div class="done-actions">
-                    <a href="/" class="btn btn-primary">进入系统 →</a>
-                </div>
             @endif
         </div>
     </div>
 </body>
 </html>
-]]>

@@ -8,19 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('top_ups', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedInteger('user_id')->index();
-            $table->bigInteger('amount')->comment('额度');
-            $table->decimal('money', 10, 6)->comment('金额(USD)');
-            $table->string('trade_no', 255)->unique()->index()->comment('交易号');
-            $table->string('payment_method', 50)->comment('stripe/creem/waffo/waffo_pancake/balance');
-            $table->string('payment_provider', 50)->default('');
-            $table->bigInteger('create_time')->unsigned();
-            $table->bigInteger('complete_time')->unsigned()->nullable();
-            $table->string('status', 20)->comment('pending/completed/failed/refunded');
-        });
-
         Schema::create('pricings', function (Blueprint $table) {
             $table->string('model_name', 255)->comment('模型名');
             $table->text('description')->nullable();
@@ -38,6 +25,5 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('pricings');
-        Schema::dropIfExists('top_ups');
     }
 };

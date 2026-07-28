@@ -23,8 +23,10 @@
             <div class="flex border-b border-gray-200 mb-6">
                 <button type="button" id="tab-password" onclick="switchTab('password')"
                     class="flex-1 pb-3 text-sm font-medium border-b-2 border-primary-600 text-primary-600 transition">密码登录</button>
+                @if($smsEnabled)
                 <button type="button" id="tab-sms" onclick="switchTab('sms')"
                     class="flex-1 pb-3 text-sm font-medium border-b-2 border-transparent text-gray-500 transition">短信登录</button>
+                @endif
             </div>
 
             @if($errors->any())

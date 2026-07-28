@@ -23,8 +23,10 @@
             <div class="flex border-b border-gray-200 mb-6">
                 <button type="button" id="tab-email" onclick="switchTab('email')"
                     class="flex-1 pb-3 text-sm font-medium border-b-2 border-primary-600 text-primary-600 transition">邮箱注册</button>
+                @if($smsEnabled)
                 <button type="button" id="tab-phone" onclick="switchTab('phone')"
                     class="flex-1 pb-3 text-sm font-medium border-b-2 border-transparent text-gray-500 transition">手机号注册</button>
+                @endif
             </div>
 
             @if($errors->any())

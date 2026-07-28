@@ -71,39 +71,12 @@ return new class extends Migration
             $table->index('status');
         });
 
-        // 用户任务表
-        Schema::create('user_tasks', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id')->default(0);
-            $table->unsignedBigInteger('task_id')->default(0);
-            $table->integer('completed_count')->default(0);
-            $table->bigInteger('last_completed_at')->default(0);
-            $table->bigInteger('created_at')->default(0);
-            $table->bigInteger('updated_at')->default(0);
-
-            $table->index('user_id');
-            $table->index('task_id');
-            $table->unique(['user_id', 'task_id']);
-        });
-
-        // 用户任务记录表
-        Schema::create('user_task_records', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id')->default(0);
-            $table->unsignedBigInteger('task_id')->default(0);
-            $table->bigInteger('quota')->default(0);
-            $table->bigInteger('created_at')->default(0);
-
-            $table->index('user_id');
-            $table->index('task_id');
-            $table->index('created_at');
-        });
+        // 注：user_tasks / user_task_records 已由
+        // 2024_01_01_000080_create_checkins_tasks_tables 创建，此处不再重复建表。
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('user_task_records');
-        Schema::dropIfExists('user_tasks');
         Schema::dropIfExists('user_subscriptions');
         Schema::dropIfExists('subscription_pre_consume_records');
         Schema::dropIfExists('subscription_orders');

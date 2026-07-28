@@ -254,7 +254,8 @@ class TopUpController extends Controller
             }
         }
         $signStr = rtrim($signStr, '&') . $epayKey;
-        if (md5($signStr) !== $sign) {
+        $expectedSign = md5($signStr);
+        if (! is_string($sign) || ! hash_equals($expectedSign, $sign)) {
             Log::warning('epay notify sign error', ['trade_no' => $tradeNo]);
             return response('fail');
         }

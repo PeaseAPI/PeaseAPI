@@ -1,5 +1,6 @@
 @php
     $systemName = 'Pease API';
+    $systemLogo = '';
     $systemFooter = '';
     $registerEnabled = true;
     $passwordLoginEnabled = true;
@@ -7,6 +8,7 @@
     try {
         if (app()->bound('db') && \DB::connection()->getPdo()) {
             $systemName = \App\Services\OptionService::get('SystemName', $systemName);
+            $systemLogo = \App\Services\OptionService::get('SystemLogo', '');
             $systemFooter = \App\Services\OptionService::get('SystemFooter', '');
             $registerEnabled = (bool) \App\Services\OptionService::get('RegisterEnabled', true);
             $passwordLoginEnabled = (bool) \App\Services\OptionService::get('PasswordLoginEnabled', true);
@@ -53,8 +55,8 @@ a{color:inherit;text-decoration:none}
 nav{position:sticky;top:0;z-index:100;background:rgba(15,23,42,0.8);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
 nav .container{display:flex;align-items:center;justify-content:space-between;height:64px}
 .nav-brand{display:flex;align-items:center;gap:12px}
-.nav-logo{width:36px;height:36px;border-radius:10px;background:var(--gradient);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(99,102,241,0.4)}
-.nav-logo svg{width:20px;height:20px;color:#fff}
+        .nav-logo{width:36px;height:36px;border-radius:10px;overflow:hidden;flex-shrink:0}
+        .nav-logo img{width:100%;height:100%;object-fit:cover}
 .nav-name{font-size:18px;font-weight:700;color:#fff}
 .nav-links{display:flex;align-items:center;gap:8px}
 .nav-links a{padding:8px 16px;font-size:14px;color:var(--text-muted);transition:all 0.2s;border-radius:8px}
@@ -133,7 +135,7 @@ footer{padding:48px 0;border-top:1px solid var(--border);background:rgba(15,23,4
     <div class="container">
         <a href="/" class="nav-brand">
             <div class="nav-logo">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <img src="{{ $systemLogo ?: '/logo.png' }}" alt="{{ $systemName }}">
             </div>
             <span class="nav-name">{{ $systemName }}</span>
         </a>

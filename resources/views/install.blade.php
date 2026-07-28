@@ -233,6 +233,32 @@
                     </tbody>
                 </table>
 
+                @if(!empty($disabledFuncChecks))
+                <h3 style="font-size:15px;margin-bottom:10px;color:#495057;">禁用函数检测 <span style="font-size:12px;font-weight:normal;color:#856404;">（仅提示，不影响安装）</span></h3>
+                <div class="alert" style="background:#fff3cd;color:#856404;border:1px solid #ffeaa7;margin-bottom:12px;font-size:13px;">
+                    ⚠️ 检测到以下函数被禁用。PeaseAPI 运行时<strong>不需要</strong>这些函数，
+                    但 <code>composer install</code> 的 scripts 机制依赖 <code>proc_open</code>。<br>
+                    如果安装 Composer 依赖时报错，请使用：
+                    <code style="background:#fff;padding:2px 6px;border-radius:4px;">composer install --no-scripts</code>
+                    然后运行：
+                    <code style="background:#fff;padding:2px 6px;border-radius:4px;">php artisan pease:install</code>
+                </div>
+                <table class="check-table">
+                    <thead>
+                        <tr><th>函数名</th><th>状态</th><th>说明</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach($disabledFuncChecks as $check)
+                        <tr>
+                            <td><code>{{ $check['name'] }}</code></td>
+                            <td><span class="badge badge-warn">已禁用</span></td>
+                            <td style="font-size:12px;color:#6c757d;">{{ $check['description'] }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+                @endif
+
                 <form method="POST" action="{{ route('install.process') }}">
                     @csrf
                     <input type="hidden" name="step" value="1">

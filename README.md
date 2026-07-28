@@ -616,6 +616,22 @@ php artisan route:cache
 php artisan view:cache
 ```
 
+### Q: 宝塔面板安装时提示需要取消 `proc_open` / `putenv` 函数禁用？
+
+**A:** 宝塔面板默认禁用 `proc_open`、`putenv` 等函数。这些函数仅被 **Composer 的 scripts 机制** 用于在安装完成后启动子进程执行 `php artisan package:discover` 等命令；**PeaseAPI 运行时并不依赖这些函数**，因此无需为运行安全而解禁它们。
+
+本项目提供了 `pease:install` 命令来替代 Composer 的 scripts，使用方式：
+
+```bash
+# 1. 使用 --no-scripts 跳过 Composer 的 scripts（不会触发 proc_open）
+composer install --no-scripts
+
+# 2. 用 pease:install 完成等效初始化（环境检测 / .env / APP_KEY / 包发现 / 迁移 / storage 链接）
+php artisan pease:install
+```
+
+> 这样既无需在宝塔面板取消 `proc_open` / `putenv` 的禁用（保持服务器安全配置），也能正常完成安装。安装向导页面同样会在「环境检测」步骤中检测并提示这一情况。
+
 ---
 
 ## 开源协议

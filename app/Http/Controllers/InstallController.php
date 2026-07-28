@@ -39,10 +39,14 @@ class InstallController extends Controller
             return view('install', ['step' => 'migrating']);
         }
 
+        $disabledFuncChecks = $this->getDisabledFunctionChecks();
+
         return view('install', [
             'step' => 1,
             'envChecks' => $this->getEnvironmentChecks(),
             'dirChecks' => $this->getDirectoryChecks(),
+            'disabledFuncChecks' => $disabledFuncChecks,
+            'hasDisabledFuncWarning' => !empty($disabledFuncChecks),
         ]);
     }
 
@@ -72,8 +76,10 @@ class InstallController extends Controller
     {
         $envChecks = $this->getEnvironmentChecks();
         $dirChecks = $this->getDirectoryChecks();
+        $disabledFuncChecks = $this->getDisabledFunctionChecks();
 
         // Check only required (non-optional) items
+        // 禁用函数检测是 optional 的，不会阻断安装
         $requiredEnvPassed = collect($envChecks)
             ->filter(fn($c) => !isset($c['optional']) || !$c['optional'])
             ->every(fn($c) => $c['passed']);
@@ -84,6 +90,8 @@ class InstallController extends Controller
                 'step' => 1,
                 'envChecks' => $envChecks,
                 'dirChecks' => $dirChecks,
+                'disabledFuncChecks' => $disabledFuncChecks,
+                'hasDisabledFuncWarning' => !empty($disabledFuncChecks),
                 'error' => '请修复必需的環境问题后重试（可选项目可以跳过）。',
             ]);
         }
@@ -408,6 +416,47 @@ class InstallController extends Controller
                 'passed' => is_writable($path),
             ];
         })->toArray();
+    }
+
+    /**
+     * 检测被禁用的 PHP 函数（仅提示，不阻断安装）
+     *
+     * 在宝塔等面板环境中，proc_open / putenv 等函数可能被禁用。
+     * 这些函数在 PeaseAPI 运行时不需要，但 Composer 的 scripts 机制依赖 proc_open。
+     * 此处仅作提示，引导用户使用 `composer install --no-scripts` + `php artisan pease:install`。
+     */
+    protected function getDisabledFunctionChecks(): array
+    {
+        $disabled = ini_get('disable_functions');
+        if (empty($disabled)) {
+            return [];
+        }
+
+        $disabledList = array_map('trim', explode(',', $disabled));
+
+        // 这些函数 PeaseAPI 运行时不需要，但 Composer scripts 需要 proc_open/putenv
+        $watchFunctions = [
+            'proc_open' => 'Composer scripts 需要（可用 --no-scripts 绕过）',
+            'putenv' => 'Composer 部分操作需要（可用 --no-scripts 绕过）',
+            'shell_exec' => '非必需',
+            'exec' => '非必需',
+            'system' => '非必需',
+            'passthru' => '非必需',
+        ];
+
+        $checks = [];
+        foreach ($watchFunctions as $func => $desc) {
+            if (in_array($func, $disabledList)) {
+                $checks[] = [
+                    'name' => $func,
+                    'description' => $desc,
+                    'passed' => false, // 被禁用
+                    'optional' => true, // 不阻断安装
+                ];
+            }
+        }
+
+        return $checks;
     }
 
     /**

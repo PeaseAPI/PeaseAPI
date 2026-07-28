@@ -1,0 +1,236 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
+use Symfony\Component\Console\Output\BufferedOutput;
+
+/**
+ * PeaseAPI 一键安装命令
+ *
+ * 在禁用了 proc_open / putenv 的环境（如宝塔面板默认配置）下，
+ * Composer 的 post-autoload-dump 等 scripts 无法执行（因为它们需要 proc_open
+ * 来启动子进程运行 `php artisan package:discover`）。
+ *
+ * 此时用户可以使用：
+ *   composer install --no-scripts
+ * 然后运行本命令完成等效的初始化工作：
+ *   php artisan pease:install
+ *
+ * 本命令内部直接调用 Artisan，不会触发任何子进程，因此无需 proc_open。
+ */
+class PeaseInstall extends Command
+{
+    /**
+     * 命令名称与签名
+     */
+    protected $signature = 'pease:install
+                            {--force : 强制执行，跳过已安装检查}
+                            {--skip-migrate : 跳过数据库迁移}
+                            {--skip-key : 跳过 APP_KEY 生成}';
+
+    /**
+     * 命令描述
+     */
+    protected $description = 'PeaseAPI 一键安装初始化（兼容禁用 proc_open/putenv 的环境，替代 composer scripts）';
+
+    /**
+     * 执行命令
+     */
+    public function handle(): int
+    {
+        $this->info('╔══════════════════════════════════════════════════╗');
+        $this->info('║          PeaseAPI 安装初始化程序                ║');
+        $this->info('╚══════════════════════════════════════════════════╝');
+        $this->newLine();
+
+        // 1. 环境检测
+        $this->info('【1/5】检测运行环境...');
+        $this->checkEnvironment();
+        $this->newLine();
+
+        // 2. 创建 .env 文件（如果不存在）
+        $this->info('【2/5】检查 .env 配置文件...');
+        $this->ensureEnvFile();
+        $this->newLine();
+
+        // 3. 生成 APP_KEY
+        if (!$this->option('skip-key')) {
+            $this->info('【3/5】生成应用密钥 (APP_KEY)...');
+            $this->generateAppKey();
+        } else {
+            $this->info('【3/5】已跳过 APP_KEY 生成');
+        }
+        $this->newLine();
+
+        // 4. 缓存清理与包发现（替代 composer post-autoload-dump 脚本）
+        $this->info('【4/5】执行包发现与缓存清理（替代 composer scripts）...');
+        $this->runPackageDiscover();
+        $this->newLine();
+
+        // 5. 数据库迁移
+        if (!$this->option('skip-migrate')) {
+            $this->info('【5/5】执行数据库迁移...');
+            $this->runMigration();
+        } else {
+            $this->info('【5/5】已跳过数据库迁移');
+        }
+        $this->newLine();
+
+        // 创建 storage 软链接
+        $this->info('创建 storage 软链接...');
+        $this->call('storage:link');
+
+        $this->newLine();
+        $this->info('✅ PeaseAPI 初始化完成！');
+        $this->newLine();
+        $this->info('后续步骤：');
+        $this->line('  1. 编辑 .env 配置数据库与 Redis 连接信息');
+        $this->line('  2. 访问 http://你的域名/install 进入 Web 安装向导');
+        $this->line('  3. 或直接运行 php artisan serve 启动开发服务器');
+        $this->newLine();
+        $this->comment('提示：生产环境建议执行 php artisan config:cache && php artisan route:cache');
+
+        return Command::SUCCESS;
+    }
+
+    /**
+     * 检测运行环境
+     */
+    protected function checkEnvironment(): void
+    {
+        $checks = [
+            'PHP 版本 >= 8.2' => version_compare(PHP_VERSION, '8.2.0', '>='),
+            'PDO 扩展' => extension_loaded('pdo'),
+            'PDO MySQL 驱动' => extension_loaded('pdo_mysql'),
+            'MBString 扩展' => extension_loaded('mbstring'),
+            'GMP 扩展' => extension_loaded('gmp'),
+            'Redis 扩展' => extension_loaded('redis'),
+            'OpenSSL 扩展' => extension_loaded('openssl'),
+            'Tokenizer 扩展' => extension_loaded('tokenizer'),
+            'CType 扩展' => extension_loaded('ctype'),
+            'JSON 扩展' => extension_loaded('json'),
+            'Fileinfo 扩展' => extension_loaded('fileinfo'),
+            'storage 目录可写' => is_writable(base_path('storage')),
+            'bootstrap/cache 目录可写' => is_writable(base_path('bootstrap/cache')),
+        ];
+
+        $allPassed = true;
+        foreach ($checks as $name => $passed) {
+            if ($passed) {
+                $this->line("  <fg=green>✓</> {$name}");
+            } else {
+                $this->line("  <fg=red>✗</> {$name}");
+                $allPassed = false;
+            }
+        }
+
+        // 检查禁用的函数（提示性，不阻断）
+        $disabledFunctions = $this->getDisabledFunctions();
+        $dangerousFunctions = array_intersect(
+            ['proc_open', 'putenv', 'shell_exec', 'exec', 'system', 'passthru'],
+            $disabledFunctions
+        );
+
+        if (!empty($dangerousFunctions)) {
+            $this->newLine();
+            $this->warn('  ⚠ 检测到以下函数被禁用：' . implode(', ', $dangerousFunctions));
+            $this->line('  <fg=gray>PeaseAPI 运行时不需要这些函数，本安装命令也不依赖它们。</fg>');
+            $this->line('  <fg=gray>但如果使用普通 `composer install`（不加 --no-scripts）仍会报错，</fg>');
+            $this->line('  <fg=gray>请使用 `composer install --no-scripts` + `php artisan pease:install`。</fg>');
+        }
+
+        if (!$allPassed) {
+            $this->newLine();
+            $this->error('环境检测未通过，请修复上述问题后重试。');
+            exit(1);
+        }
+    }
+
+    /**
+     * 确保存在 .env 文件
+     */
+    protected function ensureEnvFile(): void
+    {
+        $envPath = base_path('.env');
+        $examplePath = base_path('.env.example');
+
+        if (file_exists($envPath)) {
+            $this->line('  <fg=green>✓</> .env 文件已存在');
+            return;
+        }
+
+        if (file_exists($examplePath)) {
+            copy($examplePath, $envPath);
+            $this->line('  <fg=green>✓</> 已从 .env.example 创建 .env 文件');
+        } else {
+            $this->line('  <fg=red>✗</> .env.example 不存在，请手动创建 .env 文件');
+        }
+    }
+
+    /**
+     * 生成 APP_KEY
+     */
+    protected function generateAppKey(): void
+    {
+        $key = config('app.key');
+
+        if (!empty($key) && !$this->option('force')) {
+            $this->line('  <fg=gray>• APP_KEY 已设置，跳过生成（使用 --force 可强制重新生成）</>');
+            return;
+        }
+
+        $this->call('key:generate', ['--force' => true]);
+    }
+
+    /**
+     * 执行包发现（替代 composer post-autoload-dump 中的 package:discover）
+     *
+     * 直接调用 Artisan，不通过 Composer 的 proc_open
+     */
+    protected function runPackageDiscover(): void
+    {
+        $output = new BufferedOutput();
+        Artisan::call('package:discover', ['--ansi' => true], $output);
+        $result = $output->fetch();
+        $this->line('  <fg=green>✓</> 包发现完成');
+        if (trim($result)) {
+            $this->line('  <fg=gray>' . trim($result) . '</>');
+        }
+    }
+
+    /**
+     * 执行数据库迁移
+     */
+    protected function runMigration(): void
+    {
+        if (!$this->confirm('是否现在执行数据库迁移？（请确保已配置 .env 中的数据库连接信息）', true)) {
+            $this->line('  <fg=gray>• 已跳过数据库迁移，可稍后手动执行 php artisan migrate</>');
+            return;
+        }
+
+        try {
+            $this->call('migrate', ['--force' => true]);
+            $this->line('  <fg=green>✓</> 数据库迁移完成');
+        } catch (\Exception $e) {
+            $this->error('  数据库迁移失败：' . $e->getMessage());
+            $this->line('  <fg=gray>请检查 .env 中的数据库配置后手动执行：php artisan migrate</>');
+        }
+    }
+
+    /**
+     * 获取被禁用的函数列表
+     */
+    protected function getDisabledFunctions(): array
+    {
+        $disabled = ini_get('disable_functions');
+        if (empty($disabled)) {
+            return [];
+        }
+
+        return array_map('trim', explode(',', $disabled));
+    }
+}

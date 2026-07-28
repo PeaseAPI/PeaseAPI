@@ -88,17 +88,21 @@ class SystemPerformanceCheck
 
     /**
      * 检查系统是否过载
+     *
+     * 使用 PHP 内置函数 sys_getloadavg() 获取系统负载，
+     * 通过读取 /proc/cpuinfo（Linux）获取 CPU 核心数，
+     * 完全不依赖 shell_exec / proc_open，兼容宝塔等禁用危险函数的环境。
      */
     protected function isSystemOverloaded(): bool
     {
-        // 获取系统负载
+        // 获取系统负载（PHP 内置函数，无需 shell_exec）
         $load = $this->getSystemLoad();
         if ($load === null) {
             return false;
         }
 
-        // 获取 CPU 核心数
-        $cpuCount = (int) shell_exec('sysctl -n hw.ncpu 2>/dev/null') ?: 4;
+        // 获取 CPU 核心数（不使用 shell_exec）
+        $cpuCount = $this->getCpuCount();
         $loadPerCpu = $load / $cpuCount;
 
         // 如果每核心负载超过 2，认为过载
@@ -106,26 +110,74 @@ class SystemPerformanceCheck
     }
 
     /**
-     * 获取系统负载
+     * 获取系统负载（1 分钟平均）
+     *
+     * 优先使用 PHP 内置 sys_getloadavg()，它在 Linux/macOS/FreeBSD 上均可用，
+     * 无需调用任何 shell 命令。在不支持的平台回退到读取 /proc/loadavg。
      */
     protected function getSystemLoad(): ?float
     {
-        if (PHP_OS_FAMILY === 'Darwin') {
-            // macOS 使用 uptime 获取负载
-            $output = shell_exec('uptime | grep -oE "load averages: [0-9]+\.[0-9]+" | awk \'{print $3}\'');
-            if ($output) {
-                return (float) trim($output);
+        // sys_getloadavg() 是 PHP 内置函数，不依赖 shell_exec
+        if (function_exists('sys_getloadavg')) {
+            $load = @sys_getloadavg();
+            if (is_array($load) && isset($load[0])) {
+                return (float) $load[0];
             }
-        } elseif (PHP_OS_FAMILY === 'Linux') {
-            // Linux 读取 /proc/loadavg
+        }
+
+        // Linux 回退：读取 /proc/loadavg（无需 shell_exec）
+        if (PHP_OS_FAMILY === 'Linux') {
             $output = @file_get_contents('/proc/loadavg');
-            if ($output) {
+            if ($output !== false) {
                 $parts = explode(' ', $output);
                 return (float) $parts[0];
             }
         }
 
         return null;
+    }
+
+    /**
+     * 获取 CPU 核心数（不使用 shell_exec）
+     *
+     * - Linux：读取 /proc/cpuinfo 统计 processor 行数
+     * - Windows：读取环境变量 NUMBER_OF_PROCESSORS
+     * - 其他（macOS/BSD）：回退到默认值 4
+     *
+     * 结果会缓存到静态变量，避免每次请求重复读取文件。
+     */
+    protected function getCpuCount(): int
+    {
+        static $cpuCount = null;
+
+        if ($cpuCount !== null) {
+            return $cpuCount;
+        }
+
+        // Linux：读取 /proc/cpuinfo
+        if (PHP_OS_FAMILY === 'Linux') {
+            $cpuinfo = @file_get_contents('/proc/cpuinfo');
+            if ($cpuinfo !== false) {
+                $count = substr_count($cpuinfo, 'processor:');
+                if ($count > 0) {
+                    $cpuCount = $count;
+                    return $cpuCount;
+                }
+            }
+        }
+
+        // Windows：环境变量
+        if (PHP_OS_FAMILY === 'Windows') {
+            $envCount = $_ENV['NUMBER_OF_PROCESSORS'] ?? $_SERVER['NUMBER_OF_PROCESSORS'] ?? null;
+            if ($envCount !== null && (int) $envCount > 0) {
+                $cpuCount = (int) $envCount;
+                return $cpuCount;
+            }
+        }
+
+        // 其他平台（macOS 等）：使用默认值
+        $cpuCount = 4;
+        return $cpuCount;
     }
 
     /**

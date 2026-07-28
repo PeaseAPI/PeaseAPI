@@ -1,0 +1,56 @@
+{
+    "name": "web-auth/webauthn-symfony-bundle",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "description": "FIDO2/Webauthn Security Bundle For Symfony",
+    "keywords": [
+        "FIDO",
+        "FIDO2",
+        "webauthn",
+        "symfony",
+        "symfony-bundle",
+        "bundle"
+    ],
+    "homepage": "https://github.com/web-auth",
+    "authors": [
+        {
+            "name": "Florent Morselli",
+            "homepage": "https://github.com/Spomky"
+        },
+        {
+            "name": "All contributors",
+            "homepage": "https://github.com/web-auth/webauthn-symfony-bundle/contributors"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "nyholm/psr7": "^1.5",
+        "phpdocumentor/reflection-docblock": "^5.3",
+        "psr/event-dispatcher": "^1.0",
+        "symfony/config": "^6.1|^7.0",
+        "symfony/dependency-injection": "^6.1|^7.0",
+        "symfony/framework-bundle": "^6.1|^7.0",
+        "symfony/http-client": "^6.1|^7.0",
+        "symfony/psr-http-message-bridge": "^2.1|^6.1|^7.0",
+        "symfony/property-access": "^6.1|^7.0",
+        "symfony/property-info": "^6.1|^7.0",
+        "symfony/security-bundle": "^6.1|^7.0",
+        "symfony/security-core": "^6.1|^7.0",
+        "symfony/security-http": "^6.1|^7.0",
+        "symfony/serializer": "^6.1|^7.0",
+        "symfony/validator": "^6.1|^7.0",
+        "web-auth/webauthn-lib": "self.version",
+        "web-token/jwt-library": "^3.3|^4.0"
+    },
+    "extra": {
+        "thanks": {
+            "name": "web-auth/webauthn-framework",
+            "url": "https://github.com/web-auth/webauthn-framework"
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Webauthn\\Bundle\\": "src/"
+        }
+    }
+}

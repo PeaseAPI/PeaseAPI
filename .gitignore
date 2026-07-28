@@ -55,7 +55,8 @@ storage/installed
 storage/logs/*
 storage/pail
 yarn-error.log
-/vendor
+# vendor 纳入版本库，客户拉取后无需 composer install 即可直接运行
+# /vendor
 /.fleet
 /.idea
 /.nova

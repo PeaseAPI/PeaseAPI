@@ -1,0 +1,31 @@
+{
+    "name": "web-auth/metadata-service",
+    "type": "library",
+    "license": "MIT",
+    "description": "[DEPRECATED] Please use 'web-auth/webauthn-lib' instead",
+    "keywords": [
+        "FIDO",
+        "FIDO2",
+        "webauthn"
+    ],
+    "homepage": "https://github.com/web-auth",
+    "authors": [
+        {
+            "name": "Florent Morselli",
+            "homepage": "https://github.com/Spomky"
+        },
+        {
+            "name": "All contributors",
+            "homepage": "https://github.com/web-auth/metadata-service/contributors"
+        }
+    ],
+    "require": {
+        "web-auth/webauthn-lib": "^4.9"
+    },
+    "extra": {
+        "thanks": {
+            "name": "web-auth/webauthn-framework",
+            "url": "https://github.com/web-auth/webauthn-framework"
+        }
+    }
+}

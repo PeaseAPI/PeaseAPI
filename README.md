@@ -271,10 +271,72 @@ php artisan route:cache
 php artisan view:cache
 php artisan storage:link
 
-# 6. 设置 Nginx 指向 public/ 目录
+# 6. 设置 Nginx 指向 public/ 目录（配置见下方「Nginx 配置参考」）
 # 7. 配置 Supervisor 管理队列 worker
 #    php artisan queue:work --tries=3 --max-time=3600
 ```
+
+### Nginx 配置参考
+
+> ⚠️ **必须将 root 指向项目下的 `public/` 目录**，并通过 `try_files` 把所有请求转给 `index.php`，否则除首页外的所有路由（含 `/install` 安装向导）都会返回 404。
+
+#### 完整 server 配置（推荐）
+
+```nginx
+server {
+    listen 80;
+    # listen 443 ssl;  # 启用 HTTPS 时取消注释
+    server_name your-domain.com;
+
+    # 关键：root 必须指向 public/ 目录
+    root /var/www/peaseapi/public;
+    index index.php index.html;
+
+    # 关键：把所有请求转给 index.php（Laravel 路由）
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # PHP-FPM 处理
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;  # 按实际 PHP 版本/路径调整
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+
+        # 流式响应（SSE）支持：关闭缓冲
+        fastcgi_buffering off;
+        fastcgi_cache off;
+    }
+
+    # 静态资源直接返回，不走 PHP
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot)$ {
+        expires 30d;
+        access_log off;
+        try_files $uri =404;
+    }
+
+    # 禁止访问敏感文件
+    location ~ /\.(env|git|htaccess) { deny all; }
+    location ~ /storage/ { internal; }  # 通过 storage:link 访问的公开文件可按需放开
+
+    # 日志
+    access_log /var/log/nginx/peaseapi.access.log;
+    error_log  /var/log/nginx/peaseapi.error.log;
+}
+```
+
+#### 宝塔面板 / 1Panel 伪静态规则
+
+如果使用宝塔面板，在站点设置的「伪静态」中填入以下内容即可（root 宝塔会自动指向 public）：
+
+```nginx
+location / {
+    try_files $uri $uri/ /index.php?$query_string;
+}
+```
+
+> 保存后重载 Nginx：`nginx -s reload` 或在面板点击「重载配置」。
 
 ### 安装向导
 

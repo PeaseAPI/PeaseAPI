@@ -15,9 +15,11 @@ use Symfony\Component\Console\Output\BufferedOutput;
  * Composer 的 post-autoload-dump 等 scripts 无法执行（因为它们需要 proc_open
  * 来启动子进程运行 `php artisan package:discover`）。
  *
- * 此时用户可以使用：
- *   composer install --no-scripts
- * 然后运行本命令完成等效的初始化工作：
+ * 本项目的 composer.json 已移除所有依赖 proc_open 的自动脚本，因此直接
+ * `composer install` 即可在宝塔环境下正常完成依赖安装，无需解禁任何函数。
+ *
+ * 依赖安装完成后，运行本命令完成项目初始化：
+ *   composer install
  *   php artisan pease:install
  *
  * 本命令内部直接调用 Artisan，不会触发任何子进程，因此无需 proc_open。
@@ -48,35 +50,40 @@ class PeaseInstall extends Command
         $this->newLine();
 
         // 1. 环境检测
-        $this->info('【1/5】检测运行环境...');
+        $this->info('【1/6】检测运行环境...');
         $this->checkEnvironment();
         $this->newLine();
 
         // 2. 创建 .env 文件（如果不存在）
-        $this->info('【2/5】检查 .env 配置文件...');
+        $this->info('【2/6】检查 .env 配置文件...');
         $this->ensureEnvFile();
         $this->newLine();
 
         // 3. 生成 APP_KEY
         if (!$this->option('skip-key')) {
-            $this->info('【3/5】生成应用密钥 (APP_KEY)...');
+            $this->info('【3/6】生成应用密钥 (APP_KEY)...');
             $this->generateAppKey();
         } else {
-            $this->info('【3/5】已跳过 APP_KEY 生成');
+            $this->info('【3/6】已跳过 APP_KEY 生成');
         }
         $this->newLine();
 
-        // 4. 缓存清理与包发现（替代 composer post-autoload-dump 脚本）
-        $this->info('【4/5】执行包发现与缓存清理（替代 composer scripts）...');
+        // 4. 缓存清理与包发现（替代被移除的 composer post-autoload-dump 脚本）
+        $this->info('【4/6】执行包发现与缓存清理...');
         $this->runPackageDiscover();
         $this->newLine();
 
-        // 5. 数据库迁移
+        // 5. 发布 Laravel 资源（替代被移除的 composer post-update-cmd 脚本）
+        $this->info('【5/6】发布 Laravel 资源文件...');
+        $this->publishLaravelAssets();
+        $this->newLine();
+
+        // 6. 数据库迁移
         if (!$this->option('skip-migrate')) {
-            $this->info('【5/5】执行数据库迁移...');
+            $this->info('【6/6】执行数据库迁移...');
             $this->runMigration();
         } else {
-            $this->info('【5/5】已跳过数据库迁移');
+            $this->info('【6/6】已跳过数据库迁移');
         }
         $this->newLine();
 
@@ -139,8 +146,8 @@ class PeaseInstall extends Command
             $this->newLine();
             $this->warn('  ⚠ 检测到以下函数被禁用：' . implode(', ', $dangerousFunctions));
             $this->line('  <fg=gray>PeaseAPI 运行时不需要这些函数，本安装命令也不依赖它们。</fg>');
-            $this->line('  <fg=gray>但如果使用普通 `composer install`（不加 --no-scripts）仍会报错，</fg>');
-            $this->line('  <fg=gray>请使用 `composer install --no-scripts` + `php artisan pease:install`。</fg>');
+            $this->line('  <fg=gray>本项目的 composer.json 已移除依赖这些函数的自动脚本，</fg>');
+            $this->line('  <fg=gray>直接 `composer install` + `php artisan pease:install` 即可，无需解禁。</fg>');
         }
 
         if (!$allPassed) {
@@ -199,6 +206,27 @@ class PeaseInstall extends Command
         $this->line('  <fg=green>✓</> 包发现完成');
         if (trim($result)) {
             $this->line('  <fg=gray>' . trim($result) . '</>');
+        }
+    }
+
+    /**
+     * 发布 Laravel 资源文件（替代被移除的 composer post-update-cmd 中的
+     * `@php artisan vendor:publish --tag=laravel-assets --ansi --force`）
+     *
+     * 直接调用 Artisan，不通过 Composer 的 proc_open
+     */
+    protected function publishLaravelAssets(): void
+    {
+        $output = new BufferedOutput();
+        try {
+            Artisan::call('vendor:publish', [
+                '--tag' => 'laravel-assets',
+                '--force' => true,
+                '--ansi' => true,
+            ], $output);
+            $this->line('  <fg=green>✓</> Laravel 资源发布完成');
+        } catch (\Exception $e) {
+            $this->warn('  Laravel 资源发布失败（可稍后手动执行 php artisan vendor:publish --tag=laravel-assets --force）');
         }
     }
 

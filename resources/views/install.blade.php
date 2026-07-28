@@ -235,12 +235,12 @@
 
                 @if(!empty($disabledFuncChecks))
                 <h3 style="font-size:15px;margin-bottom:10px;color:#495057;">禁用函数检测 <span style="font-size:12px;font-weight:normal;color:#856404;">（仅提示，不影响安装）</span></h3>
-                <div class="alert" style="background:#fff3cd;color:#856404;border:1px solid #ffeaa7;margin-bottom:12px;font-size:13px;">
-                    ⚠️ 检测到以下函数被禁用。PeaseAPI 运行时<strong>不需要</strong>这些函数，
-                    但 <code>composer install</code> 的 scripts 机制依赖 <code>proc_open</code>。<br>
-                    如果安装 Composer 依赖时报错，请使用：
-                    <code style="background:#fff;padding:2px 6px;border-radius:4px;">composer install --no-scripts</code>
-                    然后运行：
+                <div class="alert" style="background:#d4edda;color:#155724;border:1px solid #c3e6cb;margin-bottom:12px;font-size:13px;">
+                    ℹ️ 检测到以下函数被禁用。PeaseAPI 运行时与 <code>composer install</code>
+                    均<strong>不需要</strong>这些函数 —— 本项目的 <code>composer.json</code>
+                    已移除所有依赖 <code>proc_open</code> 的自动脚本。<br>
+                    直接执行 <code style="background:#fff;padding:2px 6px;border-radius:4px;">composer install</code>
+                    即可，无需解禁任何函数。安装完成后运行：
                     <code style="background:#fff;padding:2px 6px;border-radius:4px;">php artisan pease:install</code>
                 </div>
                 <table class="check-table">

@@ -28,13 +28,21 @@ class AppServiceProvider extends ServiceProvider
             $systemLogo = '';
             $footerHtml = '';
             $smsEnabled = false;
+            $phoneLoginEnabled = false;
+            $phoneRegisterEnabled = false;
+            $phonePasswordResetEnabled = false;
+            $emailVerificationEnabled = false;
             try {
                 if (app()->bound('db') && DB::connection()->getPdo()) {
                     $systemName = OptionService::get('SystemName', $systemName);
                     $systemLogo = OptionService::get('SystemLogo', '');
                     $footerHtml = OptionService::get('Footer', '');
-                    // 短信服务开关：从环境变量或配置获取，默认关闭
-                    $smsEnabled = !empty(env('SMS_ALIYUN_ACCESS_KEY_ID')) && !empty(env('SMS_ALIYUN_ACCESS_KEY_SECRET'));
+                    // 短信服务开关：从数据库选项读取（后台系统设置控制）
+                    $smsEnabled = (bool) OptionService::get('SmsEnabled', false);
+                    $phoneLoginEnabled = (bool) OptionService::get('PhoneLoginEnabled', false);
+                    $phoneRegisterEnabled = (bool) OptionService::get('PhoneRegisterEnabled', false);
+                    $phonePasswordResetEnabled = (bool) OptionService::get('PhonePasswordResetEnabled', false);
+                    $emailVerificationEnabled = (bool) OptionService::get('EmailVerificationEnabled', false);
                 }
             } catch (\Throwable $e) {
                 // 数据库未迁移或安装前静默回退到默认值
@@ -44,6 +52,10 @@ class AppServiceProvider extends ServiceProvider
                 'systemLogo' => $systemLogo,
                 'footerHtml' => $footerHtml,
                 'smsEnabled' => $smsEnabled,
+                'phoneLoginEnabled' => $phoneLoginEnabled,
+                'phoneRegisterEnabled' => $phoneRegisterEnabled,
+                'phonePasswordResetEnabled' => $phonePasswordResetEnabled,
+                'emailVerificationEnabled' => $emailVerificationEnabled,
             ]);
         });
     }

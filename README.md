@@ -620,13 +620,15 @@ php artisan view:cache
 
 **A:** 宝塔面板默认禁用 `proc_open`、`putenv` 等函数。这些函数仅被 **Composer 的 scripts 机制** 用于在安装完成后启动子进程执行 `php artisan package:discover` 等命令；**PeaseAPI 运行时并不依赖这些函数**，因此无需为运行安全而解禁它们。
 
-本项目提供了 `pease:install` 命令来替代 Composer 的 scripts，使用方式：
+本项目已在 `composer.json` 中**移除所有依赖 `proc_open` 的自动脚本**（`post-autoload-dump`、`post-update-cmd`、`post-root-package-install`、`post-create-project-cmd`），因此直接 `composer install` 即可在宝塔默认配置下顺利完成，无需取消任何函数禁用。
+
+依赖安装完成后，运行 `pease:install` 命令完成项目初始化（包含原本由 composer scripts 完成的包发现、资源发布、APP_KEY 生成、迁移等）：
 
 ```bash
-# 1. 使用 --no-scripts 跳过 Composer 的 scripts（不会触发 proc_open）
-composer install --no-scripts
+# 1. 直接安装依赖（无需 --no-scripts，无需解禁 proc_open/putenv）
+composer install
 
-# 2. 用 pease:install 完成等效初始化（环境检测 / .env / APP_KEY / 包发现 / 迁移 / storage 链接）
+# 2. 用 pease:install 完成初始化（环境检测 / .env / APP_KEY / 包发现 / 资源发布 / 迁移 / storage 链接）
 php artisan pease:install
 ```
 

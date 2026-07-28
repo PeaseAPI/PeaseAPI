@@ -41,19 +41,7 @@
     },
     "scripts": {
         "post-autoload-dump": [
-            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-            "@php artisan package:discover --ansi"
-        ],
-        "post-update-cmd": [
-            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
-        ],
-        "post-root-package-install": [
-            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
-        ],
-        "post-create-project-cmd": [
-            "@php artisan key:generate --ansi",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
-            "@php artisan migrate --graceful --ansi"
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
@@ -64,7 +52,7 @@
         ]
     },
     "scripts-descriptions": {
-        "pease-install": "PeaseAPI 一键安装（兼容禁用 proc_open/putenv 的环境，替代 composer post-autoload-dump scripts）"
+        "pease-install": "PeaseAPI 一键安装（替代被移除的 composer 自动脚本，兼容禁用 proc_open/putenv 的环境）"
     },
     "extra": {
         "laravel": {

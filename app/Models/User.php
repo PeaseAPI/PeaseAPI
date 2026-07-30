@@ -115,4 +115,36 @@ class User extends Authenticatable
     {
         return $this->quota - $this->used_quota;
     }
+
+    /**
+     * 头像 URL 访问器
+     *
+     * 头像文件直接存放于 public/avatars 目录下，数据库中存储相对路径（如 avatars/xxx.png），
+     * 不再依赖 storage:link 软链接。OAuth 返回的完整 http(s) 外链则原样返回。
+     */
+    public function getAvatarUrlAttribute(): string
+    {
+        if (empty($this->avatar)) {
+            return '';
+        }
+
+        // 历史脏数据：旧版代码可能将 data: URL 写入数据库，浏览器尝试解码会报
+        // "Data URL decoding failed"，直接忽略，回退到首字母占位符
+        if (stripos($this->avatar, 'data:') === 0) {
+            return '';
+        }
+
+        // 已经是完整 URL（如 GitHub/Discord 等第三方头像），直接返回
+        if (preg_match('#^https?://#i', $this->avatar)) {
+            return $this->avatar;
+        }
+
+        // 协议相对 URL（//xxx），补全为 https
+        if (strpos($this->avatar, '//') === 0) {
+            return 'https:' . $this->avatar;
+        }
+
+        // 规范化为根相对路径，避免重复斜杠
+        return '/' . ltrim($this->avatar, '/');
+    }
 }

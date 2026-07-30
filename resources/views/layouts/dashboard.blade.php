@@ -123,8 +123,8 @@
                 <a href="{{ route('profile') }}" class="flex items-center space-x-3 group cursor-pointer px-2 py-1 rounded-lg hover:bg-gray-50 transition" title="点击查看/编辑个人信息">
                     <span id="topNavUserName" class="text-sm text-gray-500 group-hover:text-primary-600 transition">{{ auth()->user()->display_name ?? auth()->user()->username }}</span>
                     <span id="topNavAvatar" class="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center ring-2 ring-transparent group-hover:ring-primary-400 transition flex-shrink-0">
-                        @if(auth()->user()->avatar)
-                            <img src="{{ \Illuminate\Support\Facades\Storage::url(auth()->user()->avatar) }}" alt="头像" class="w-full h-full object-cover">
+                        @if(auth()->user()->avatar_url)
+                            <img src="{{ auth()->user()->avatar_url }}" alt="头像" class="w-full h-full object-cover">
                         @else
                             <span class="w-full h-full bg-primary-100 text-primary-700 flex items-center justify-center text-sm font-medium group-hover:bg-primary-200 transition">
                                 {{ strtoupper(mb_substr(auth()->user()->display_name ?? auth()->user()->username, 0, 1)) }}

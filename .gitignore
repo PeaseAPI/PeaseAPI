@@ -20,25 +20,6 @@
 public/install.lock
 public/install_step3
 storage/install_step3
-.idea
-.php-cs-fixer.cache
-.phpunit.cache
-.phpunit.result.cache
-.vagrant
-.vscode
-Homestead.json
-Homestead.yaml
-auth.json
-bootstrap/cache/*.php
-bootstrap/cache/.gitignore
-coverage
-database/*.sqlite
-database/*.sqlite-journal
-node_modules
-npm-debug.log
-package-lock.json
-public/build
-public/hot
 public/storage
 storage/*.key
 storage/app/!**
@@ -55,6 +36,11 @@ storage/installed
 storage/logs/*
 storage/pail
 yarn-error.log
+
+# 头像目录：保留目录但忽略上传的图片文件
+public/avatars/*
+!public/avatars/.gitkeep
+
 # vendor 纳入版本库，客户拉取后无需 composer install 即可直接运行
 # /vendor
 /.fleet

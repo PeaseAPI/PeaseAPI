@@ -12,7 +12,7 @@
     $serverAddress = rtrim($serverAddress, '/');
 
     $me = auth()->user();
-    $avatarUrl = $me && $me->avatar ? \Illuminate\Support\Facades\Storage::url($me->avatar) : '';
+    $avatarUrl = $me ? $me->avatar_url : '';
     $displayName = $me->display_name ?? $me->username;
     $initial = strtoupper(mb_substr($displayName, 0, 1));
 @endphp
@@ -170,7 +170,9 @@ function syncTopAvatar(avatarUrl, fallbackName) {
     const wrap = document.getElementById('topNavAvatar');
     if (!wrap) return;
     if (avatarUrl) {
-        wrap.innerHTML = '<img src="' + avatarUrl + '?_t=' + Date.now() + '" alt="头像" class="w-full h-full object-cover">';
+        // data: URL（FileReader 本地预览）不能追加查询参数，否则会导致 Data URL 解码失败
+        const sep = avatarUrl.indexOf('data:') === 0 ? '' : (avatarUrl.indexOf('?') === -1 ? '?_t=' + Date.now() : '&_t=' + Date.now());
+        wrap.innerHTML = '<img src="' + avatarUrl + sep + '" alt="头像" class="w-full h-full object-cover">';
     } else {
         const initial = (fallbackName || '?').charAt(0).toUpperCase();
         wrap.innerHTML = '<span class="w-full h-full bg-primary-100 text-primary-700 flex items-center justify-center text-sm font-medium">' + initial + '</span>';
@@ -188,7 +190,9 @@ function renderAvatarPreview(avatarUrl, fallbackName) {
     const preview = document.getElementById('avatarPreview');
     if (!preview) return;
     if (avatarUrl) {
-        preview.innerHTML = '<img src="' + avatarUrl + (avatarUrl.indexOf('?') === -1 ? '?_t=' + Date.now() : '&_t=' + Date.now()) + '" alt="头像" class="w-full h-full object-cover">';
+        // data: URL（FileReader 本地预览）不能追加查询参数，否则会导致 Data URL 解码失败
+        const sep = avatarUrl.indexOf('data:') === 0 ? '' : (avatarUrl.indexOf('?') === -1 ? '?_t=' + Date.now() : '&_t=' + Date.now());
+        preview.innerHTML = '<img src="' + avatarUrl + sep + '" alt="头像" class="w-full h-full object-cover">';
     } else {
         const initial = (fallbackName || '?').charAt(0).toUpperCase();
         preview.innerHTML = '<span class="text-primary-700">' + initial + '</span>';

@@ -8,7 +8,6 @@ use App\Services\SmsCodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class UserApiController extends Controller
@@ -24,7 +23,7 @@ class UserApiController extends Controller
             'email' => $user->email,
             'phone' => $user->phone,
             'display_name' => $user->display_name,
-            'avatar' => $user->avatar ? Storage::url($user->avatar) : '',
+            'avatar' => $user->avatar_url,
             'role' => $user->role,
             'status' => $user->status,
             'quota' => $user->quota,
@@ -70,7 +69,7 @@ class UserApiController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'display_name' => $user->display_name,
-                'avatar' => $user->avatar ? Storage::url($user->avatar) : '',
+                'avatar' => $user->avatar_url,
             ],
         ]);
     }
@@ -86,21 +85,31 @@ class UserApiController extends Controller
 
         $file = $request->file('avatar');
         $ext = $file->getClientOriginalExtension();
-        $filename = 'avatars/' . $user->id . '_' . Str::random(10) . '.' . $ext;
+        $filename = $user->id . '_' . Str::random(10) . '.' . $ext;
+        $relativePath = 'avatars/' . $filename;
 
-        // 删除旧头像
-        if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
-            Storage::disk('public')->delete($user->avatar);
+        // 确保目录存在
+        $destDir = public_path('avatars');
+        if (!is_dir($destDir)) {
+            @mkdir($destDir, 0775, true);
         }
 
-        // 存储新头像
-        $path = $file->storeAs('avatars', basename($filename), 'public');
-        $user->avatar = $path;
+        // 删除旧头像（仅本地文件，不处理 http 外链）
+        if ($user->avatar && !preg_match('#^https?://#i', $user->avatar)) {
+            $oldFile = public_path($user->avatar);
+            if (is_file($oldFile)) {
+                @unlink($oldFile);
+            }
+        }
+
+        // 直接存储到 public/avatars 下，不再依赖 storage:link 软链接
+        $file->move($destDir, $filename);
+        $user->avatar = $relativePath;
         $user->save();
 
         return response()->json([
             'message' => '头像更新成功',
-            'avatar' => Storage::url($path),
+            'avatar' => $user->avatar_url,
         ]);
     }
 

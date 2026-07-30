@@ -238,6 +238,9 @@ class RelayInfo
      *
      * 在上游请求完成后调用（成功或失败均记录）。若上游返回配额超限类错误，
      * 会将账号标记为耗尽，下次请求自动切换到同供应商的其他账号。
+     *
+     * @param bool $success 请求是否成功
+     * @param string|null $error 错误信息（失败时填写）
      */
     public function recordCodingPlanUsage(bool $success, ?string $error = null): void
     {

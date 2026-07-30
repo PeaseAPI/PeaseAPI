@@ -90,7 +90,7 @@ class PeaseInstall extends Command
 
         // 创建 storage 软链接
         $this->info('创建 storage 软链接...');
-        $this->call('storage:link');
+        $this->ensureStorageLink();
 
         $this->newLine();
         $this->info('✅ PeaseAPI 初始化完成！');
@@ -320,5 +320,47 @@ class PeaseInstall extends Command
         }
 
         return array_map('trim', explode(',', $disabled));
+    }
+
+    /**
+     * 确保 public/storage 指向 storage/app/public 的正确软链接。
+     */
+    protected function ensureStorageLink(): void
+    {
+        $link = public_path('storage');
+        $target = '../storage/app/public';
+
+        if (is_link($link)) {
+            $current = readlink($link);
+            if ($current === $target) {
+                $this->line('  <fg=green>✓</> public/storage 已存在且链接正确');
+                return;
+            }
+
+            @unlink($link);
+        }
+
+        if (file_exists($link) || is_dir($link)) {
+            $this->warn('  public/storage 已存在且不是软链接，请手动检查该路径');
+            return;
+        }
+
+        if (!is_dir(public_path())) {
+            @mkdir(public_path(), 0755, true);
+        }
+
+        if (@symlink($target, $link)) {
+            $this->line('  <fg=green>✓</> 已创建 public/storage 软链接');
+            return;
+        }
+
+        try {
+            $output = new BufferedOutput();
+            Artisan::call('storage:link', [], $output);
+            $this->line('  <fg=green>✓</> 已通过 artisan storage:link 创建链接');
+        } catch (\Throwable $e) {
+            $this->warn('  未能自动创建 public/storage 软链接：' . $e->getMessage());
+            $this->warn('  请手动在项目根目录执行 `php artisan storage:link` 或创建软链接');
+        }
     }
 }

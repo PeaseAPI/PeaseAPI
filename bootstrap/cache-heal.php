@@ -56,6 +56,19 @@ function peaseClearBootstrapCacheFiles(string $cacheDir): void
 }
 
 // ============================================================
+// 先强制清空 bootstrap/cache，避免任意陈旧缓存文件导致容器启动失败
+// 这比只做条件检测更稳妥，尤其是从其他环境迁移过来的缓存文件。
+// ============================================================
+if (is_dir($cacheDir)) {
+    $entries = @glob($cacheDir.'/*');
+    if ($entries !== false && count($entries) > 0) {
+        peaseClearBootstrapCacheFiles($cacheDir);
+        $stale = true;
+        $staleReason = 'bootstrap/cache 目录存在陈旧缓存，已强制清理';
+    }
+}
+
+// ============================================================
 // 检测 config.php 是否陈旧
 // ============================================================
 $configCachePath = $cacheDir.'/config.php';

@@ -218,22 +218,19 @@ class PeaseInstall extends Command
     {
         // 物理删除 bootstrap/cache 下的所有缓存文件
         $cacheDir = base_path('bootstrap/cache');
-        $cacheFiles = [
-            'config.php',
-            'services.php',
-            'packages.php',
-            'routes.php',
-            'routes-v7.php',
-            'events.php',
-            'compiled.php',
-        ];
 
         $removed = 0;
-        foreach ($cacheFiles as $file) {
-            $path = $cacheDir.'/'.$file;
-            if (file_exists($path)) {
-                @unlink($path);
-                $removed++;
+        if (is_dir($cacheDir)) {
+            $entries = glob($cacheDir.'/*');
+            if ($entries !== false) {
+                foreach ($entries as $entry) {
+                    if (is_file($entry) || is_link($entry)) {
+                        @unlink($entry);
+                    } elseif (is_dir($entry)) {
+                        @rmdir($entry);
+                    }
+                    $removed++;
+                }
             }
         }
 

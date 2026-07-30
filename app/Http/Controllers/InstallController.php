@@ -365,7 +365,7 @@ class InstallController extends Controller
         try {
             Artisan::call('config:cache');
             Artisan::call('route:cache');
-        } catch (\\Exception $e) {
+        } catch (\Exception $e) {
             // Ignore cache failures in restricted environments.
         }
     }

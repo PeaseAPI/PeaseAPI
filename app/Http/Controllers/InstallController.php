@@ -288,19 +288,18 @@ class InstallController extends Controller
         // Clean up the step 2→3 marker file
         File::delete(storage_path('install_step3'));
 
-            // Generate app key if not set
+            // Generate app key if not set (skip if the environment forbids shell execution)
             if (empty(env('APP_KEY')) || env('APP_KEY') === 'SomeRandomStringSomeRandomString') {
-                Artisan::call('key:generate', ['--force' => true]);
+                $this->ensureAppKeyInEnv();
             }
 
-            // Create symbolic link for storage
+            // Create symbolic link for storage when possible, but do not fail if exec() is disabled
             if (!File::exists(public_path('storage'))) {
-                Artisan::call('storage:link', ['--force' => true]);
+                $this->ensureStorageSymlink();
             }
 
-            // Cache config and routes
-            Artisan::call('config:cache');
-            Artisan::call('route:cache');
+            // Cache config and routes only when the runtime supports it; otherwise skip gracefully
+            $this->skipCacheCommandsIfUnavailable();
 
         } catch (\Exception $e) {
             return view('install', [

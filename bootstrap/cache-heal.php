@@ -36,6 +36,7 @@ $stale = false;
 $staleReason = '';
 
 peaseEnsureAppKey(dirname(__DIR__));
+peaseEnsureInstallSessionDriver(dirname(__DIR__));
 
 function peaseEnsureAppKey(string $projectRoot): void
 {
@@ -81,6 +82,33 @@ function peaseEnsureAppKey(string $projectRoot): void
 
     $_ENV['APP_KEY'] = $newKey;
     $_SERVER['APP_KEY'] = $newKey;
+}
+
+function peaseEnsureInstallSessionDriver(string $projectRoot): void
+{
+    $envPath = $projectRoot.'/.env';
+    if (!is_file($envPath)) {
+        return;
+    }
+
+    $envContent = @file_get_contents($envPath);
+    if ($envContent === false) {
+        return;
+    }
+
+    if (strpos($envContent, 'SESSION_DRIVER=') === false) {
+        $envContent .= PHP_EOL . 'SESSION_DRIVER=file' . PHP_EOL;
+        @file_put_contents($envPath, $envContent);
+        return;
+    }
+
+    if (preg_match('/^SESSION_DRIVER=(.+)$/m', $envContent, $matches)) {
+        $currentValue = trim($matches[1]);
+        if ($currentValue === 'database' && strpos($envContent, 'SESSION_DRIVER=file') === false) {
+            $envContent = preg_replace('/^SESSION_DRIVER=.*$/m', 'SESSION_DRIVER=file', $envContent);
+            @file_put_contents($envPath, $envContent);
+        }
+    }
 }
 
 function peaseClearBootstrapCacheFiles(string $cacheDir): void

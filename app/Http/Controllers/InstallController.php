@@ -312,6 +312,64 @@ class InstallController extends Controller
         return redirect('/')->with('success', '安装成功！欢迎使用 PeaseAPI');
     }
 
+    protected function ensureAppKeyInEnv(): void
+    {
+        $envPath = base_path('.env');
+        if (!is_file($envPath)) {
+            return;
+        }
+
+        $envContent = @file_get_contents($envPath);
+        if ($envContent === false) {
+            return;
+        }
+
+        if (preg_match('/^APP_KEY=(.+)$/m', $envContent, $matches)) {
+            $currentKey = trim($matches[1]);
+            if (!empty($currentKey) && $currentKey !== 'SomeRandomStringSomeRandomString') {
+                return;
+            }
+        }
+
+        $newKey = 'base64:' . base64_encode(random_bytes(32));
+        $newEnvContent = preg_replace('/^APP_KEY=.*$/m', 'APP_KEY=' . $newKey, $envContent);
+        if ($newEnvContent === null || $newEnvContent === $envContent) {
+            $newEnvContent = rtrim($envContent) . PHP_EOL . 'APP_KEY=' . $newKey . PHP_EOL;
+        }
+
+        @file_put_contents($envPath, $newEnvContent);
+    }
+
+    protected function ensureStorageSymlink(): void
+    {
+        $publicStoragePath = public_path('storage');
+        $storagePath = base_path('storage/app/public');
+
+        if (is_dir($publicStoragePath) || !is_dir($storagePath)) {
+            return;
+        }
+
+        if (!function_exists('symlink')) {
+            return;
+        }
+
+        @symlink($storagePath, $publicStoragePath);
+    }
+
+    protected function skipCacheCommandsIfUnavailable(): void
+    {
+        if (!function_exists('exec')) {
+            return;
+        }
+
+        try {
+            Artisan::call('config:cache');
+            Artisan::call('route:cache');
+        } catch (\\Exception $e) {
+            // Ignore cache failures in restricted environments.
+        }
+    }
+
     /**
      * Check PHP environment requirements.
      */

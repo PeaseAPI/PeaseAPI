@@ -35,6 +35,56 @@ $cacheDir = __DIR__.'/cache';
 $stale = false;
 $staleReason = '';
 
+peaseEnsureAppKey(dirname(__DIR__));
+
+function peaseEnsureAppKey(string $projectRoot): void
+{
+    $envPath = $projectRoot.'/.env';
+    $exampleEnvPath = $projectRoot.'/.env.example';
+
+    if (!is_file($envPath) && is_file($exampleEnvPath)) {
+        @copy($exampleEnvPath, $envPath);
+    }
+
+    if (!is_file($envPath)) {
+        @file_put_contents($envPath, "APP_KEY=\n");
+    }
+
+    if (!is_file($envPath)) {
+        return;
+    }
+
+    $envContent = @file_get_contents($envPath);
+    if ($envContent === false) {
+        return;
+    }
+
+    $currentKey = null;
+    if (preg_match('/^APP_KEY=(.*)$/m', $envContent, $matches)) {
+        $currentKey = trim($matches[1]);
+    }
+
+    if (!empty($currentKey) && $currentKey !== 'SomeRandomStringSomeRandomString' && $currentKey !== '') {
+        putenv('APP_KEY=' . $currentKey);
+        $_ENV['APP_KEY'] = $currentKey;
+        $_SERVER['APP_KEY'] = $currentKey;
+        return;
+    }
+
+    $newKey = 'base64:' . base64_encode(random_bytes(32));
+    $newEnvContent = preg_replace('/^APP_KEY=.*$/m', 'APP_KEY=' . $newKey, $envContent);
+
+    if ($newEnvContent === null || $newEnvContent === $envContent) {
+        $newEnvContent = rtrim($envContent) . PHP_EOL . 'APP_KEY=' . $newKey . PHP_EOL;
+    }
+
+    @file_put_contents($envPath, $newEnvContent);
+
+    putenv('APP_KEY=' . $newKey);
+    $_ENV['APP_KEY'] = $newKey;
+    $_SERVER['APP_KEY'] = $newKey;
+}
+
 function peaseClearBootstrapCacheFiles(string $cacheDir): void
 {
     if (!is_dir($cacheDir)) {

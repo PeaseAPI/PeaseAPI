@@ -88,6 +88,11 @@ class PeaseInstall extends Command
         }
         $this->newLine();
 
+        // 清理头像历史脏数据（重装后 public/avatars 可能被清空，
+        // 数据库仍指向旧文件名会导致 404；data: URL 则会导致解码失败）
+        $this->info('清理头像历史脏数据...');
+        $this->cleanAvatarData();
+
         // 创建 storage 软链接
         $this->info('创建 storage 软链接...');
         $this->ensureStorageLink();
@@ -320,6 +325,32 @@ class PeaseInstall extends Command
         }
 
         return array_map('trim', explode(',', $disabled));
+    }
+
+    /**
+     * 清理头像历史脏数据
+     *
+     * 重装/重新部署后 public/avatars 可能被清空，但数据库 users.avatar 仍指向
+     * 旧文件名（导致 404），或残留 data: URL（导致 "Data URL decoding failed"）。
+     * 通过调用 pease:clean-avatar 命令一次性清空这些无效记录。
+     */
+    protected function cleanAvatarData(): void
+    {
+        try {
+            $output = new BufferedOutput();
+            Artisan::call('pease:clean-avatar', [], $output);
+            $result = trim($output->fetch());
+            if ($result !== '') {
+                // 逐行输出，保持安装日志整洁
+                foreach (explode("\n", $result) as $line) {
+                    $this->line('  <fg=gray>' . $line . '</>');
+                }
+            }
+            $this->line('  <fg=green>✓</> 头像脏数据清理完成');
+        } catch (\Throwable $e) {
+            // 清理失败不阻断安装流程
+            $this->line('  <fg=gray>• 头像脏数据清理跳过（' . $e->getMessage() . '）</>');
+        }
     }
 
     /**

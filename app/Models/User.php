@@ -121,6 +121,9 @@ class User extends Authenticatable
      *
      * 头像文件直接存放于 public/avatars 目录下，数据库中存储相对路径（如 avatars/xxx.png），
      * 不再依赖 storage:link 软链接。OAuth 返回的完整 http(s) 外链则原样返回。
+     *
+     * 为避免重装/重新部署后 public/avatars 被清空但数据库仍指向旧文件名而产生 404，
+     * 本访问器对本地相对路径会校验文件是否真实存在；不存在则返回空，回退到首字母占位符。
      */
     public function getAvatarUrlAttribute(): string
     {
@@ -144,7 +147,20 @@ class User extends Authenticatable
             return 'https:' . $this->avatar;
         }
 
-        // 规范化为根相对路径，避免重复斜杠
-        return '/' . ltrim($this->avatar, '/');
+        // 本地相对路径：规范化并校验文件是否存在，避免重装后 404
+        $relative = ltrim($this->avatar, '/');
+        $absolute = public_path($relative);
+
+        // 同一请求内缓存已校验结果，避免重复磁盘 IO
+        static $existsCache = [];
+        if (!array_key_exists($absolute, $existsCache)) {
+            $existsCache[$absolute] = is_file($absolute);
+        }
+
+        if (!$existsCache[$absolute]) {
+            return '';
+        }
+
+        return '/' . $relative;
     }
 }

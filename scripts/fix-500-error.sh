@@ -59,25 +59,16 @@ fi
 info "【步骤 1/5】清除 bootstrap/cache 缓存文件..."
 
 CACHE_DIR="$PROJECT_ROOT/bootstrap/cache"
-CACHE_FILES=(
-    "config.php"
-    "services.php"
-    "packages.php"
-    "routes.php"
-    "routes-v7.php"
-    "events.php"
-    "compiled.php"
-)
-
 REMOVED=0
-for fname in "${CACHE_FILES[@]}"; do
-    fpath="$CACHE_DIR/$fname"
-    if [ -f "$fpath" ]; then
-        rm -f "$fpath"
-        pass "已删除: bootstrap/cache/$fname"
+if [ -d "$CACHE_DIR" ]; then
+    find "$CACHE_DIR" -mindepth 1 -maxdepth 1 ! -name '.gitignore' -print0 | while IFS= read -r -d '' fpath; do
+        rm -rf "$fpath"
+        pass "已删除: $(basename "$fpath")"
         REMOVED=$((REMOVED + 1))
-    fi
-done
+    done
+fi
+
+mkdir -p "$CACHE_DIR"
 
 if [ "$REMOVED" -eq 0 ]; then
     pass "bootstrap/cache 中无缓存文件"

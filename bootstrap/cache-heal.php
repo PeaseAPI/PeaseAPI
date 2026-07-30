@@ -35,6 +35,26 @@ $cacheDir = __DIR__.'/cache';
 $stale = false;
 $staleReason = '';
 
+function peaseClearBootstrapCacheFiles(string $cacheDir): void
+{
+    if (!is_dir($cacheDir)) {
+        return;
+    }
+
+    $entries = glob($cacheDir.'/*');
+    if ($entries === false) {
+        return;
+    }
+
+    foreach ($entries as $entry) {
+        if (is_file($entry) || is_link($entry)) {
+            @unlink($entry);
+        } elseif (is_dir($entry)) {
+            @rmdir($entry);
+        }
+    }
+}
+
 // ============================================================
 // 检测 config.php 是否陈旧
 // ============================================================
@@ -77,6 +97,12 @@ if (is_file($configCachePath)) {
             $stale = true;
             $staleReason = 'config.php 中 compiled 视图路径为 false';
         }
+
+        // 兜底：如果缓存内容里仍然包含本机开发路径，直接判定为陈旧缓存
+        if (!$stale && preg_match('#/(Users|home)/[^\'\"]+(resources/views|storage/framework/views)#', $cacheContent)) {
+            $stale = true;
+            $staleReason = 'config.php 包含本机开发路径';
+        }
     }
 }
 
@@ -111,6 +137,12 @@ if (!$stale && is_file($servicesCachePath)) {
                 }
             }
         }
+
+        // 兜底：如果 services.php 里仍然是旧环境的供应商列表或缺少 view 关联，直接清除
+        if (!$stale && preg_match('#/(Users|home)/#', $servicesContent)) {
+            $stale = true;
+            $staleReason = 'services.php 包含本机开发路径';
+        }
     }
 }
 
@@ -118,19 +150,7 @@ if (!$stale && is_file($servicesCachePath)) {
 // 如果检测到陈旧缓存，删除所有 bootstrap/cache 缓存文件
 // ============================================================
 if ($stale) {
-    $cacheFiles = [
-        'config.php',
-        'services.php',
-        'packages.php',
-        'routes.php',
-        'routes-v7.php',
-        'events.php',
-        'compiled.php',
-    ];
-
-    foreach ($cacheFiles as $cacheFile) {
-        @unlink($cacheDir.'/'.$cacheFile);
-    }
+    peaseClearBootstrapCacheFiles($cacheDir);
 
     // 清除 OPcache 中可能缓存的旧文件内容
     // PHP-FPM 环境下 OPcache 可能缓存了已删除的文件，

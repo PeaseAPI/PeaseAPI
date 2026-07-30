@@ -5,12 +5,12 @@ namespace App\Console\Commands;
 use App\Models\User;
 use Illuminate\Console\Command;
 
-/**
- * 清理 users.avatar 列中的历史脏数据。
- *
- * 旧版代码可能将 data: URL（base64）直接写入数据库，导致浏览器报
- * "Data URL decoding failed" / 404 等错误。本命令将这类无效值清空，
- * 让前端回退到首字母占位符；同时清理指向已不存在文件的本地路径。
+/*
+ | 清理 users.avatar 列中的历史脏数据。
+ |
+ | 旧版代码可能将 data: URL（base64）直接写入数据库，导致浏览器报
+ | "Data URL decoding failed" / 404 等错误。本命令将这类无效值清空，
+ | 让前端回退到首字母占位符；同时清理指向已不存在文件的本地路径。
  */
 class CleanAvatarData extends Command
 {

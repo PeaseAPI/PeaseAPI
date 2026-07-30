@@ -15,6 +15,9 @@
  *   3. config.php 中 compiled 视图路径指向不存在的目录
  *   4. config.php 中 compiled 视图路径为 false
  *      （config/view.php 使用 realpath() 时，若目录不存在则返回 false）
+ *   5. services.php 存在但缺少 ViewServiceProvider 绑定
+ *      （services.php 从其他环境复制而来，不包含 view 服务注册）
+ *   6. services.php 中包含指向不存在的类文件的路径
  *
  * 这些情况都会导致 Laravel 启动时抛出
  * ReflectionException: Class "view" does not exist。
@@ -22,29 +25,37 @@
  * bootstrap/cache/*.php 被 .gitignore 排除，git pull 不会自动清理，
  * 因此在此做运行时检测兜底。
  *
- * 此外，本脚本还会确保 storage/framework 下的关键运行时目录存在，
- * 避免 ViewServiceProvider 因缺少 compiled 视图目录而启动失败。
+ * 此外，本脚本还会：
+ *   - 清除 OPcache 中缓存的旧文件（如果 OPcache 可用）
+ *   - 确保 storage/framework 下的关键运行时目录存在，
+ *     避免 ViewServiceProvider、Session 等服务启动失败。
  */
 
-$configCachePath = __DIR__.'/cache/config.php';
+$cacheDir = __DIR__.'/cache';
+$stale = false;
+$staleReason = '';
+
+// ============================================================
+// 检测 config.php 是否陈旧
+// ============================================================
+$configCachePath = $cacheDir.'/config.php';
 
 if (is_file($configCachePath)) {
     $cacheContent = @file_get_contents($configCachePath);
 
     if ($cacheContent !== false) {
-        $stale = false;
-
         // 检测 1：缺少 view 配置键
         if (strpos($cacheContent, "'view'") === false && strpos($cacheContent, '"view"') === false) {
             $stale = true;
+            $staleReason = 'config.php 缺少 view 配置键';
         }
 
         // 检测 2：view.paths 中的路径指向不存在的目录
-        // 匹配缓存中形如 '/xxx/resources/views' 的绝对路径（单引号或双引号）
         if (!$stale && preg_match_all("#['\"](/[^'\"]+/resources/views)['\"]#", $cacheContent, $matches)) {
             foreach ($matches[1] as $viewPath) {
                 if (!is_dir($viewPath)) {
                     $stale = true;
+                    $staleReason = "config.php 中 view.paths 指向不存在的目录: {$viewPath}";
                     break;
                 }
             }
@@ -55,29 +66,84 @@ if (is_file($configCachePath)) {
             foreach ($matches[1] as $compiledPath) {
                 if (!is_dir($compiledPath)) {
                     $stale = true;
+                    $staleReason = "config.php 中 compiled 视图路径指向不存在的目录: {$compiledPath}";
                     break;
                 }
             }
         }
 
         // 检测 4：compiled 视图路径为 false（realpath() 失败时生成）
-        // 匹配 'compiled' => false 或 "compiled" => false
         if (!$stale && preg_match("#['\"]compiled['\"]\\s*=>\\s*false#", $cacheContent)) {
             $stale = true;
+            $staleReason = 'config.php 中 compiled 视图路径为 false';
+        }
+    }
+}
+
+// ============================================================
+// 检测 services.php 是否陈旧
+// ============================================================
+$servicesCachePath = $cacheDir.'/services.php';
+
+if (!$stale && is_file($servicesCachePath)) {
+    $servicesContent = @file_get_contents($servicesCachePath);
+
+    if ($servicesContent !== false) {
+        // 检测 5：services.php 缺少 ViewServiceProvider
+        // ViewServiceProvider 是 Laravel 框架核心服务提供者，
+        // 如果 services.php 中没有它，容器解析 'view' 时会抛出
+        // ReflectionException: Class "view" does not exist
+        if (strpos($servicesContent, 'ViewServiceProvider') === false) {
+            $stale = true;
+            $staleReason = 'services.php 缺少 ViewServiceProvider 绑定';
         }
 
-        if ($stale) {
-            // 删除所有 bootstrap/cache 缓存文件（config/services/packages/routes/events）
-            $cacheDir = __DIR__.'/cache';
-            foreach (['config.php', 'services.php', 'packages.php', 'routes.php', 'routes-v7.php', 'events.php', 'compiled.php'] as $cacheFile) {
-                @unlink($cacheDir.'/'.$cacheFile);
+        // 检测 6：services.php 中包含本地开发机路径
+        // （从其他环境复制而来的缓存文件可能包含无效路径）
+        if (!$stale && preg_match_all("#['\"](/[^'\"]+/PeaseAPI[^'\"]*)['\"]#", $servicesContent, $matches)) {
+            foreach ($matches[1] as $path) {
+                // 检查路径是否指向当前项目目录之外
+                $projectRoot = dirname(__DIR__);
+                if (strpos($path, $projectRoot) !== 0 && !file_exists($path)) {
+                    $stale = true;
+                    $staleReason = "services.php 包含不存在的路径: {$path}";
+                    break;
+                }
             }
         }
     }
 }
 
+// ============================================================
+// 如果检测到陈旧缓存，删除所有 bootstrap/cache 缓存文件
+// ============================================================
+if ($stale) {
+    $cacheFiles = [
+        'config.php',
+        'services.php',
+        'packages.php',
+        'routes.php',
+        'routes-v7.php',
+        'events.php',
+        'compiled.php',
+    ];
+
+    foreach ($cacheFiles as $cacheFile) {
+        @unlink($cacheDir.'/'.$cacheFile);
+    }
+
+    // 清除 OPcache 中可能缓存的旧文件内容
+    // PHP-FPM 环境下 OPcache 可能缓存了已删除的文件，
+    // 导致即使文件已删除，require 仍然加载旧内容
+    if (function_exists('opcache_reset')) {
+        @opcache_reset();
+    }
+}
+
+// ============================================================
 // 确保 storage/framework 下的关键运行时目录存在
 // 这些目录缺失会导致 ViewServiceProvider、Session 等服务启动失败
+// ============================================================
 $storageDirs = [
     __DIR__.'/../storage/framework/views',
     __DIR__.'/../storage/framework/cache',

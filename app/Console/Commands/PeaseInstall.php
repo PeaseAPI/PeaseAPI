@@ -70,6 +70,7 @@ class PeaseInstall extends Command
 
         // 4. 缓存清理与包发现（替代被移除的 composer post-autoload-dump 脚本）
         $this->info('【4/6】执行包发现与缓存清理...');
+        $this->clearAllCaches();
         $this->runPackageDiscover();
         $this->newLine();
 
@@ -204,6 +205,55 @@ class PeaseInstall extends Command
         }
 
         $this->call('key:generate', ['--force' => true]);
+    }
+
+    /**
+     * 清除所有缓存
+     *
+     * 删除 bootstrap/cache 下的所有缓存文件，确保不会因为
+     * 陈旧缓存导致 ReflectionException: Class "view" does not exist。
+     * 然后执行 optimize:clear 清除其他缓存。
+     */
+    protected function clearAllCaches(): void
+    {
+        // 物理删除 bootstrap/cache 下的所有缓存文件
+        $cacheDir = base_path('bootstrap/cache');
+        $cacheFiles = [
+            'config.php',
+            'services.php',
+            'packages.php',
+            'routes.php',
+            'routes-v7.php',
+            'events.php',
+            'compiled.php',
+        ];
+
+        $removed = 0;
+        foreach ($cacheFiles as $file) {
+            $path = $cacheDir.'/'.$file;
+            if (file_exists($path)) {
+                @unlink($path);
+                $removed++;
+            }
+        }
+
+        if ($removed > 0) {
+            $this->line("  <fg=green>✓</> 已清除 {$removed} 个 bootstrap/cache 缓存文件");
+        }
+
+        // 清除 OPcache（PHP-FPM 环境下可能缓存了旧文件）
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
+        }
+
+        // 通过 Artisan 清除其他缓存（视图、事件等）
+        try {
+            $output = new BufferedOutput();
+            Artisan::call('optimize:clear', [], $output);
+            $this->line('  <fg=green>✓</> artisan optimize:clear 完成');
+        } catch (\Exception $e) {
+            $this->line('  <fg=gray>• optimize:clear 跳过（可能数据库未配置）</>');
+        }
     }
 
     /**

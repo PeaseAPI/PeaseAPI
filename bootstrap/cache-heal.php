@@ -65,7 +65,6 @@ function peaseEnsureAppKey(string $projectRoot): void
     }
 
     if (!empty($currentKey) && $currentKey !== 'SomeRandomStringSomeRandomString' && $currentKey !== '') {
-        putenv('APP_KEY=' . $currentKey);
         $_ENV['APP_KEY'] = $currentKey;
         $_SERVER['APP_KEY'] = $currentKey;
         return;
@@ -80,7 +79,6 @@ function peaseEnsureAppKey(string $projectRoot): void
 
     @file_put_contents($envPath, $newEnvContent);
 
-    putenv('APP_KEY=' . $newKey);
     $_ENV['APP_KEY'] = $newKey;
     $_SERVER['APP_KEY'] = $newKey;
 }

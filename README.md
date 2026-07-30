@@ -691,6 +691,82 @@ php artisan route:cache
 php artisan view:cache
 ```
 
+### Q: `git pull` 时提示 "Your local changes to composer.json would be overwritten"？
+
+**A:** 服务器上的 `composer.json`（或其它文件）被本地修改过，与远程新提交冲突。有三种处理方式：
+
+```bash
+# 方式一：丢弃本地修改，以远程为准（推荐，composer.json 一般不应在服务器手动改）
+git checkout -- composer.json
+git pull origin main
+
+# 方式二：暂存本地修改，拉取后再决定是否合并
+git stash
+git pull origin main
+# 如需恢复本地修改：git stash pop （可能需手动解决冲突）
+
+# 方式三：查看本地改了什么，确认后再处理
+git diff composer.json
+```
+
+> 💡 **最佳实践**：生产服务器的代码目录应保持"只读克隆"状态，所有修改通过 Git 推送后再 pull，避免在服务器上直接编辑受版本控制的文件。若需调整依赖，请在本地修改 `composer.json` 并提交，再在服务器 `git pull && composer install`。
+
+### Q: 运行 `php artisan` 报 "open_basedir restriction in effect"？
+
+**A:** 这是宝塔面板/PHP 配置的 `open_basedir` 限制问题。错误类似：
+
+```
+PHP Warning:  require(): open_basedir restriction in effect.
+File(/www/wwwroot/www.peaseapi.com/PeaseAPI/vendor/autoload.php)
+is not within the allowed path(s):
+(/www/wwwroot/www.peaairport.org:/tmp/:/proc/)
+```
+
+**根本原因**：站点 `www.peaseapi.com` 的 `open_basedir` 被错误地指向了另一个站点 `www.peaairport.org` 的目录，导致 PHP 无法访问当前项目目录。
+
+**修复方式（任选其一）**：
+
+```bash
+# 方式一（推荐）：宝塔面板可视化操作
+# 宝塔面板 -> 网站 -> www.peaseapi.com -> 设置 -> 「配置文件」或「防跨站攻击 open_basedir」
+# 将 open_basedir 改为：
+#   /www/wwwroot/www.peaseapi.com/:/tmp/:/proc/
+# 或直接关闭「防跨站攻击」开关（仅当该站点为唯一站点时建议）
+
+# 方式二：修改 .user.ini（宝塔常用方式）
+# 在项目根目录 /www/wwwroot/www.peaseapi.com/PeaseAPI/.user.ini 中：
+#   open_basedir=/www/wwwroot/www.peaseapi.com/:/tmp/:/proc/
+# 修改后需重启 PHP-FPM：
+#   /etc/init.d/php-fpm-82 restart  # 按实际 PHP 版本调整
+
+# 方式三：修改 Nginx 站点配置中的 fastcgi_param
+# 在 fastcgi_param PHP_ADMIN_VALUE "open_basedir=..." 行，改为正确路径
+# 修改后重载 Nginx：nginx -s reload
+```
+
+> ⚠️ `open_basedir` 的路径**必须包含项目实际所在目录**。本例中项目在 `/www/wwwroot/www.peaseapi.com/PeaseAPI/`，因此 `open_basedir` 至少要包含 `/www/wwwroot/www.peaseapi.com/`。
+
+### Q: PHP 警告 "Module mbstring is already loaded"？
+
+**A:** mbstring 扩展被重复加载，通常是因为在 PHP 配置的多个位置都启用了它。此警告一般不影响功能，但应清理以保持配置整洁。
+
+```bash
+# 1. 查找所有加载 mbstring 的位置
+php -m | grep mbstring          # 确认是否真的重复
+php --ini                       # 列出所有加载的 ini 文件
+grep -rn "mbstring" /etc/php*   # 查找所有 mbstring 配置行
+
+# 2. 宝塔环境常见位置：
+#    /www/server/php/82/etc/php.ini          # 主配置
+#    /www/server/php/82/etc/conf.d/*.ini     # 扩展配置目录
+#    确保只在其中一个文件中有：extension=mbstring.so
+
+# 3. 修复后重启 PHP-FPM
+/etc/init.d/php-fpm-82 restart  # 按实际版本调整
+```
+
+> 💡 保留 `php.ini` 中的 `extension=mbstring`，删除 `conf.d/` 目录下重复的 mbstring 加载行即可。
+
 ### Q: 宝塔面板安装时提示需要取消 `proc_open` / `putenv` 函数禁用？
 
 **A:** 宝塔面板默认禁用 `proc_open`、`putenv` 等函数。这些函数仅被 **Composer 的 scripts 机制** 用于在安装完成后启动子进程执行 `php artisan package:discover` 等命令；**PeaseAPI 运行时并不依赖这些函数**，因此无需为运行安全而解禁它们。

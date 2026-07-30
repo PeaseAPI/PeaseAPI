@@ -8,6 +8,11 @@ define('LARAVEL_START', microtime(true));
 // Register the Composer autoloader...
 require __DIR__.'/vendor/autoload.php';
 
+// 陈旧配置缓存自愈：检测并清除包含无效路径的 bootstrap/cache 缓存文件，
+// 避免 ReflectionException: Class "view" does not exist。
+// 详见 bootstrap/cache-heal.php 中的注释说明。
+require_once __DIR__.'/bootstrap/cache-heal.php';
+
 // Bootstrap Laravel and handle the command...
 $status = (require_once __DIR__.'/bootstrap/app.php')
     ->handleCommand(new ArgvInput);

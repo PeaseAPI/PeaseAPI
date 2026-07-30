@@ -64,20 +64,10 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
 // Register the Composer autoloader...
 require __DIR__.'/../vendor/autoload.php';
 
-/**
- * 陈旧配置缓存自愈：如果 bootstrap/cache/config.php 存在但缺少 view 配置
- * （在 config/view.php 缺失时生成的旧缓存），则自动删除，避免 Laravel
- * 启动时因加载不含 view 配置的缓存而抛出 ReflectionException: Class "view" does not exist。
- * bootstrap/cache/*.php 被 .gitignore 排除，git pull 不会自动清理，
- * 因此在此做运行时检测兜底。
- */
-$configCachePath = __DIR__.'/../bootstrap/cache/config.php';
-if (is_file($configCachePath)) {
-    $cacheContent = @file_get_contents($configCachePath);
-    if ($cacheContent !== false && strpos($cacheContent, "'view'") === false && strpos($cacheContent, '"view"') === false) {
-        @unlink($configCachePath);
-    }
-}
+// 陈旧配置缓存自愈：检测并清除包含无效路径的 bootstrap/cache 缓存文件，
+// 避免 ReflectionException: Class "view" does not exist。
+// 详见 bootstrap/cache-heal.php 中的注释说明。
+require_once __DIR__.'/../bootstrap/cache-heal.php';
 
 // Bootstrap Laravel and handle the request...
 (require_once __DIR__.'/../bootstrap/app.php')

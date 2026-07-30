@@ -292,7 +292,7 @@ if (empty($payMethods)) {
                                 <label class="field-label">商户私钥 (PEM)</label>
                                 <textarea name="WechatPayPrivateKey" rows="3" class="field-textarea" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----">{{ $v('WechatPayPrivateKey') }}</textarea>
                             </div>
-                            <div class="mt-4"><label class="field-label">回调地址 (留空自动生成)</label><input type="text" name="WechatPayNotifyUrl" value="{{ $v('WechatPayNotifyUrl') }}" class="field-input" placeholder="{{ config('app.url') }}/api/wechat/notify"></div>
+                            <div class="mt-4"><label class="field-label">回调地址 (留空自动生成)</label><input type="text" name="WechatPayNotifyUrl" value="{{ $v('WechatPayNotifyUrl') }}" class="field-input" placeholder="/api/wechat/notify"></div>
                         </div>
                     </div>
 
@@ -324,7 +324,7 @@ if (empty($payMethods)) {
                                 <label class="field-label">支付宝公钥</label>
                                 <textarea name="AlipayAlipayPublicKey" rows="3" class="field-textarea" placeholder="MIIBIj...">{{ $v('AlipayAlipayPublicKey') }}</textarea>
                             </div>
-                            <div class="mt-4"><label class="field-label">回调地址 (留空自动生成)</label><input type="text" name="AlipayNotifyUrl" value="{{ $v('AlipayNotifyUrl') }}" class="field-input" placeholder="{{ config('app.url') }}/api/alipay/notify"></div>
+                            <div class="mt-4"><label class="field-label">回调地址 (留空自动生成)</label><input type="text" name="AlipayNotifyUrl" value="{{ $v('AlipayNotifyUrl') }}" class="field-input" placeholder="/api/alipay/notify"></div>
                         </div>
                     </div>
 

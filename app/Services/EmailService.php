@@ -116,7 +116,7 @@ class EmailService
             'password' => $password,
             'encryption' => $port === 465 ? 'ssl' : 'tls',
             'timeout' => null,
-            'local_domain' => parse_url(config('app.url', 'http://localhost'), PHP_URL_HOST),
+            'local_domain' => parse_url(config('app.url', ''), PHP_URL_HOST),
         ]);
 
         if ($from !== '' && $from !== null) {

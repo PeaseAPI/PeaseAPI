@@ -25,6 +25,7 @@ use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\SystemTaskController;
 use App\Http\Controllers\SystemInfoController;
 use App\Http\Controllers\VendorController;
+use App\Http\Controllers\CodingPlanController;
 use App\Http\Controllers\AuthzController;
 use App\Http\Controllers\RankingController;
 use App\Http\Controllers\GroupController;
@@ -390,6 +391,19 @@ Route::middleware(['auth:sanctum', AdminAuth::class])->group(function () {
     
     // Groups (Admin)
     Route::get('/group/', [GroupController::class, 'index']);
+
+    // Coding Plan Accounts (Admin)
+    Route::get('/coding_plan/accounts', [CodingPlanController::class, 'accounts']);
+    Route::post('/coding_plan/accounts', [CodingPlanController::class, 'storeAccount']);
+    Route::put('/coding_plan/accounts/{id}', [CodingPlanController::class, 'updateAccount']);
+    Route::delete('/coding_plan/accounts/{id}', [CodingPlanController::class, 'destroyAccount']);
+    Route::post('/coding_plan/accounts/{id}/reset_usage', [CodingPlanController::class, 'resetUsage']);
+    Route::get('/coding_plan/accounts/{id}/usage', [CodingPlanController::class, 'accountUsage']);
+    Route::post('/coding_plan/plans/{id}/attach', [CodingPlanController::class, 'attachPlan']);
+    Route::post('/coding_plan/plans/{id}/detach', [CodingPlanController::class, 'detachPlan']);
+    Route::get('/coding_plan/plans', [CodingPlanController::class, 'plans']);
+    Route::get('/coding_plan/stats', [CodingPlanController::class, 'stats']);
+
 });
 
 // ============================================

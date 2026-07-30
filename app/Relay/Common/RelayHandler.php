@@ -37,16 +37,33 @@ class RelayHandler
         try {
             $this->selectAdapter();
             $this->parseRequestBody();
+
+            // Coding Plan 账号池：在上游请求前选取可用账号并覆盖凭证
+            $this->info->applyCodingPlanAccount();
+
             $this->adapter->formatRequest($this->info);
             $this->adapter->doRequest($this->info);
 
             if ($this->isError()) {
                 $this->adapter->errorHandler($this->info);
+
+                // 记录 Coding Plan 使用（失败），若为配额超限则标记账号耗尽
+                if ($this->info->codingPlanAccount !== null) {
+                    $isQuotaError = $this->info->isCodingPlanQuotaError();
+                    $this->info->recordCodingPlanUsage(
+                        false,
+                        $isQuotaError ? 'quota_exceeded' : 'upstream_error_' . $this->info->responseStatus
+                    );
+                }
+
                 return $this->info->responseBody;
             }
 
             $this->adapter->formatResponse($this->info);
             $this->adapter->doResponse($this->info);
+
+            // 记录 Coding Plan 使用（成功）
+            $this->info->recordCodingPlanUsage(true);
             
             return $this->info->responseBody;
         } catch (Exception $e) {
@@ -54,6 +71,11 @@ class RelayHandler
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
+            // 记录 Coding Plan 使用（异常）
+            if ($this->info && $this->info->codingPlanAccount !== null) {
+                $this->info->recordCodingPlanUsage(false, 'exception: ' . $e->getMessage());
+            }
 
             $this->info->responseStatus = 500;
             return json_encode([
@@ -73,14 +95,26 @@ class RelayHandler
         try {
             $this->selectAdapter();
             $this->parseRequestBody();
+
+            // Coding Plan 账号池：在上游请求前选取可用账号并覆盖凭证
+            $this->info->applyCodingPlanAccount();
+
             $this->adapter->formatRequest($this->info);
             $this->adapter->streamHandler($this->info, $callback);
+
+            // 流式完成后记录 Coding Plan 使用（成功）
+            $this->info->recordCodingPlanUsage(true);
             
         } catch (Exception $e) {
             Log::error('流式 Relay 处理失败', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
+            // 记录 Coding Plan 使用（异常）
+            if ($this->info && $this->info->codingPlanAccount !== null) {
+                $this->info->recordCodingPlanUsage(false, 'stream_exception: ' . $e->getMessage());
+            }
             
             $callback("data: " . json_encode([
                 'error' => [

@@ -7,6 +7,7 @@ use App\Console\Commands\FixAbilities;
 use App\Console\Commands\PollTasks;
 use App\Console\Commands\RefreshPricing;
 use App\Console\Commands\ResetSubscriptions;
+use App\Console\Commands\ResetCodingPlanUsage;
 use App\Console\Commands\SyncChannelCache;
 
 /*
@@ -60,6 +61,13 @@ Schedule::command(ResetSubscriptions::class)
     ->withoutOverlapping(30)
     ->onOneServer()
     ->dailyAt('00:00');
+
+// Reset Coding Plan usage windows every 5 minutes & disable expired accounts hourly
+Schedule::command(ResetCodingPlanUsage::class)
+    ->name('pease:reset-coding-plan')
+    ->withoutOverlapping(5)
+    ->onOneServer()
+    ->everyFiveMinutes();
 
 // Clean old logs daily (frequency can be tuned via options table)
 Schedule::command(CleanLogs::class)

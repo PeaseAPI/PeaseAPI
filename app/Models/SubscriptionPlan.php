@@ -31,6 +31,11 @@ class SubscriptionPlan extends Model
         'creem_product_id',
         'waffo_product_id',
         'sort',
+        // Coding Plan 类型套餐字段
+        'plan_type',
+        'coding_vendor',
+        'coding_submits_per_request',
+        'coding_quota',
         'created_at',
         'updated_at',
     ];
@@ -42,9 +47,20 @@ class SubscriptionPlan extends Model
         'status' => 'integer',
         'sort' => 'integer',
         'features' => 'array',
+        'plan_type' => 'string',
+        'coding_submits_per_request' => 'integer',
+        'coding_quota' => 'integer',
         'created_at' => 'integer',
         'updated_at' => 'integer',
     ];
+
+    /**
+     * 是否为 Coding Plan 类型套餐（按提交次数计费）
+     */
+    public function isCodingPlan(): bool
+    {
+        return ($this->plan_type ?? 'quota') === 'coding_plan';
+    }
 
     public function subscriptions()
     {

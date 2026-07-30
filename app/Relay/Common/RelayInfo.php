@@ -129,6 +129,12 @@ class RelayInfo
     // 请求ID
     public string $requestId = '';
 
+    // Coding Plan 账号池（若当前渠道关联账号池，则持有选中的账号实例）
+    public ?\App\Models\CodingPlanAccount $codingPlanAccount = null;
+    public ?int $codingPlanAccountId = null;
+    public string $codingVendor = '';
+    public int $codingSubmitsPerRequest = 1;
+
     /**
      * 从请求创建 RelayInfo
      */
@@ -174,6 +180,114 @@ class RelayInfo
 
         $this->apiType = $this->getApiType($channel->type);
         $this->supportStreamOptions = $this->supportsStreamOptions($channel->type);
+    }
+
+    /**
+     * 应用 Coding Plan 账号池凭证
+     *
+     * 检测当前渠道是否关联了 Coding Plan 账号池，若是则从池中选取一个可用账号，
+     * 用账号的 api_key / base_url 覆盖当前凭证。若池中全部耗尽则抛出异常。
+     *
+     * 应在 setChannel 之后、实际发起上游请求之前调用。
+     *
+     * @throws \RuntimeException 账号池全部耗尽时
+     */
+    public function applyCodingPlanAccount(): void
+    {
+        if (!$this->channel || $this->channelId <= 0) {
+            return;
+        }
+
+        // 通过 channel_id 检测是否存在关联的 coding plan 账号
+        $firstAccount = \App\Models\CodingPlanAccount::where('channel_id', $this->channelId)
+            ->where('status', '!=', \App\Models\CodingPlanAccount::STATUS_DISABLED)
+            ->first();
+
+        if (!$firstAccount) {
+            return; // 非 coding plan 渠道，走默认凭证
+        }
+
+        $vendor = $firstAccount->vendor;
+        $this->codingVendor = $vendor;
+
+        /** @var \App\Services\CodingPlanPoolService $pool */
+        $pool = app(\App\Services\CodingPlanPoolService::class);
+        $account = $pool->pickAccount($vendor);
+
+        if ($account === null) {
+            throw new \RuntimeException(
+                "Coding plan account pool exhausted for vendor: {$vendor}"
+            );
+        }
+
+        // 用账号池凭证覆盖渠道凭证
+        $plainKey = $account->getApiKeyPlain();
+        if ($plainKey !== null && $plainKey !== '') {
+            $this->apiKey = $plainKey;
+        }
+        if (!empty($account->base_url)) {
+            $this->channelBaseUrl = $account->base_url;
+        }
+
+        $this->codingPlanAccount = $account;
+        $this->codingPlanAccountId = $account->id;
+    }
+
+    /**
+     * 记录 Coding Plan 账号池的使用次数
+     *
+     * 在上游请求完成后调用（成功或失败均记录）。若上游返回配额超限类错误，
+     * 会将账号标记为耗尽，下次请求自动切换到同供应商的其他账号。
+     */
+    public function recordCodingPlanUsage(bool $success, ?string $error = null): void
+    {
+        if ($this->codingPlanAccount === null) {
+            return;
+        }
+
+        /** @var \App\Services\CodingPlanPoolService $pool */
+        $pool = app(\App\Services\CodingPlanPoolService::class);
+
+        $pool->recordUsage(
+            $this->codingPlanAccount,
+            $this->codingSubmitsPerRequest,
+            [
+                'user_id' => $this->userId,
+                'channel_id' => $this->channelId,
+                'model' => $this->modelName,
+                'request_id' => $this->requestId,
+                'prompt_tokens' => $this->promptTokens,
+                'completion_tokens' => $this->completionTokens,
+                'total_tokens' => $this->promptTokens + $this->completionTokens,
+            ],
+            $success,
+            $error
+        );
+    }
+
+    /**
+     * 判断上游响应是否为配额超限类错误（用于触发账号标记耗尽）
+     */
+    public function isCodingPlanQuotaError(): bool
+    {
+        if ($this->codingPlanAccount === null) {
+            return false;
+        }
+
+        // HTTP 429 或 402 通常是配额/鉴权问题
+        if ($this->responseStatus === 429 || $this->responseStatus === 402) {
+            return true;
+        }
+
+        // 检查响应体中的错误关键词
+        $body = strtolower($this->responseBody);
+        if (str_contains($body, 'quota') || str_contains($body, 'rate limit')
+            || str_contains($body, 'exceeded') || str_contains($body, 'insufficient')
+            || str_contains($body, 'limit reached')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

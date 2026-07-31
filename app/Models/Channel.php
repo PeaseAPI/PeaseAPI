@@ -33,23 +33,17 @@ class Channel extends Model
         'used_quota'          => 'integer',
         'priority'            => 'integer',
         'auto_ban'            => 'integer',
+        // JSON / 数组字段自动转换
+        'models'              => 'array',
+        'model_mapping'       => 'array',
+        'status_code_mapping' => 'array',
+        'other_info'          => 'array',
+        'setting'             => 'array',
+        'param_override'      => 'array',
+        'header_override'     => 'array',
+        'channel_info'        => 'array',
+        'settings'            => 'array',
     ];
-
-    // JSON / 数组字段自动转换
-    protected function casts(): array
-    {
-        return [
-            'models'              => 'array',
-            'model_mapping'       => 'array',
-            'status_code_mapping' => 'array',
-            'other_info'          => 'array',
-            'setting'             => 'array',
-            'param_override'      => 'array',
-            'header_override'     => 'array',
-            'channel_info'        => 'array',
-            'settings'            => 'array',
-        ];
-    }
 
     // ===== Scopes（对齐 Go 版查询条件）=====
 

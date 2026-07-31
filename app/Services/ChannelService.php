@@ -18,6 +18,10 @@ class ChannelService
      */
     public function create(array $data): Channel
     {
+        // created_time 字段在数据库中为 NOT NULL 且无默认值，必须显式设置
+        if (empty($data['created_time'])) {
+            $data['created_time'] = time();
+        }
         $channel = Channel::create($data);
         $this->syncAbilities($channel);
         return $channel;

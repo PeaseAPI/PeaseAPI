@@ -11,6 +11,9 @@ use Illuminate\Database\Eloquent\Builder;
  * 对齐 Go 版 model/ability.go
  * 表结构: id, `group`, model, channel_id, enabled, priority
  * 一个渠道的每个 (group, model) 组合对应一条记录，用于渠道选择算法快速检索
+ *
+ * 注意：原表使用复合主键 (group, model, channel_id)，但为了适配 apiResource
+ * 路由与前端 CRUD，已通过迁移 000190 添加自增 id 作为主键。
  */
 class Ability extends Model
 {

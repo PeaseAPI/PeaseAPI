@@ -55,6 +55,13 @@ class AbilityController extends Controller
         return $this->paginate($paginator);
     }
 
+    public function show(int $id): JsonResponse
+    {
+        $ability = Ability::with('channel:id,name,type')->findOrFail($id);
+
+        return $this->success($ability);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $this->validateAbility($request);
@@ -65,12 +72,11 @@ class AbilityController extends Controller
     }
 
     /**
-     * 更新能力（路由 PUT /ability/ 无 id 参数，从 body 取）
+     * 更新能力（路由 PUT /abilities/{id}）
      */
-    public function update(Request $request): JsonResponse
+    public function update(int $id, Request $request): JsonResponse
     {
         $data = $request->validate([
-            'id'         => ['required', 'integer', 'exists:abilities,id'],
             'group'      => ['sometimes', 'string', 'max:64'],
             'model'      => ['sometimes', 'string', 'max:255'],
             'channel_id' => ['sometimes', 'integer', 'exists:channels,id'],
@@ -78,8 +84,8 @@ class AbilityController extends Controller
             'priority'   => ['sometimes', 'integer'],
         ]);
 
-        $ability = Ability::findOrFail($data['id']);
-        $ability->update(collect($data)->except('id')->toArray());
+        $ability = Ability::findOrFail($id);
+        $ability->update($data);
         $this->channelService->clearChannelCache();
 
         return $this->success($ability->fresh(), '更新成功');

@@ -40,16 +40,32 @@
 @push('scripts')
 <script>
 let page=1;
+function readApiPayload(response){
+    return response.text().then((text)=>{
+        if(!text){return null;}
+        try{
+            return JSON.parse(text);
+        }catch{
+            return { raw: text };
+        }
+    });
+}
+function handleApiResponse(response, defaultMessage='请求失败'){
+    return readApiPayload(response).then((payload)=>{
+        if(!response.ok){
+            const message = payload?.message || payload?.error || payload?.raw || defaultMessage;
+            throw new Error(message);
+        }
+        return payload;
+    });
+}
 function loadAbilities(p=1){
     page=p;
     fetch(`/web-api/abilities?page=${p}&per_page=15`)
-        .then(r=>{
-            if(!r.ok){return r.text().then(t=>{throw new Error('HTTP '+r.status+': '+t)})};
-            return r.json();
-        })
+        .then((response)=>handleApiResponse(response, '加载能力失败'))
         .then(d=>{
             const t=document.getElementById('abilityTable');
-            const items=(d.data&&d.data.items)?d.data.items:[];
+            const items=Array.isArray(d?.data?.items)?d.data.items:[];
             if(items.length){
                 t.innerHTML=items.map(a=>`<tr class="border-b border-gray-100 hover:bg-gray-50"><td class="px-6 py-3">${a.id}</td><td class="px-6 py-3 font-medium">${a.group||'-'}</td><td class="px-6 py-3 font-mono text-xs">${a.model}</td><td class="px-6 py-3">${a.channel_id||'-'}${a.channel?' ('+a.channel.name+')':''}</td><td class="px-6 py-3">${a.priority||0}</td><td class="px-6 py-3"><span class="px-2 py-1 text-xs rounded-full ${a.enabled===1?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${a.enabled===1?'启用':'禁用'}</span></td><td class="px-6 py-3"><button onclick="editAbility(${a.id})" class="text-blue-600 hover:text-blue-800 mr-2">编辑</button><button onclick="deleteAbility(${a.id})" class="text-red-600 hover:text-red-800">删除</button></td></tr>`).join('');
             }else{
@@ -71,12 +87,9 @@ function openCreate(){
 }
 function editAbility(id){
     fetch(`/web-api/abilities/${id}`)
-        .then(r=>{
-            if(!r.ok){return r.text().then(t=>{throw new Error('HTTP '+r.status+': '+t)})};
-            return r.json();
-        })
+        .then((response)=>handleApiResponse(response, '加载能力失败'))
         .then(d=>{
-            const a=d.data||d;
+            const a=d?.data||d;
             document.getElementById('modalTitle').textContent='编辑能力';
             document.getElementById('abilityId').value=a.id;
             document.getElementById('formGroup').value=a.group||'';
@@ -92,7 +105,7 @@ function closeModal(){document.getElementById('abilityModal').classList.add('hid
 function deleteAbility(id){
     if(!confirm('确定删除？'))return;
     fetch(`/web-api/abilities/${id}`,{method:'DELETE',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'}})
-        .then(r=>{if(!r.ok){return r.text().then(t=>{throw new Error('HTTP '+r.status+': '+t)})};return r.json()})
+        .then((response)=>handleApiResponse(response, '删除失败'))
         .then(()=>loadAbilities(page))
         .catch(e=>alert('删除失败: '+e.message));
 }
@@ -109,10 +122,7 @@ document.getElementById('abilityForm').onsubmit=function(e){
     const url=id?`/web-api/abilities/${id}`:'/web-api/abilities';
     const method=id?'PUT':'POST';
     fetch(url,{method,headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json'},body:JSON.stringify(data)})
-        .then(r=>{
-            if(!r.ok){return r.text().then(t=>{throw new Error('HTTP '+r.status+': '+t)})};
-            return r.json();
-        })
+        .then((response)=>handleApiResponse(response, '保存失败'))
         .then(()=>{
             closeModal();
             loadAbilities(page);

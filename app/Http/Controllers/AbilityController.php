@@ -8,8 +8,11 @@ use App\Models\Ability;
 use App\Models\Channel;
 use App\Models\PrefillGroup;
 use App\Services\ChannelService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 /**
  * 渠道能力 / 分组 / 预填组 控制器
@@ -64,11 +67,23 @@ class AbilityController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $data = $this->validateAbility($request);
-        $ability = Ability::create($data);
-        $this->channelService->clearChannelCache();
+        try {
+            $data = $this->validateAbility($request);
+            $ability = Ability::create($data);
+            $this->channelService->clearChannelCache();
 
-        return $this->success($ability, '创建成功');
+            return $this->success($ability, '创建成功');
+        } catch (ModelNotFoundException $e) {
+            throw $e;
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'Duplicate entry')) {
+                return $this->error('该能力已存在，请勿重复添加', 409);
+            }
+
+            return $this->respondAbilityError($e, '创建能力');
+        } catch (Throwable $e) {
+            return $this->respondAbilityError($e, '创建能力');
+        }
     }
 
     /**
@@ -76,27 +91,45 @@ class AbilityController extends Controller
      */
     public function update(int $id, Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'group'      => ['sometimes', 'string', 'max:64'],
-            'model'      => ['sometimes', 'string', 'max:255'],
-            'channel_id' => ['sometimes', 'integer', 'exists:channels,id'],
-            'enabled'    => ['sometimes', 'integer', 'in:0,1'],
-            'priority'   => ['sometimes', 'integer'],
-        ]);
+        try {
+            $data = $request->validate([
+                'group'      => ['sometimes', 'string', 'max:64'],
+                'model'      => ['sometimes', 'string', 'max:255'],
+                'channel_id' => ['sometimes', 'integer', 'exists:channels,id'],
+                'enabled'    => ['sometimes', 'integer', 'in:0,1'],
+                'priority'   => ['sometimes', 'integer'],
+            ]);
 
-        $ability = Ability::findOrFail($id);
-        $ability->update($data);
-        $this->channelService->clearChannelCache();
+            $ability = Ability::findOrFail($id);
+            $ability->update($data);
+            $this->channelService->clearChannelCache();
 
-        return $this->success($ability->fresh(), '更新成功');
+            return $this->success($ability->fresh(), '更新成功');
+        } catch (ModelNotFoundException $e) {
+            throw $e;
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'Duplicate entry')) {
+                return $this->error('该能力已存在，请勿重复添加', 409);
+            }
+
+            return $this->respondAbilityError($e, '更新能力');
+        } catch (Throwable $e) {
+            return $this->respondAbilityError($e, '更新能力');
+        }
     }
 
     public function destroy(int $id): JsonResponse
     {
-        Ability::findOrFail($id)->delete();
-        $this->channelService->clearChannelCache();
+        try {
+            Ability::findOrFail($id)->delete();
+            $this->channelService->clearChannelCache();
 
-        return $this->success(null, '删除成功');
+            return $this->success(null, '删除成功');
+        } catch (ModelNotFoundException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            return $this->respondAbilityError($e, '删除能力');
+        }
     }
 
     /**
@@ -220,5 +253,14 @@ class AbilityController extends Controller
             'enabled'    => ['sometimes', 'integer', 'in:0,1'],
             'priority'   => ['sometimes', 'integer'],
         ]);
+    }
+
+    private function respondAbilityError(Throwable $e, string $action): JsonResponse
+    {
+        if ($e instanceof QueryException && ($e->getCode() === '23000' || str_contains($e->getMessage(), 'Duplicate entry'))) {
+            return $this->error('该能力已存在，请勿重复添加', 409);
+        }
+
+        return $this->error($action . '失败: ' . $e->getMessage(), 500);
     }
 }

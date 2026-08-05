@@ -2,18 +2,26 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 // 给 abilities 表添加自增 id 主键
 // 原表使用复合主键 (group, model, channel_id)，但控制器代码（apiResource）
 // 依赖单列自增 id 来进行 show/update/destroy 操作，且 paginate 排序也用到 id。
 // 此迁移将复合主键降级为唯一索引，并添加自增 id 作为主键。
+//
+// 注意：本迁移具备幂等性保护，即使之前部分执行失败也能安全重跑。
 return new class extends Migration
 {
     public function up(): void
     {
+        // 幂等性检查：如果 id 列已存在，说明迁移已执行过，直接跳过
+        if (Schema::hasColumn('abilities', 'id')) {
+            return;
+        }
+
+        // 先删除原复合主键（MySQL 中主键名固定为 PRIMARY）
         Schema::table('abilities', function (Blueprint $table) {
-            // 先删除原复合主键
             $table->dropPrimary();
         });
 
@@ -28,10 +36,24 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('abilities', function (Blueprint $table) {
-            $table->dropUnique('abilities_group_model_channel_unique');
-            $table->dropColumn('id');
-        });
+        // 通过原生 SQL 检查唯一索引是否存在（兼容无 doctrine/dbal 的 Laravel 12）
+        $indexExists = DB::table('information_schema.statistics')
+            ->where('table_schema', DB::getDatabaseName())
+            ->where('table_name', 'abilities')
+            ->where('index_name', 'abilities_group_model_channel_unique')
+            ->exists();
+
+        if ($indexExists) {
+            Schema::table('abilities', function (Blueprint $table) {
+                $table->dropUnique('abilities_group_model_channel_unique');
+            });
+        }
+
+        if (Schema::hasColumn('abilities', 'id')) {
+            Schema::table('abilities', function (Blueprint $table) {
+                $table->dropColumn('id');
+            });
+        }
 
         Schema::table('abilities', function (Blueprint $table) {
             $table->primary(['group', 'model', 'channel_id']);

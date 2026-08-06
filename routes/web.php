@@ -19,6 +19,7 @@ use App\Http\Controllers\CheckinController;
 use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\SystemInfoController;
 use App\Http\Controllers\RankingController;
+use App\Http\Controllers\DocsController;
 use App\Http\Middleware\AdminAuth;
 use App\Http\Middleware\RootAuth;
 
@@ -39,6 +40,10 @@ Route::view('/pricing', 'pricing')->name('pricing');
 Route::view('/rankings', 'rankings')->name('rankings');
 Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy');
 Route::view('/user-agreement', 'user-agreement')->name('user-agreement');
+
+// Documentation pages
+Route::get('/docs', [DocsController::class, 'index'])->name('docs.index');
+Route::get('/docs/{slug}', [DocsController::class, 'show'])->name('docs.show');
 
 // Public home page - 检查 public/install.lock 文件
 Route::get('/', function () {

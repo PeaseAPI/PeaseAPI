@@ -101,6 +101,7 @@ footer{padding:48px 0;border-top:1px solid var(--border);background:rgba(15,23,4
             <span class="nav-name">{{ $systemName }}</span>
         </a>
         <div class="nav-links">
+            <a href="/docs">文档</a>
             <a href="/about" class="active">关于</a>
             <a href="/pricing">价格</a>
             @if($passwordLoginEnabled)<a href="/login" class="btn btn-ghost">登录</a>@endif
@@ -193,7 +194,7 @@ footer{padding:48px 0;border-top:1px solid var(--border);background:rgba(15,23,4
                 {!! $systemFooter !!}
             @else
                 <p>&copy; {{ date('Y') }} {{ $systemName }}. All rights reserved.</p>
-                <p><a href="/">首页</a> · <a href="/pricing">价格</a> · <a href="/about">关于</a> · <a href="/user-agreement">用户协议</a> · <a href="/privacy-policy">隐私政策</a></p>
+                <p><a href="/">首页</a> · <a href="/docs">文档</a> · <a href="/pricing">价格</a> · <a href="/about">关于</a> · <a href="/user-agreement">用户协议</a> · <a href="/privacy-policy">隐私政策</a></p>
             @endif
         </div>
     </div>

@@ -86,6 +86,12 @@ function peaseEnsureAppKey(string $projectRoot): void
 
 function peaseEnsureInstallSessionDriver(string $projectRoot): void
 {
+    // 安装完成后（public/install.lock 存在），尊重用户在 .env 中配置的 SESSION_DRIVER，
+    // 不再强制改写。仅在未安装时强制使用 file driver（此时数据库可能尚未就绪）。
+    if (is_file($projectRoot.'/public/install.lock')) {
+        return;
+    }
+
     $envPath = $projectRoot.'/.env';
     if (!is_file($envPath)) {
         return;
@@ -104,7 +110,7 @@ function peaseEnsureInstallSessionDriver(string $projectRoot): void
 
     if (preg_match('/^SESSION_DRIVER=(.+)$/m', $envContent, $matches)) {
         $currentValue = trim($matches[1]);
-        if ($currentValue === 'database' && strpos($envContent, 'SESSION_DRIVER=file') === false) {
+        if ($currentValue !== 'file') {
             $envContent = preg_replace('/^SESSION_DRIVER=.*$/m', 'SESSION_DRIVER=file', $envContent);
             @file_put_contents($envPath, $envContent);
         }

@@ -133,6 +133,7 @@
                 <span class="nav-name">{{ $systemName }}</span>
             </a>
             <div class="nav-links">
+                <a href="/docs">文档</a>
                 <a href="/pricing">价格</a>
                 <a href="/about">关于</a>
                 @if($passwordLoginEnabled)
@@ -292,7 +293,7 @@ response = client.chat.completions.create(
                     {!! $systemFooter !!}
                 @else
                     <p>&copy; {{ date('Y') }} {{ $systemName }}. All rights reserved.</p>
-                    <p><a href="/pricing">价格</a> · <a href="/about">关于</a> · <a href="/user-agreement">用户协议</a> · <a href="/privacy-policy">隐私政策</a></p>
+                    <p><a href="/docs">文档</a> · <a href="/pricing">价格</a> · <a href="/about">关于</a> · <a href="/user-agreement">用户协议</a> · <a href="/privacy-policy">隐私政策</a></p>
                 @endif
             </div>
         </div>

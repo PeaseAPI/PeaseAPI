@@ -1,16 +1,18 @@
 # PeaseAPI
 
-> 基于 Laravel 11 的多模型 AI API 网关与分发管理平台，支持 OpenAI、Claude、Gemini、Midjourney、Suno 等 30+ 上游服务商的统一接入、计费与管理。
+> 🚀 **100% PHP 重写的新一代多模型 AI API 网关** —— 基于 Laravel 11，将 OpenAI、Claude、Gemini、Midjourney、Suno 等 30+ 上游 AI 服务商统一为 OpenAI 兼容 API，内置完整的用户体系、令牌管理、订阅计费、Coding Plan 账号池与后台管理。
 
 [![PHP](https://img.shields.io/badge/PHP-%3E%3D8.2-777BB4?logo=php&logoColor=white)](https://php.net/)
 [![Laravel](https://img.shields.io/badge/Laravel-11.x-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![100% PHP](https://img.shields.io/badge/100%25-PHP%20Rewritten-blue.svg)](#与原版-new-api-的对比)
 
 ---
 
 ## 目录
 
 - [产品简介](#产品简介)
+- [与原版 New-API 的对比](#与原版-new-api-的对比)
 - [核心特性](#核心特性)
 - [技术架构](#技术架构)
 - [支持的模型与渠道](#支持的模型与渠道)
@@ -19,6 +21,7 @@
 - [安装部署](#安装部署)
 - [配置说明](#配置说明)
 - [使用指南](#使用指南)
+- [Coding Plan 账号池](#coding-plan-账号池)
 - [API 文档](#api-文档)
 - [项目结构](#项目结构)
 - [开发指南](#开发指南)
@@ -29,9 +32,24 @@
 
 ## 产品简介
 
-PeaseAPI 是一个开箱即用的 **AI API 网关平台**，帮助您快速搭建自己的 AI API 分发与计费系统。它将 OpenAI、Anthropic Claude、Google Gemini、阿里通义、火山引擎、Moonshot、DeepSeek 等数十种大模型 API 统一为 OpenAI 兼容格式，同时内置完整的用户体系、令牌管理、订阅计费、渠道健康监控与后台管理功能。
+PeaseAPI 是一个开箱即用的 **AI API 网关平台**，帮助您快速搭建自己的 AI API 分发与计费系统。
 
-无论您是 **AI 服务商**需要对外分发 API、**企业内部**需要统一管理多模型调用，还是 **开发者**想要搭建个人 AI 网关，PeaseAPI 都能提供完整的一站式解决方案。
+> ⚠️ **重要声明：** 本项目是开源项目 [New-API](https://github.com/Calcium-Ion/new-api)（Go 语言版）的 **100% PHP 完整重写版**。我们没有对原项目做简单的语言包装或接口转发，而是基于 Laravel 11 框架从零重写了**全部后端逻辑**——包括路由、控制器、服务层、数据模型、中继引擎、计费体系、订阅系统等，共计 **30+ 控制器、20+ 服务、30+ 数据表、40+ 渠道适配器**。所有业务代码均为原生 PHP/Laravel 实现，无任何 Go 二进制依赖。
+
+### 为什么用 PHP 重写？
+
+原版 New-API 采用 Go + Gin + GORM + React SPA 技术栈，虽然性能优异，但在**二次开发门槛、部署复杂度、服务器生态适配**上存在一定痛点。PeaseAPI 选择 Laravel 11 重写，带来以下核心价值：
+
+| 维度 | 原版 New-API (Go) | PeaseAPI (PHP/Laravel) |
+|------|-------------------|------------------------|
+| **语言生态** | Go 开发者相对稀缺 | PHP 是 Web 领域最普及语言，开发者基数大 |
+| **二次开发** | 需掌握 Go + Gin + GORM + React | 只需会 PHP/Laravel，Blade 模板即前后端 |
+| **部署运维** | 需编译二进制 + 独立前端构建 | 标准 PHP-FPM + Nginx，宝塔面板一键部署 |
+| **服务器适配** | 对宝塔/虚拟主机不友好 | 完美适配宝塔、1Panel、cPanel 等主流面板 |
+| **调试体验** | Go 编译重启周期长 | PHP 热重载，修改即生效 |
+| **扩展包生态** | Go 生态相对年轻 | Composer 拥有海量成熟包 |
+| **数据库迁移** | GORM AutoMigrate 黑盒 | Laravel Migration 可控可回滚 |
+| **前端方案** | React SPA 需独立构建 | Blade 服务端渲染 + Alpine.js，部署零构建 |
 
 ### 适用场景
 
@@ -39,6 +57,65 @@ PeaseAPI 是一个开箱即用的 **AI API 网关平台**，帮助您快速搭�
 - 🏭 **企业 AI 网关**：统一接入管理企业内所有 AI 模型调用，支持权限控制与用量审计
 - 👨‍💻 **个人 AI 代理**：聚合多个上游 API Key，实现负载均衡与故障自动切换
 - 💰 **订阅制 SaaS**：结合订阅计划与充值系统，构建 AI 服务平台
+- 🤖 **Coding Plan 分发**：将 Claude Code / Cursor 等编程订阅账号池化，按套餐分发（原版无此功能）
+
+---
+
+## 与原版 New-API 的对比
+
+### 功能增强（PeaseAPI 新增）
+
+PeaseAPI 在完整复刻原版功能的基础上，新增了以下能力：
+
+| 功能模块 | 说明 | 原版是否支持 |
+|---------|------|-------------|
+| **🆕 Coding Plan 账号池** | 将 Claude Code / Cursor 等编程订阅账号池化管理，支持 5h/周/月滚动窗口配额、自动切换、优先级调度，并与订阅套餐绑定 | ❌ 原版无 |
+| **🆕 Web 安装向导** | 浏览器访问 `/install` 即可完成环境检测、数据库配置、管理员创建，无需命令行 | ❌ 原版需手动改配置 |
+| **🆕 宝塔面板适配** | 适配宝塔默认禁用 `proc_open`/`putenv` 的安全策略，移除 Composer 自动脚本依赖，开箱即装 | ⚠️ 原版需解禁函数 |
+| **🆕 手机号短信注册** | 支持阿里云短信验证码注册/登录，适配国内场景 | ⚠️ 原版仅邮箱 |
+| **🆕 支付宝/微信支付** | 原生集成支付宝与微信支付，适配国内付费场景 | ⚠️ 原版以 Stripe 为主 |
+| **🆕 Blade 前端模板** | 采用 Laravel Blade + Tailwind + Alpine.js，无需 Node.js 构建前端 | ❌ 原版需构建 React |
+| **🆕 性能监控面板** | 内置 PerfMetric 采集与可视化，支持 P99 延迟分析 | ⚠️ 原版基础统计 |
+| **🆕 系统信息面板** | 实时查看服务器 CPU、内存、磁盘、PHP 环境信息 | ⚠️ 原版无独立面板 |
+| **🆕 头像上传** | 用户可上传自定义头像，支持本地存储 | ⚠️ 原版依赖外部 |
+| **🆕 一键安装命令** | `php artisan pease:install` 完成全部初始化 | ❌ 原版无 |
+
+### 完整复刻的功能
+
+以下功能与原版 New-API **完全对齐**，数据表结构与 API 协议保持兼容：
+
+- ✅ **40+ 渠道适配器**：OpenAI、Claude、Gemini、AWS Bedrock、Vertex AI、阿里通义、火山豆包、Moonshot、DeepSeek、Mistral、Cohere、Groq、xAI 等
+- ✅ **OpenAI 兼容 API**：`/v1/chat/completions`、`/v1/embeddings`、`/v1/images/generations`、`/v1/audio/*` 等
+- ✅ **格式互转**：OpenAI ↔ Claude ↔ Gemini 请求/响应自动转换
+- ✅ **SSE 流式响应**：完整支持 Stream 输出
+- ✅ **渠道分发**：基于 Ability 表的优先级 + 权重调度，支持跨组重试
+- ✅ **计费体系**：Token 计费、模型倍率、分组倍率、预扣退款
+- ✅ **令牌管理**：多 API Key、模型限制、IP 白名单、过期时间、配额
+- ✅ **用户体系**：角色权限（普通/管理员/超管）、邀请返佣、2FA、Passkey
+- ✅ **订阅系统**：周期订阅、配额重置（日/周/月/自定义）、自动续费
+- ✅ **兑换码**：批量生成、配额充值、分组升级
+- ✅ **签到系统**：每日签到送配额
+- ✅ **日志审计**：完整请求日志，支持多维度筛选
+- ✅ **Midjourney/Suno/视频任务**：异步任务提交与状态查询
+- ✅ **OAuth 登录**：GitHub、Discord
+- ✅ **多实例支持**：数据库锁协调的后台任务调度
+
+### 技术栈对比
+
+| 层级 | 原版 New-API | PeaseAPI |
+|------|-------------|----------|
+| 后端语言 | Go 1.22+ | PHP 8.2+ |
+| Web 框架 | Gin | Laravel 11 |
+| ORM | GORM v2 | Eloquent |
+| 数据库 | MySQL/PostgreSQL/SQLite | MySQL 8.0+ / SQLite |
+| 缓存 | Redis | Redis（推荐）/ Database |
+| 队列 | Go goroutine + channel | Laravel Queue（Redis/Database） |
+| 前端 | React 18/19 SPA（需构建） | Blade + Tailwind + Alpine.js（零构建） |
+| 依赖管理 | Go Modules | Composer |
+| 部署方式 | 编译二进制 + Nginx 反代 | PHP-FPM + Nginx（标准 PHP 部署） |
+| 认证 | 手动 JWT | Laravel Sanctum + Session |
+| OAuth | 手动实现 | Laravel Socialite |
+| 支付 | Stripe 为主 | Stripe + 支付宝 + 微信支付 |
 
 ---
 
@@ -50,6 +127,7 @@ PeaseAPI 是一个开箱即用的 **AI API 网关平台**，帮助您快速搭�
 - **智能路由**：基于能力（Ability）的渠道自动选择，支持权重与优先级
 - **负载均衡**：多渠道负载分发，自动故障转移与健康检查
 - **流式响应**：完整支持 SSE 流式输出（Stream）
+- **格式互转**：OpenAI ↔ Claude ↔ Gemini 自动转换
 
 ### 👤 完整用户体系
 - **多方式注册登录**：邮箱密码、手机号短信验证码、GitHub OAuth、Discord OAuth
@@ -62,6 +140,7 @@ PeaseAPI 是一个开箱即用的 **AI API 网关平台**，帮助您快速搭�
 - **细粒度权限**：令牌可绑定模型分组、设置配额上限与过期时间
 - **用量追踪**：按令牌维度统计请求数、Token 消耗与费用
 - **只读令牌**：支持创建仅查询用量的只读 Token
+- **IP 白名单**：令牌可设置 IP 白名单，增强安全性
 
 ### 💰 计费与支付
 - **灵活计费**：按 Token 计费（文本模型）、按次计费（图片/任务模型）、分组倍率
@@ -69,19 +148,30 @@ PeaseAPI 是一个开箱即用的 **AI API 网关平台**，帮助您快速搭�
 - **兑换码**：支持生成兑换码进行配额充值
 - **订阅计划**：周期性订阅，支持自动续费与配额重置（日/周/月）
 
+### 🤖 Coding Plan 账号池（独家功能）
+- **账号池化**：将 Claude Code、Cursor 等编程订阅账号统一池化管理
+- **滚动窗口配额**：支持 5 小时 / 周 / 月三档滚动窗口配额控制
+- **自动切换**：账号配额耗尽自动切换到下一个可用账号
+- **优先级调度**：支持按优先级排序账号使用顺序
+- **套餐绑定**：与订阅套餐绑定，按套餐分发对应供应商的账号额度
+- **使用流水**：完整记录每次使用，支持按账号/时间/成功状态查询
+- **统计概览**：各供应商账号池实时概览与 7 天使用趋势
+
 ### 📊 后台管理
 - **仪表盘**：实时统计请求数、Token 消耗、收入与用户增长
 - **用户管理**：用户列表、状态管理、配额调整、密码重置
 - **渠道管理**：渠道增删改查、密钥管理、模型映射、健康检测
 - **日志审计**：完整的请求日志，支持按模型/用户/状态筛选
 - **系统设置**：运行参数可视化配置，无需修改代码
+- **性能监控**：内置性能指标采集（PerfMetric），支持 P99 延迟分析
+- **系统信息**：实时查看服务器 CPU、内存、磁盘、PHP 环境信息
 
 ### ⚡ 性能与可靠性
 - **Redis 缓存**：能力列表、渠道配置、用户信息多级缓存
 - **队列任务**：Midjourney/Suno 等异步任务基于队列处理
 - **速率限制**：全局限流 + 令牌限流 + 模型限流三层防护
-- **性能监控**：内置性能指标采集（PerfMetric），支持 P99 延迟分析
 - **系统任务**：定时清理、统计聚合等后台 SystemTask 调度
+- **多实例协调**：数据库锁保证多实例部署时后台任务不重复执行
 
 ---
 
@@ -99,44 +189,50 @@ PeaseAPI 是一个开箱即用的 **AI API 网关平台**，帮助您快速搭�
 │   /v1/* (Relay)  /api/* (API)  /web-api/* (Web API)     │
 └──────────────────────┬──────────────────────────────────┘
                        │
-           ┌───────────┼───────────┐
-           ▼           ▼           ▼
-    ┌──────────┐ ┌──────────┐ ┌──────────┐
-    │ 中间件层  │ │ 控制器层  │ │ Relay层   │
-    │ Auth     │ │ Dashboard│ │ Handler  │
-    │ RateLimit│ │ Admin    │ │ Adapter  │
-    │ Cors     │ │ Auth     │ │          │
-    └──────────┘ └──────────┘ └────┬─────┘
+            ┌──────────┼──────────┐
+            ▼          ▼          ▼
+     ┌──────────┐ ┌──────────┐ ┌──────────┐
+     │ 中间件层  │ │ 控制器层  │ │ Relay层   │
+     │ Auth     │ │ Dashboard│ │ Handler  │
+     │ RateLimit│ │ Admin    │ │ Adapter  │
+     │ Cors     │ │ Auth     │ │          │
+     └──────────┘ └──────────┘ └────┬─────┘
+                                  │
+                      ┌───────────┼───────────┐
+                      ▼           ▼           ▼
+                ┌─────────┐ ┌─────────┐ ┌─────────┐
+                │ 文本模型  │ │ 任务模型  │ │ 嵌入模型 │
+                │ OpenAI   │ │ Midjourney│ │ Embedding│
+                │ Claude   │ │ Suno     │ │          │
+                │ Gemini   │ │ Video    │ │          │
+                └─────┬─────┘ └────┬─────┘ └────┬─────┘
+                      │            │            │
+                      ▼            ▼            ▼
+                ┌─────────────────────────────────────┐
+                │          40+ 渠道适配器              │
+                │  OpenAI│Claude│Gemini│AWS│Vertex    │
+                │  Ali│Volcengine│DeepSeek│Moonshot  │
+                │  Groq│Mistral│Cohere│Stability   │
+                └────────────────┬────────────────────┘
                                  │
-                     ┌───────────┼───────────┐
-                     ▼           ▼           ▼
-               ┌─────────┐ ┌─────────┐ ┌─────────┐
-               │ 文本模型  │ │ 任务模型  │ │ 嵌入模型 │
-               │ OpenAI   │ │ Midjourney│ │ Embedding│
-               │ Claude   │ │ Suno     │ │          │
-               │ Gemini   │ │ Sora     │ └─────────┘
-               │ ...      │ │ Kling    │
-               └─────────┘ └─────────┘
-                                 │
-                                 ▼
-               ┌──────────────────────────────────┐
-               │          数据存储层                │
-               │  MySQL/SQLite · Redis · Storage   │
-               └──────────────────────────────────┘
+                      ┌──────────┼──────────┐
+                      ▼          ▼          ▼
+                ┌─────────┐ ┌─────────┐ ┌─────────┐
+                │ MySQL   │ │ Redis   │ │ Queue   │
+                │ 数据存储  │ │ 缓存/锁  │ │ 异步任务 │
+                └─────────┘ └─────────┘ └─────────┘
 ```
 
-### 技术栈
+### 请求处理流程
 
-| 层级 | 技术 |
-|------|------|
-| **后端框架** | Laravel 11 (PHP 8.2+) |
-| **数据库** | MySQL 8.0+ / SQLite |
-| **缓存** | Redis（推荐）/ Database |
-| **队列** | Database / Redis |
-| **前端** | Blade 模板 + Tailwind CSS + Alpine.js |
-| **支付** | Stripe PHP SDK / 支付宝 SDK / 微信支付 |
-| **认证** | Laravel Sanctum + Socialite + WebAuthn |
-| **依赖管理** | Composer |
+1. **客户端请求**：以 OpenAI 兼容格式发送到 `/v1/chat/completions`
+2. **认证鉴权**：`TokenAuth` 中间件校验 API Key，加载用户与令牌
+3. **限流检查**：全局限流 → 令牌限流 → 模型限流
+4. **渠道选择**：`ChannelSelectService` 基于 Ability 表选择可用渠道
+5. **请求转发**：对应 `Adapter` 转换格式并转发到上游
+6. **响应处理**：流式（SSE）或一次性返回，格式转回 OpenAI 兼容
+7. **计费扣费**：`BillingService` 按 Token/次数计算费用并扣减配额
+8. **日志记录**：`LogService` 异步记录请求日志与性能指标
 
 ---
 
@@ -144,315 +240,178 @@ PeaseAPI 是一个开箱即用的 **AI API 网关平台**，帮助您快速搭�
 
 ### 文本对话模型
 
-| 渠道 | 支持模型 | 协议 |
-|------|---------|------|
-| **OpenAI** | GPT-4o / GPT-4 / GPT-3.5-turbo / o1 系列 | OpenAI 兼容 |
-| **Anthropic Claude** | Claude 3.5 Sonnet / Opus / Haiku | Claude 原生 -> OpenAI |
-| **Google Gemini** | Gemini 2.0 / 1.5 Pro / Flash | Gemini 原生 -> OpenAI |
-| **Google Vertex** | 同 Gemini（企业版） | Vertex AI |
-| **DeepSeek** | DeepSeek-V3 / DeepSeek-R1 | OpenAI 兼容 |
-| **Moonshot** | Moonshot-v1 / Kimi | OpenAI 兼容 |
-| **Mistral** | Mistral-Large / Codestral | OpenAI 兼容 |
-| **Cohere** | Command-R / Command-R+ | Cohere -> OpenAI |
-| **阿里通义** | Qwen-Max / Qwen-Plus / Qwen-Turbo | OpenAI 兼容 |
-| **火山引擎** | Doubao-Pro / Doubao-Lite | OpenAI 兼容 |
-| **Groq** | Llama / Mixtral（极速推理） | OpenAI 兼容 |
-| **AWS Bedrock** | Claude / Llama / Titan | AWS -> OpenAI |
-| **中国移动** | 自研模型 | OpenAI 兼容 |
-| **中国联通** | 自研模型 | OpenAI 兼容 |
+| 渠道 | 支持模型示例 | 格式 |
+|------|-------------|------|
+| OpenAI | GPT-4o, GPT-4 Turbo, GPT-3.5 Turbo, o1 | OpenAI |
+| Claude | Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Haiku | Claude → OpenAI |
+| Gemini | Gemini 2.0 Flash, Gemini 1.5 Pro | Gemini → OpenAI |
+| AWS Bedrock | Claude (AWS), Titan, Llama (AWS) | AWS → OpenAI |
+| Vertex AI | Claude (Vertex), Gemini (Vertex), Llama (Vertex) | Vertex → OpenAI |
+| DeepSeek | DeepSeek-V3, DeepSeek-R1 | OpenAI 兼容 |
+| Moonshot | Moonshot-v1-8k/32k/128k | OpenAI 兼容 |
+| Mistral | Mistral Large, Codestral | OpenAI 兼容 |
+| Cohere | Command R+, Command R | Cohere → OpenAI |
+| Groq | Llama 3.1 70B (Groq) | OpenAI 兼容 |
+| 阿里通义 | Qwen-Max, Qwen-Plus, Qwen-Turbo | Ali → OpenAI |
+| 火山豆包 | Doubao-Pro, Doubao-Lite | OpenAI 兼容 |
+| 中国移动 | 移动智聊 | OpenAI 兼容 |
+| 中国联通 | 联通元景 | OpenAI 兼容 |
 
-### 图片/视频/音乐生成模型
+### 图像生成模型
 
-| 渠道 | 支持模型 | 类型 |
-|------|---------|------|
-| **Midjourney** | MJ V6 / Niji V6 | 图片生成 |
-| **Stability AI** | SD3 / SDXL | 图片生成 |
-| **Suno** | Suno V3 / V4 | 音乐生成 |
-| **Sora** | Sora | 视频生成 |
-| **Kling（可灵）** | Kling Text-to-Video | 视频生成 |
-| **Vidu** | Vidu 视频生成 | 视频生成 |
-| **Hailuo（海螺）** | 海螺视频 | 视频生成 |
-| **Jimeng（即梦）** | 即梦图片/视频 | 图片/视频 |
-| **阿里 Wanx** | 通义万相 | 图片生成 |
-| **金山** | 金山图片 | 图片生成 |
-| **Step** | 阶跃星辰 | 图片生成 |
-| **Ashmoon** | Ashmoon | 图片生成 |
-| **Sanlian** | 三联模型 | 图片生成 |
-| **YimgCloud** | YimgCloud | 图片生成 |
+| 渠道 | 支持模型 |
+|------|---------|
+| OpenAI DALL-E | DALL-E 3, DALL-E 2 |
+| Midjourney | Midjourney V6, Niji V6 |
+| Stability AI | Stable Diffusion 3, SDXL |
+| 金山 | 金山图像生成 |
+| YimgCloud | Yimg 云端图像 |
+| Ashmoon | Ashmoon 图像 |
+| Sanlian | 三联图像 |
 
-> 💡 新增渠道只需实现 `ChannelAdapterInterface` 接口，参考 `app/Relay/Channel/` 下的现有适配器。
+### 视频/音乐/任务模型
+
+| 类型 | 渠道 | 支持模型 |
+|------|------|---------|
+| 视频 | Kling | 可灵视频生成 |
+| 视频 | Sora | OpenAI Sora |
+| 视频 | Vidu | Vidu 视频生成 |
+| 视频 | Hailuo | 海螺视频生成 |
+| 视频 | Jimeng | 即梦视频生成 |
+| 音乐 | Suno | Suno V3.5, V4 |
+| 嵌入 | OpenAI | Text-Embedding-3 |
+| 嵌入 | Vertex | Gecko Embedding |
+| 嵌入 | Cohere | Embed V3 |
 
 ---
 
 ## 快速开始
 
-### 环境要求
+### 最快方式：Docker
 
-- **PHP** >= 8.2（需安装 `ext-gmp`、`ext-pdo`、`ext-mbstring`、`ext-redis`）
-- **Composer** >= 2.x
-- **MySQL** 8.0+ 或 **SQLite**（开发环境）
-- **Redis**（推荐，用于缓存与队列）
-- **Node.js** >= 18（仅前端资源编译需要）
+```bash
+docker run -d \
+  --name peaseapi \
+  -p 8080:80 \
+  -e DB_HOST=mysql \
+  -e DB_DATABASE=peaseapi \
+  -e DB_USERNAME=root \
+  -e DB_PASSWORD=secret \
+  -e REDIS_HOST=redis \
+  peaseapi/peaseapi:latest
+```
 
-### 安装部署
+访问 `http://localhost:8080/install` 完成安装向导。
 
-#### 方式一：本地开发部署
+### 最简方式：Web 安装向导
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/PeaseAPI/PeaseAPI.git
-cd PeaseAPI
+git clone https://github.com/peaseapi/peaseapi.git
+cd peaseapi
 
-# 2. 安装 PHP 依赖
-composer install
-
-# 3. 配置环境变量
-cp .env.example .env
-php artisan key:generate
-
-# 4. 编辑 .env，配置数据库与 Redis
-#    DB_CONNECTION=mysql
-#    DB_HOST=127.0.0.1
-#    DB_DATABASE=peaseapi
-#    DB_USERNAME=root
-#    DB_PASSWORD=your_password
-#
-#    REDIS_HOST=127.0.0.1
-#    REDIS_PASSWORD=null
-#    REDIS_PORT=6379
-
-# 5. 创建数据库软链接
-php artisan storage:link
-
-# 6. 执行数据库迁移
-php artisan migrate
-
-# 7. 启动开发服务器
-php artisan serve
-# 访问 http://localhost:8000 进入安装向导
-```
-
-#### 方式二：Docker 部署
-
-```bash
-# 1. 克隆项目
-git clone https://github.com/PeaseAPI/PeaseAPI.git
-cd PeaseAPI
-
-# 2. 使用 Docker Compose（需自行编写 docker-compose.yml）
-docker build -t pease-api .
-docker run -d -p 8000:80 \
-  -v $(pwd)/.env:/var/www/html/.env \
-  -v $(pwd)/storage:/var/www/html/storage \
-  pease-api
-```
-
-#### 方式三：生产环境部署
-
-```bash
-# 1. 部署代码到服务器
-git clone https://github.com/PeaseAPI/PeaseAPI.git /var/www/peaseapi
-cd /var/www/peaseapi
-
-# 2. 安装依赖（优化自动加载）
+# 2. 安装依赖
 composer install --no-dev --optimize-autoloader
 
-# 3. 配置环境
-cp .env.example .env
-php artisan key:generate
-# 编辑 .env，设置 APP_ENV=production, APP_DEBUG=false
-
-# 4. 迁移数据库
-php artisan migrate --force
-
-# 5. 缓存优化
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-php artisan storage:link
-
-# 6. 设置 Nginx 指向 public/ 目录（配置见下方「Nginx 配置参考」）
-# 7. 配置 Supervisor 管理队列 worker
-#    php artisan queue:work --tries=3 --max-time=3600
+# 3. 启动开发服务器
+php artisan serve
 ```
 
-### Nginx 配置参考
+访问 `http://localhost:8000/install`，按向导完成配置。
 
-> ⚠️ **必须将 root 指向项目下的 `public/` 目录**，并通过 `try_files` 把所有请求转给 `index.php`，否则除首页外的所有路由（含 `/install` 安装向导）都会返回 404。
+---
 
-#### 完整 server 配置（推荐）
+## 环境要求
 
-```nginx
-server {
-    listen 80;
-    # listen 443 ssl;  # 启用 HTTPS 时取消注释
-    server_name your-domain.com;
+| 组件 | 最低版本 | 推荐版本 |
+|------|---------|---------|
+| PHP | 8.2 | 8.3+ |
+| Laravel | 11.0 | 11.x |
+| MySQL | 8.0 | 8.1+ |
+| Redis | 6.0 | 7.0+（推荐） |
+| Nginx | 1.18 | 1.24+ |
+| Composer | 2.6 | 2.7+ |
 
-    # 关键：root 必须指向 public/ 目录
-    root /var/www/peaseapi/public;
-    index index.php index.html;
+### PHP 扩展要求
 
-    # 关键：把所有请求转给 index.php（Laravel 路由）
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
+- `pdo_mysql` / `pdo_sqlite`
+- `redis`
+- `gmp`（WebAuthn/Passkey 需要）
+- `mbstring`
+- `xml`
+- `curl`
+- `zip`
+- `fileinfo`
+- `openssl`
+- `bcmath`
 
-    # PHP-FPM 处理
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;  # 按实际 PHP 版本/路径调整
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-        fastcgi_hide_header X-Powered-By;
+---
 
-        # 流式响应（SSE）支持：关闭缓冲
-        fastcgi_buffering off;
-        fastcgi_cache off;
-    }
+## 安装部署
 
-    # 静态资源直接返回，不走 PHP
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot)$ {
-        expires 30d;
-        access_log off;
-        try_files $uri =404;
-    }
+PeaseAPI 提供三种部署方式，详见 **[部署文档](docs/deployment.md)**：
 
-    # 禁止访问敏感文件
-    location ~ /\.(env|git|htaccess) { deny all; }
-    location ~ /storage/ { internal; }  # 通过 storage:link 访问的公开文件可按需放开
-
-    # 日志
-    access_log /var/log/nginx/peaseapi.access.log;
-    error_log  /var/log/nginx/peaseapi.error.log;
-}
-```
-
-#### 宝塔面板 / 1Panel 伪静态规则
-
-如果使用宝塔面板，在站点设置的「伪静态」中填入以下内容即可（root 宝塔会自动指向 public）：
-
-```nginx
-location / {
-    try_files $uri $uri/ /index.php?$query_string;
-}
-```
-
-> 保存后重载 Nginx：`nginx -s reload` 或在面板点击「重载配置」。
-
-### 安装向导
-
-首次访问网站会自动跳转到安装向导页面（`/install`），按提示完成：
-1. 环境检测（PHP 版本、扩展、目录权限）
-2. 数据库配置
-3. 创建管理员账号
-4. 初始化系统设置
+1. **[独立服务器部署](docs/deployment.md#独立服务器部署)** -- 手动配置 Nginx + PHP-FPM + MySQL + Redis
+2. **[宝塔面板部署](docs/deployment.md#宝塔面板部署)** -- 适合国内用户，图形化操作
+3. **[Docker 部署](docs/deployment.md#docker-部署)** -- 最快部署方式，适合容器化环境
 
 ---
 
 ## 配置说明
 
-### 核心环境变量
+### 环境变量（.env）
+
+核心配置项详见 `.env.example`，关键配置：
 
 ```env
-# 应用配置
 APP_NAME=PeaseAPI
 APP_ENV=production
+APP_KEY=                    # 安装时自动生成
 APP_DEBUG=false
-APP_URL=https://your-domain.com
-APP_TIMEZONE=Asia/Shanghai
-APP_LOCALE=zh-CN
+APP_URL=https://api.example.com
 
-# 数据库
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=peaseapi
 DB_USERNAME=root
-DB_PASSWORD=secret
+DB_PASSWORD=
 
-# Redis
 REDIS_HOST=127.0.0.1
 REDIS_PASSWORD=null
 REDIS_PORT=6379
 
-# 缓存与队列
-CACHE_STORE=redis
 QUEUE_CONNECTION=redis
-SESSION_DRIVER=database
-
-# 文件存储
-FILESYSTEM_DISK=public
-
-# 邮件
-MAIL_MAILER=smtp
-MAIL_HOST=smtp.example.com
-MAIL_PORT=587
-MAIL_USERNAME=noreply@example.com
-MAIL_PASSWORD=secret
-MAIL_FROM_ADDRESS=noreply@example.com
-MAIL_FROM_NAME="${APP_NAME}"
+SESSION_DRIVER=redis
+CACHE_STORE=redis
 ```
 
-### 支付配置
+### 系统设置
 
-支付相关配置在管理后台 **系统设置** 页面可视化配置，无需修改 `.env`：
+部署后，在后台 **设置 → 系统设置** 中可视化配置：
 
-- **Stripe**：API Key、Webhook Secret
-- **支付宝**：App ID、私钥、公钥
-- **微信支付**：Mch ID、API Key、证书路径
-
-### 短信配置
-
-短信验证码用于手机号注册/登录/修改，在后台配置：
-
-- **阿里云短信**：AccessKey、Sign Name、Template Code
-
-### OAuth 登录配置
-
-在后台 **系统设置 -> OAuth** 中配置：
-
-- **GitHub**：Client ID / Client Secret
-- **Discord**：Client ID / Client Secret
+- **通用设置**：站点名称、Logo、注册开关、邮箱验证
+- **模型设置**：默认模型倍率、分组倍率
+- **支付设置**：Stripe / 支付宝 / 微信支付密钥
+- **SMTP 设置**：邮件服务器配置
+- **短信设置**：阿里云短信 AccessKey
+- **OAuth 设置**：GitHub / Discord Client ID
+- **安全设置**：Turnstile 验证码、2FA 强制开启
 
 ---
 
 ## 使用指南
 
-### 管理员快速上手
+详细使用文档请见 **[使用指南](docs/usage-guide.md)**，涵盖：
 
-1. **添加渠道**：进入 `管理后台 -> 渠道管理`，添加上游 API 渠道，填入密钥与支持的模型
-2. **配置模型能力**：系统会自动根据渠道配置生成能力列表（Abilities），也可手动调整
-3. **设置模型倍率**：在 `系统设置 -> 模型倍率` 中配置每个模型的计费倍率
-4. **创建用户分组**：在 `分组管理` 中创建不同分组，设置分组倍率与可用模型
-
-### 用户使用流程
-
-1. **注册登录**：访问首页，通过邮箱/手机号/OAuth 注册
-2. **创建令牌**：进入 `控制台 -> 令牌`，创建 API Key，设置配额与模型权限
-3. **调用 API**：使用创建的令牌调用 OpenAI 兼容接口：
-
-```bash
-curl https://your-domain.com/v1/chat/completions \
-  -H "Authorization: Bearer sk-your-token-here" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-4o",
-    "messages": [{"role": "user", "content": "Hello!"}],
-    "stream": false
-  }'
-```
-
-4. **充值/订阅**：在 `钱包` 页面充值或购买订阅计划
-5. **查看用量**：在 `使用日志` 页面查看详细的调用记录与费用
-
-### 个人信息管理
-
-访问 `控制台 -> 个人信息`（`/profile`）可以：
-- 📷 **上传/更换头像**
-- ✏️ **修改用户名、昵称、邮箱**
-- 📱 **绑定/修改手机号**（需短信验证码）
-- 🔒 **修改登录密码**
-
-> 登录后点击右上角头像或用户名也可快速进入此页面。
+- [管理员设置](docs/usage-guide.md#管理员设置)
+- [添加渠道与模型 Key](docs/usage-guide.md#添加渠道与模型-key)
+- [令牌（API Key）管理](docs/usage-guide.md#令牌管理)
+- [用户与分组管理](docs/usage-guide.md#用户与分组管理)
+- [订阅与充值](docs/usage-guide.md#订阅与充值)
+- [Coding Plan 账号池配置](docs/usage-guide.md#coding-plan-账号池配置)
+- [Coding Plan 转换 API 输出](docs/usage-guide.md#coding-plan-转换-api-输出)
+- [Midjourney/Suno 任务](docs/usage-guide.md#异步任务)
 
 ---
 
@@ -460,349 +419,162 @@ curl https://your-domain.com/v1/chat/completions \
 
 ### OpenAI 兼容接口
 
-所有模型调用统一使用 OpenAI 格式，客户端只需将 `base_url` 指向您的 PeaseAPI 实例：
+所有文本模型统一使用以下接口：
 
-| 接口 | 方法 | 路径 | 说明 |
-|------|------|------|------|
-| Chat Completions | POST | `/v1/chat/completions` | 对话补全（支持流式） |
-| Embeddings | POST | `/v1/embeddings` | 文本向量化 |
-| Models | GET | `/v1/models` | 可用模型列表 |
-| Midjourney - Imagine | POST | `/mj/submit/imagine` | 提交 MJ 绘图任务 |
-| Midjourney - Action | POST | `/mj/submit/action` | MJ 变换/放大 |
-| Midjourney - Status | GET | `/mj/task/{id}/fetch` | 查询任务状态 |
-| Suno - Generate | POST | `/suno/submit/generation` | 提交音乐生成 |
-| Suno - Status | GET | `/suno/get?ids={id}` | 查询音乐状态 |
-| Video - Generate | POST | `/v1/videos/generations` | 视频生成（Sora/Kling等） |
-
-**调用示例（Python）：**
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    api_key="sk-your-peaseapi-token",
-    base_url="https://your-domain.com/v1"
-)
-
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "你好，PeaseAPI！"}],
-    stream=True
-)
-
-for chunk in response:
-    if chunk.choices[0].delta.content:
-        print(chunk.choices[0].delta.content, end="")
+```bash
+curl https://api.example.com/v1/chat/completions \
+  -H "Authorization: Bearer sk-your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }'
 ```
+
+主要端点：
+
+| 端点 | 说明 |
+|------|------|
+| `POST /v1/chat/completions` | 对话补全（文本模型） |
+| `POST /v1/embeddings` | 文本嵌入 |
+| `POST /v1/images/generations` | 图像生成 |
+| `POST /v1/audio/speech` | 文字转语音 |
+| `POST /v1/audio/transcriptions` | 语音转文字 |
+| `GET /v1/models` | 模型列表 |
+| `POST /v1/messages` | Claude 原生格式 |
+| `POST /mj/submit/imagine` | Midjourney 任务 |
+| `POST /suno/submit/music` | Suno 音乐任务 |
 
 ### 管理后台 API
 
-管理后台提供完整的 RESTful API（前缀 `/api`），使用 Session 认证：
-
-- `GET /api/user/self` - 获取当前用户信息
-- `GET /api/dashboard` - 仪表盘统计数据
-- `GET /api/channel` - 渠道列表
-- `POST /api/channel` - 创建渠道
-- `GET /api/token` - 令牌列表
-- `POST /api/token` - 创建令牌
-- `GET /api/log` - 日志列表
-
-> 详细接口参数请参考代码中的 `routes/api.php` 与控制器实现。
+后台管理 API 基于 `/api` 前缀，需 Admin/Root Token 认证，详见 [API 使用文档](docs/usage-guide.md#api-调用示例)。
 
 ---
 
 ## 项目结构
 
 ```
-PeaseAPI/
+new-api-php/
 ├── app/
-│   ├── Console/              # Artisan 命令
-│   ├── Enums/                # 枚举类（ChannelType, ApiType, UserRole 等）
-│   ├── Helpers/              # 全局辅助函数
+│   ├── Console/Commands/      # 命令行（pease:install 等）
+│   ├── Enums/                 # 枚举（ChannelType, UserRole 等）
+│   ├── Helpers/               # 辅助函数
 │   ├── Http/
-│   │   ├── Controllers/      # 控制器
-│   │   │   ├── Api/          # API 控制器（返回 JSON）
-│   │   │   └── ...           # Web/Admin 控制器
-│   │   └── Middleware/       # 中间件（认证、限流、CORS 等）
-│   ├── Jobs/                 # 队列任务
-│   ├── Mail/                 # 邮件模板
-│   ├── Models/               # Eloquent 模型
-│   ├── Providers/            # 服务提供者
-│   ├── Relay/                # 🔑 核心：API 转发引擎
-│   │   ├── Channel/          # 渠道适配器
-│   │   │   ├── OpenAI/       # OpenAI 适配器
-│   │   │   ├── Claude/       # Claude 适配器
-│   │   │   ├── Gemini/       # Gemini 适配器
-│   │   │   ├── Task/         # 异步任务适配器（MJ/Suno/Sora等）
-│   │   │   └── ...           # 其他渠道适配器
-│   │   ├── Common/           # 转发公共组件（Handler, Info）
-│   │   └── Constant/         # 转发常量（Format, Mode）
-│   ├── Services/             # 业务服务层
-│   │   ├── RelayService.php  # 转发主服务
-│   │   ├── BillingService.php # 计费服务
-│   │   ├── ChannelService.php # 渠道服务
-│   │   ├── QuotaService.php  # 配额服务
-│   │   └── ...
-│   └── Setting/              # 系统设置类
-├── bootstrap/                # 框架引导
-├── config/                   # 配置文件
+│   │   ├── Controllers/       # 30+ 控制器
+│   │   │   └── Api/           # API 控制器
+│   │   └── Middleware/        # 认证/限流/CORS 等
+│   ├── Mail/                  # 邮件模板
+│   ├── Models/                # 30+ Eloquent 模型
+│   ├── Providers/             # 服务提供者
+│   ├── Relay/                 # 中继引擎核心
+│   │   ├── Channel/           # 40+ 渠道适配器
+│   │   │   ├── OpenAI/        # OpenAI 适配器
+│   │   │   ├── Claude/        # Claude 适配器
+│   │   │   ├── Gemini/        # Gemini 适配器
+│   │   │   └── Task/          # 异步任务适配器
+│   │   ├── Common/            # RelayHandler, RelayInfo
+│   │   └── Constant/          # RelayFormat, RelayMode
+│   ├── Services/              # 20+ 业务服务
+│   └── Setting/               # 设置管理
+├── bootstrap/
+├── config/                    # 配置文件
 ├── database/
-│   ├── migrations/           # 数据库迁移
-│   ├── factories/            # 模型工厂
-│   └── seeders/              # 数据填充
-├── lang/                     # 多语言文件
-├── public/                   # Web 入口与静态资源
-├── resources/
-│   └── views/                # Blade 模板
-│       ├── admin/            # 管理后台页面
-│       ├── auth/             # 登录注册页面
-│       ├── dashboard/        # 用户控制台页面
-│       ├── emails/           # 邮件模板
-│       └── layouts/          # 布局模板
+│   └── migrations/            # 数据库迁移
+├── lang/                      # 多语言
+├── public/                    # 入口文件
+├── resources/views/           # Blade 模板
+│   ├── admin/                 # 后台页面
+│   ├── auth/                  # 登录注册
+│   ├── dashboard/             # 用户面板
+│   ├── emails/                # 邮件模板
+│   └── layouts/               # 布局
 ├── routes/
-│   ├── api.php               # API 路由
-│   ├── web.php               # Web 路由
-│   ├── relay.php             # 转发路由（/v1, /mj, /suno 等）
-│   └── console.php           # 控制台命令路由
-├── storage/                  # 文件存储（日志、缓存、上传）
-├── .env.example              # 环境配置示例
-├── composer.json             # Composer 配置
-└── artisan                   # Laravel CLI
+│   ├── api.php                # API 路由
+│   ├── relay.php              # 中继路由
+│   ├── web.php                # Web 路由
+│   └── console.php            # 定时任务
+└── .env.example               # 环境配置模板
 ```
 
 ---
 
 ## 开发指南
 
-### 新增渠道适配器
+### 添加新渠道适配器
 
-1. 在 `app/Relay/Channel/` 下创建新目录，例如 `Xxx/`
-2. 创建适配器类 `XxxAdapter.php`，实现 `ChannelAdapterInterface` 接口
-3. 在 `app/Enums/ChannelType.php` 中注册新的渠道类型枚举
-4. 在 `config/pease-api.php` 中注册适配器与渠道类型的映射
+1. 在 `app/Relay/Channel/` 下新建目录，如 `MyVendor/`
+2. 创建 `MyVendorAdapter.php`，实现 `ChannelAdapterInterface`
+3. 文本模型可继承 `OpenAICompatibleTrait` 快速实现
+4. 在 `ChannelType` 枚举注册新渠道类型
+5. 运行 `php artisan migrate` 更新数据库
 
-```php
-<?php
-// app/Relay/Channel/Xxx/XxxAdapter.php
+### 本地开发
 
-namespace App\Relay\Channel\Xxx;
+```bash
+# 安装依赖
+composer install
 
-use App\Relay\Channel\BaseAdapter;
-use App\Relay\Channel\ChannelAdapterInterface;
+# 初始化环境
+php artisan pease:install
 
-class XxxAdapter extends BaseAdapter implements ChannelAdapterInterface
-{
-    public function sendRequest(): \Psr\Http\Message\ResponseInterface
-    {
-        // 实现请求转发逻辑
-    }
-
-    public function formatResponse(): array
-    {
-        // 将上游响应转换为 OpenAI 兼容格式
-    }
-}
+# 启动开发服务器 + 队列
+composer dev
 ```
 
 ### 代码规范
 
-项目遵循 PSR-12 代码规范，使用 Laravel Pint 进行格式化：
+项目使用 Laravel Pint 进行代码格式化：
 
 ```bash
-# 格式化代码
 ./vendor/bin/pint
-
-# 检查格式（不修改）
-./vendor/bin/pint --test
-```
-
-### 数据库迁移
-
-```bash
-# 创建新迁移
-php artisan make:migration create_xxx_table
-
-# 执行迁移
-php artisan migrate
-
-# 回滚
-php artisan migrate:rollback
 ```
 
 ---
 
 ## 常见问题
 
-### Q: 安装后访问页面报 502 Bad Gateway？
+<details>
+<summary><b>Q: 与原版 New-API 数据库兼容吗？</b></summary>
 
-**A:** 502 表示 Nginx 已转发请求到 PHP-FPM，但 PHP 进程崩溃/超时。最常见原因：
+数据表结构保持兼容，理论上可以直接导入原版数据库。但建议在新数据库上安装后，通过数据迁移脚本导入。
+</details>
 
-1. **依赖未安装**：服务器 `git pull` 后未执行 `composer install`，`vendor/autoload.php` 不存在导致 PHP fatal error。
-   - 本项目已在 `public/index.php` 增加前置检查，此时会返回 503 + 友好提示页而非 502；若仍 502，请检查 PHP-FPM 是否正常运行。
-2. **PHP-FPM 未启动 / 崩溃**：`systemctl status php8.2-fpm` 查看，必要时 `systemctl restart php8.2-fpm`。
-3. **Nginx fastcgi_pass 配置错误**：sock 路径与实际不符（如宝塔常为 `/tmp/php-cgi-82.sock`），需按实际 PHP 版本调整。
-4. **PHP 致命错误**：查看 `storage/logs/laravel.log` 与 PHP-FPM 日志（`/var/log/php-fpm/error.log` 或宝塔「PHP 日志」）。
-5. **OPcache 缓存旧代码**：更新代码后执行 `systemctl reload php8.2-fpm` 或 `opcache_reset`。
+<details>
+<summary><b>Q: 宝塔面板部署需要解禁 proc_open 吗？</b></summary>
 
-> 排查顺序：先 `php artisan up`（退出维护模式）→ 再 `curl -I http://127.0.0.1/up` 看 `/up` 健康检查 → 最后看 Laravel 日志。
+不需要。PeaseAPI 已适配宝塔安全策略，移除了 Composer 自动脚本中对 `proc_open`/`putenv` 的依赖，开箱即装。
+</details>
 
-### Q: 安装后访问页面报 500 错误？
+<details>
+<summary><b>Q: 性能相比 Go 版原版如何？</b></summary>
 
-**A:** 请检查：
-1. `.env` 文件是否已创建并配置正确的 `APP_KEY`
-2. `storage/` 和 `bootstrap/cache/` 目录是否有写入权限
-3. 数据库连接是否正常
-4. 查看 `storage/logs/laravel.log` 中的错误日志
+PHP-FPM 在常规 API 网关场景下性能完全够用。由于 AI API 的瓶颈主要在上游模型响应时间（通常 1-10 秒），语言本身的性能差异可以忽略。建议开启 OPcache 与 Redis 缓存获得最佳性能。
+</details>
 
-### Q: 如何配置 Midjourney 代理？
+<details>
+<summary><b>Q: 支持 PostgreSQL 吗？</b></summary>
 
-**A:** PeaseAPI 的 Midjourney 接口兼容上游 MJ Proxy API 格式。在 `渠道管理` 中添加渠道，选择类型为 `Midjourney`，填入上游 API 地址与密钥即可。
+当前版本以 MySQL 8.0+ 为主，SQLite 可用于开发测试。PostgreSQL 支持在规划中。
+</details>
 
-### Q: 流式响应（Stream）不工作？
+<details>
+<summary><b>Q: 前端需要 Node.js 构建吗？</b></summary>
 
-**A:** 请确保：
-1. Nginx 配置关闭了 `proxy_buffering`（`proxy_buffering off;`）
-2. PHP 配置关闭了输出缓冲（`output_buffering = Off`）
-3. 未启用 Gzip 压缩流式响应
-
-### Q: 如何重置管理员密码？
-
-**A:** 通过 Artisan 命令：
-```bash
-php artisan tinker
->>> $user = \App\Models\User::where('role', 'root')->first();
->>> $user->password = bcrypt('new-password');
->>> $user->save();
-```
-
-### Q: 支持多数据库吗？
-
-**A:** 生产环境推荐 MySQL 8.0+。开发环境可使用 SQLite（`DB_CONNECTION=sqlite`）。Redis 强烈推荐用于缓存和队列。
-
-### Q: 如何升级到新版本？
-
-**A:**
-```bash
-git pull origin main
-composer install --no-dev --optimize-autoloader
-php artisan migrate --force
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-```
-
-### Q: `git pull` 时提示 "Your local changes to composer.json would be overwritten"？
-
-**A:** 服务器上的 `composer.json`（或其它文件）被本地修改过，与远程新提交冲突。有三种处理方式：
-
-```bash
-# 方式一：丢弃本地修改，以远程为准（推荐，composer.json 一般不应在服务器手动改）
-git checkout -- composer.json
-git pull origin main
-
-# 方式二：暂存本地修改，拉取后再决定是否合并
-git stash
-git pull origin main
-# 如需恢复本地修改：git stash pop （可能需手动解决冲突）
-
-# 方式三：查看本地改了什么，确认后再处理
-git diff composer.json
-```
-
-> 💡 **最佳实践**：生产服务器的代码目录应保持"只读克隆"状态，所有修改通过 Git 推送后再 pull，避免在服务器上直接编辑受版本控制的文件。若需调整依赖，请在本地修改 `composer.json` 并提交，再在服务器 `git pull && composer install`。
-
-### Q: 运行 `php artisan` 报 "open_basedir restriction in effect"？
-
-**A:** 这是宝塔面板/PHP 配置的 `open_basedir` 限制问题。错误类似：
-
-```
-PHP Warning:  require(): open_basedir restriction in effect.
-File(/www/wwwroot/www.peaseapi.com/PeaseAPI/vendor/autoload.php)
-is not within the allowed path(s):
-(/www/wwwroot/www.peaairport.org:/tmp/:/proc/)
-```
-
-**根本原因**：站点 `www.peaseapi.com` 的 `open_basedir` 被错误地指向了另一个站点 `www.peaairport.org` 的目录，导致 PHP 无法访问当前项目目录。
-
-**修复方式（任选其一）**：
-
-```bash
-# 方式一（推荐）：宝塔面板可视化操作
-# 宝塔面板 -> 网站 -> www.peaseapi.com -> 设置 -> 「配置文件」或「防跨站攻击 open_basedir」
-# 将 open_basedir 改为：
-#   /www/wwwroot/www.peaseapi.com/:/tmp/:/proc/
-# 或直接关闭「防跨站攻击」开关（仅当该站点为唯一站点时建议）
-
-# 方式二：修改 .user.ini（宝塔常用方式）
-# 在项目根目录 /www/wwwroot/www.peaseapi.com/PeaseAPI/.user.ini 中：
-#   open_basedir=/www/wwwroot/www.peaseapi.com/:/tmp/:/proc/
-# 修改后需重启 PHP-FPM：
-#   /etc/init.d/php-fpm-82 restart  # 按实际 PHP 版本调整
-
-# 方式三：修改 Nginx 站点配置中的 fastcgi_param
-# 在 fastcgi_param PHP_ADMIN_VALUE "open_basedir=..." 行，改为正确路径
-# 修改后重载 Nginx：nginx -s reload
-```
-
-> ⚠️ `open_basedir` 的路径**必须包含项目实际所在目录**。本例中项目在 `/www/wwwroot/www.peaseapi.com/PeaseAPI/`，因此 `open_basedir` 至少要包含 `/www/wwwroot/www.peaseapi.com/`。
-
-### Q: PHP 警告 "Module mbstring is already loaded"？
-
-**A:** mbstring 扩展被重复加载，通常是因为在 PHP 配置的多个位置都启用了它。此警告一般不影响功能，但应清理以保持配置整洁。
-
-```bash
-# 1. 查找所有加载 mbstring 的位置
-php -m | grep mbstring          # 确认是否真的重复
-php --ini                       # 列出所有加载的 ini 文件
-grep -rn "mbstring" /etc/php*   # 查找所有 mbstring 配置行
-
-# 2. 宝塔环境常见位置：
-#    /www/server/php/82/etc/php.ini          # 主配置
-#    /www/server/php/82/etc/conf.d/*.ini     # 扩展配置目录
-#    确保只在其中一个文件中有：extension=mbstring.so
-
-# 3. 修复后重启 PHP-FPM
-/etc/init.d/php-fpm-82 restart  # 按实际版本调整
-```
-
-> 💡 保留 `php.ini` 中的 `extension=mbstring`，删除 `conf.d/` 目录下重复的 mbstring 加载行即可。
-
-### Q: 宝塔面板安装时提示需要取消 `proc_open` / `putenv` 函数禁用？
-
-**A:** 宝塔面板默认禁用 `proc_open`、`putenv` 等函数。这些函数仅被 **Composer 的 scripts 机制** 用于在安装完成后启动子进程执行 `php artisan package:discover` 等命令；**PeaseAPI 运行时并不依赖这些函数**，因此无需为运行安全而解禁它们。
-
-本项目已在 `composer.json` 中**移除所有依赖 `proc_open` 的自动脚本**（`post-autoload-dump`、`post-update-cmd`、`post-root-package-install`、`post-create-project-cmd`），因此直接 `composer install` 即可在宝塔默认配置下顺利完成，无需取消任何函数禁用。
-
-依赖安装完成后，运行 `pease:install` 命令完成项目初始化（包含原本由 composer scripts 完成的包发现、资源发布、APP_KEY 生成、迁移等）：
-
-```bash
-# 1. 直接安装依赖（无需 --no-scripts，无需解禁 proc_open/putenv）
-composer install
-
-# 2. 用 pease:install 完成初始化（环境检测 / .env / APP_KEY / 包发现 / 资源发布 / 迁移 / storage 链接）
-php artisan pease:install
-```
-
-> 这样既无需在宝塔面板取消 `proc_open` / `putenv` 的禁用（保持服务器安全配置），也能正常完成安装。安装向导页面同样会在「环境检测」步骤中检测并提示这一情况。
+不需要。PeaseAPI 使用 Laravel Blade + Tailwind（CDN）+ Alpine.js，是服务端渲染方案，部署时无需任何前端构建步骤。
+</details>
 
 ---
 
 ## 开源协议
 
-本项目基于 [MIT License](LICENSE) 开源协议。
+PeaseAPI 基于 [MIT License](LICENSE) 开源。
 
 ---
 
 ## 致谢
 
-- [Laravel](https://laravel.com/) - 优雅的 PHP 框架
-- [OpenAI](https://openai.com/) - GPT 系列 API
-- [Anthropic](https://anthropic.com/) - Claude 系列 API
-- [Google](https://ai.google.dev/) - Gemini API
-- 以及所有支持的上游 AI 服务商
-
----
-
-<p align="center">
-  PeaseAPI © 2024-2026. Made with ❤️ by PeaseAPI Team.
-</p>
+- [New-API](https://github.com/Calcium-Ion/new-api) -- 原版项目，感谢其出色的产品设计
+- [Laravel](https://laravel.com/) -- 优雅的 PHP 框架
+- [Tailwind CSS](https://tailwindcss.com/) -- 实用优先的 CSS 框架
+- [Alpine.js](https://alpinejs.dev/) -- 轻量级 JavaScript 框架

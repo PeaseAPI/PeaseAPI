@@ -6,12 +6,14 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * 系统性能检查中间件
  * 对标 new-api middleware/system_performance_check.go
- * 
+ *
  * 检查系统性能指标，如果负载过高则返回 503
  */
 class SystemPerformanceCheck
@@ -32,7 +34,7 @@ class SystemPerformanceCheck
     public function handle(Request $request, Closure $next): Response
     {
         // 检查是否启用性能检查
-        if (!$this->isEnabled()) {
+        if (! $this->isEnabled()) {
             return $next($request);
         }
 
@@ -40,7 +42,7 @@ class SystemPerformanceCheck
         if ($this->isSystemOverloaded()) {
             return response()->json([
                 'error' => [
-                    'message' => 'System is overloaded, please try again later.',
+                    'message' => __('System is overloaded, please try again later.'),
                     'type' => 'server_error',
                     'code' => 'system_overloaded',
                 ],
@@ -51,7 +53,7 @@ class SystemPerformanceCheck
         if ($this->isConcurrentLimitReached()) {
             return response()->json([
                 'error' => [
-                    'message' => 'Too many requests, please try again later.',
+                    'message' => __('Too many requests, please try again later.'),
                     'type' => 'rate_limit_error',
                     'code' => 'concurrent_limit',
                 ],
@@ -67,7 +69,7 @@ class SystemPerformanceCheck
         $startTime = $request->attributes->get('request_start_time', 0);
         if ($startTime > 0) {
             $responseTime = (microtime(true) - $startTime) * 1000;
-            
+
             // 如果响应时间过长，记录警告日志
             if ($responseTime > $this->maxResponseTime) {
                 $this->logSlowRequest($request, $responseTime);
@@ -130,6 +132,7 @@ class SystemPerformanceCheck
             $output = @file_get_contents('/proc/loadavg');
             if ($output !== false) {
                 $parts = explode(' ', $output);
+
                 return (float) $parts[0];
             }
         }
@@ -161,6 +164,7 @@ class SystemPerformanceCheck
                 $count = substr_count($cpuinfo, 'processor:');
                 if ($count > 0) {
                     $cpuCount = $count;
+
                     return $cpuCount;
                 }
             }
@@ -171,12 +175,14 @@ class SystemPerformanceCheck
             $envCount = $_ENV['NUMBER_OF_PROCESSORS'] ?? $_SERVER['NUMBER_OF_PROCESSORS'] ?? null;
             if ($envCount !== null && (int) $envCount > 0) {
                 $cpuCount = (int) $envCount;
+
                 return $cpuCount;
             }
         }
 
         // 其他平台（macOS 等）：使用默认值
         $cpuCount = 4;
+
         return $cpuCount;
     }
 
@@ -188,8 +194,8 @@ class SystemPerformanceCheck
         // 使用 Redis 跟踪并发请求数
         try {
             $key = 'pease:concurrent_requests';
-            $current = \Illuminate\Support\Facades\Redis::get($key);
-            
+            $current = Redis::get($key);
+
             if ($current !== null && (int) $current > $this->maxConcurrent) {
                 return true;
             }
@@ -205,7 +211,7 @@ class SystemPerformanceCheck
      */
     protected function logSlowRequest(Request $request, float $responseTime): void
     {
-        \Illuminate\Support\Facades\Log::warning('Slow request detected', [
+        Log::warning('Slow request detected', [
             'method' => $request->method(),
             'uri' => $request->getUri(),
             'response_time_ms' => round($responseTime, 2),

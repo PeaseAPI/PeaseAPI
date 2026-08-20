@@ -8,11 +8,17 @@ use Illuminate\Support\Facades\Cache;
 class Option extends Model
 {
     protected $table = 'options';
+
     public $timestamps = false;
+
     protected $primaryKey = 'key';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
+
     protected $fillable = ['key', 'value'];
+
     protected $casts = [];
 
     /**
@@ -26,6 +32,7 @@ class Option extends Model
     {
         $value = Cache::remember("option:{$key}", 60, function () use ($key) {
             $row = static::where('key', $key)->value('value');
+
             return $row; // raw string or null
         });
 
@@ -61,20 +68,21 @@ class Option extends Model
     {
         if ($key !== null) {
             Cache::forget("option:{$key}");
+
             return;
         }
         try {
             $cache = Cache::getStore();
             if (method_exists($cache, 'getRedis')) {
                 $redis = $cache->getRedis();
-                $prefix = config('cache.prefix', '') . ':option:';
+                $prefix = config('cache.prefix', '').':option:';
                 $cursor = null;
                 do {
                     [$cursor, $keys] = $redis->scan($cursor ?? 0, ['match' => "{$prefix}*", 'count' => 200]);
-                    if (!empty($keys)) {
+                    if (! empty($keys)) {
                         $redis->del($keys);
                     }
-                } while (!empty($cursor) && $cursor !== '0');
+                } while (! empty($cursor) && $cursor !== '0');
             }
         } catch (\Throwable $e) {
             // ignore cache errors
@@ -83,7 +91,7 @@ class Option extends Model
 
     private static function castValue(mixed $value): mixed
     {
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return $value;
         }
         $trimmed = trim($value);
@@ -93,8 +101,13 @@ class Option extends Model
                 return $decoded;
             }
         }
-        if ($value === 'true') return true;
-        if ($value === 'false') return false;
+        if ($value === 'true') {
+            return true;
+        }
+        if ($value === 'false') {
+            return false;
+        }
+
         return $value;
     }
 }

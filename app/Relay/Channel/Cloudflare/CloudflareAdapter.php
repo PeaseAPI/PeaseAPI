@@ -18,6 +18,7 @@ class CloudflareAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'cloudflare';
+
     protected int $apiType = ApiType::CLOUDFLARE_WORKERS->value;
 
     /** @var array<int, string> */

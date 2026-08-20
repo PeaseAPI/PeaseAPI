@@ -94,7 +94,7 @@ class CheckinController extends Controller
     {
         $user = $request->user();
 
-        if (!$this->isCheckinEnabled()) {
+        if (! $this->isCheckinEnabled()) {
             return $this->error('签到功能未启用', 403);
         }
 
@@ -145,6 +145,7 @@ class CheckinController extends Controller
             });
         } catch (Throwable $e) {
             Log::error('Checkin failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+
             return $this->error('签到失败，请稍后重试', 500);
         }
 
@@ -158,7 +159,7 @@ class CheckinController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => '签到成功',
+            'message' => __('Check-in successful'),
             'data' => [
                 'quota' => $result['total'],
                 'base' => $result['base'],
@@ -200,6 +201,7 @@ class CheckinController extends Controller
 
             if ($checked) {
                 $streak++;
+
                 continue;
             }
 
@@ -216,18 +218,21 @@ class CheckinController extends Controller
     private function isCheckinEnabled(): bool
     {
         $val = function_exists('getOption') ? getOption('CheckinEnabled', false) : false;
+
         return filter_var($val, FILTER_VALIDATE_BOOLEAN);
     }
 
     private function getBaseQuota(): int
     {
         $val = function_exists('getOption') ? getOption('CheckinQuota', 100) : 100;
+
         return (int) $val;
     }
 
     private function isStreakEnabled(): bool
     {
         $val = function_exists('getOption') ? getOption('CheckinStreakEnabled', false) : false;
+
         return filter_var($val, FILTER_VALIDATE_BOOLEAN);
     }
 
@@ -239,13 +244,13 @@ class CheckinController extends Controller
      */
     private function getStreakBonus(int $streak): int
     {
-        if (!$this->isStreakEnabled() || $streak <= 1) {
+        if (! $this->isStreakEnabled() || $streak <= 1) {
             return 0;
         }
 
         $rulesJson = function_exists('getOption') ? getOption('CheckinStreakRules', '[]') : '[]';
         $rules = json_decode((string) $rulesJson, true);
-        if (!is_array($rules)) {
+        if (! is_array($rules)) {
             return 0;
         }
 
@@ -260,5 +265,4 @@ class CheckinController extends Controller
 
         return $bonus;
     }
-
 }

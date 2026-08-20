@@ -18,6 +18,7 @@ class PerplexityAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'perplexity';
+
     protected int $apiType = ApiType::PERPLEXITY->value;
 
     /** @var array<int, string> */

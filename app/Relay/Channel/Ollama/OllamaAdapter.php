@@ -18,6 +18,7 @@ class OllamaAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'ollama';
+
     protected int $apiType = ApiType::OLLAMA->value;
 
     /** @var array<int, string> */

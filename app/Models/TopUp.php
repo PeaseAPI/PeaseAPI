@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class TopUp extends Model
 {
     protected $table = 'top_ups';
+
     public $timestamps = false;
 
     protected $fillable = [

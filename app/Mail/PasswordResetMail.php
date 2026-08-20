@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Services\OptionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -19,8 +20,7 @@ class PasswordResetMail extends Mailable implements ShouldQueue
     public function __construct(
         public readonly string $link,
         public readonly string $email,
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {
@@ -36,7 +36,7 @@ class PasswordResetMail extends Mailable implements ShouldQueue
             with: [
                 'link' => $this->link,
                 'email' => $this->email,
-                'systemName' => \App\Services\OptionService::get('SystemName', config('app.name', 'Pease API')),
+                'systemName' => OptionService::get('SystemName', config('app.name', 'Pease API')),
             ],
         );
     }

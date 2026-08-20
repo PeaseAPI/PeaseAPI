@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use Illuminate\Http\Request;
+
 /**
  * Token Auth Read-Only - 对标 new-api TokenAuthReadOnly
  *
@@ -11,14 +13,14 @@ namespace App\Http\Middleware;
  */
 class TokenAuthReadOnly extends TokenAuth
 {
-    public function handle(\Illuminate\Http\Request $request, \Closure $next)
+    public function handle(Request $request, \Closure $next)
     {
         $method = strtoupper($request->method());
-        if (!in_array($method, ['GET', 'HEAD', 'OPTIONS'], true)) {
+        if (! in_array($method, ['GET', 'HEAD', 'OPTIONS'], true)) {
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => '只读令牌不允许执行写操作',
+                    'message' => __('Read-only tokens are not allowed to perform write operations'),
                     'type' => 'invalid_request_error',
                     'code' => 'read_only_token',
                 ],

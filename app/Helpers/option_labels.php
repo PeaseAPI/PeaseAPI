@@ -17,7 +17,7 @@
  * "Creem", "Stripe", "Epay", "MJNotify", "SunoNotify", etc.) are kept as
  * their natural capitalisation.
  */
-if (!function_exists('option_label')) {
+if (! function_exists('option_label')) {
     /**
      * Convert a camelCase option key into a spaced English label.
      */
@@ -33,11 +33,12 @@ if (!function_exists('option_label')) {
         // uppercase-then-lowercase sequence (so "IPRateLimit" -> "IP Rate Limit"
         // and "OIDCWellKnown" -> "OIDC Well Known").
         $label = preg_replace('/([A-Z]+)([A-Z][a-z])/', '$1 $2', $label);
+
         return trim($label);
     }
 }
 
-if (!function_exists('option_trans')) {
+if (! function_exists('option_trans')) {
     /**
      * Translate an option key with fallback.
      *
@@ -55,6 +56,7 @@ if (!function_exists('option_trans')) {
         if ($translated === $label) {
             return $label;
         }
+
         return $translated;
     }
 }

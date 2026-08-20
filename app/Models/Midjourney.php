@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 /**
  * Midjourney 任务模型
- * 
+ *
  * 对标源项目: model/midjourney.go
- * 
+ *
  * @property int $id
  * @property int $code
  * @property int $user_id
@@ -182,15 +182,15 @@ class Midjourney extends Model
     ): array {
         $query = static::where('user_id', $userId);
 
-        if (!empty($queryParams['mj_id'])) {
+        if (! empty($queryParams['mj_id'])) {
             $query->where('mj_id', $queryParams['mj_id']);
         }
 
-        if (!empty($queryParams['start_timestamp'])) {
+        if (! empty($queryParams['start_timestamp'])) {
             $query->where('submit_time', '>=', (int) $queryParams['start_timestamp']);
         }
 
-        if (!empty($queryParams['end_timestamp'])) {
+        if (! empty($queryParams['end_timestamp'])) {
             $query->where('submit_time', '<=', (int) $queryParams['end_timestamp']);
         }
 
@@ -211,19 +211,19 @@ class Midjourney extends Model
     ): array {
         $query = static::query();
 
-        if (!empty($queryParams['channel_id'])) {
+        if (! empty($queryParams['channel_id'])) {
             $query->where('channel_id', $queryParams['channel_id']);
         }
 
-        if (!empty($queryParams['mj_id'])) {
+        if (! empty($queryParams['mj_id'])) {
             $query->where('mj_id', $queryParams['mj_id']);
         }
 
-        if (!empty($queryParams['start_timestamp'])) {
+        if (! empty($queryParams['start_timestamp'])) {
             $query->where('submit_time', '>=', (int) $queryParams['start_timestamp']);
         }
 
-        if (!empty($queryParams['end_timestamp'])) {
+        if (! empty($queryParams['end_timestamp'])) {
             $query->where('submit_time', '<=', (int) $queryParams['end_timestamp']);
         }
 
@@ -241,15 +241,15 @@ class Midjourney extends Model
     {
         $query = static::where('user_id', $userId);
 
-        if (!empty($queryParams['mj_id'])) {
+        if (! empty($queryParams['mj_id'])) {
             $query->where('mj_id', $queryParams['mj_id']);
         }
 
-        if (!empty($queryParams['start_timestamp'])) {
+        if (! empty($queryParams['start_timestamp'])) {
             $query->where('submit_time', '>=', (int) $queryParams['start_timestamp']);
         }
 
-        if (!empty($queryParams['end_timestamp'])) {
+        if (! empty($queryParams['end_timestamp'])) {
             $query->where('submit_time', '<=', (int) $queryParams['end_timestamp']);
         }
 
@@ -263,19 +263,19 @@ class Midjourney extends Model
     {
         $query = static::query();
 
-        if (!empty($queryParams['channel_id'])) {
+        if (! empty($queryParams['channel_id'])) {
             $query->where('channel_id', $queryParams['channel_id']);
         }
 
-        if (!empty($queryParams['mj_id'])) {
+        if (! empty($queryParams['mj_id'])) {
             $query->where('mj_id', $queryParams['mj_id']);
         }
 
-        if (!empty($queryParams['start_timestamp'])) {
+        if (! empty($queryParams['start_timestamp'])) {
             $query->where('submit_time', '>=', (int) $queryParams['start_timestamp']);
         }
 
-        if (!empty($queryParams['end_timestamp'])) {
+        if (! empty($queryParams['end_timestamp'])) {
             $query->where('submit_time', '<=', (int) $queryParams['end_timestamp']);
         }
 
@@ -317,6 +317,7 @@ class Midjourney extends Model
         }
 
         $decoded = json_decode($this->buttons, true);
+
         return is_array($decoded) ? $decoded : [];
     }
 
@@ -330,6 +331,7 @@ class Midjourney extends Model
         }
 
         $decoded = json_decode($this->video_urls, true);
+
         return is_array($decoded) ? $decoded : [];
     }
 
@@ -343,6 +345,7 @@ class Midjourney extends Model
         }
 
         $decoded = json_decode($this->properties);
+
         return is_object($decoded) ? $decoded : null;
     }
 

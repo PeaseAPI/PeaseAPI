@@ -9,6 +9,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class WebhookJob implements ShouldQueue
 {
@@ -19,9 +21,9 @@ class WebhookJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            \Illuminate\Support\Facades\Http::timeout(30)->post($this->url, $this->payload);
+            Http::timeout(30)->post($this->url, $this->payload);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Webhook failed: " . $e->getMessage());
+            Log::error('Webhook failed: '.$e->getMessage());
         }
     }
 }

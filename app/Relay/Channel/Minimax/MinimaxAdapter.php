@@ -18,6 +18,7 @@ class MinimaxAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'minimax';
+
     protected int $apiType = ApiType::MINIMAX->value;
 
     /** @var array<int, string> */

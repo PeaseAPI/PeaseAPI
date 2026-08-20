@@ -18,6 +18,7 @@ class AI360Adapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'ai360';
+
     protected int $apiType = ApiType::QIHOO_360->value;
 
     /** @var array<int, string> */

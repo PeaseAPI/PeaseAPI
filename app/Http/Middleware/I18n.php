@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Services\OptionService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,8 +35,8 @@ class I18n
     {
         // 优先使用系统设置中的 Language 选项
         try {
-            $systemLang = \App\Services\OptionService::get('Language');
-            if (!empty($systemLang)) {
+            $systemLang = OptionService::get('Language');
+            if (! empty($systemLang)) {
                 foreach ($this->supportedLanguages as $supported) {
                     if (strcasecmp($systemLang, $supported) === 0) {
                         return $supported;
@@ -55,7 +56,7 @@ class I18n
 
         // 其次使用 cookie 中保存的语言
         $cookieLang = $request->cookie('locale');
-        if (!empty($cookieLang)) {
+        if (! empty($cookieLang)) {
             foreach ($this->supportedLanguages as $supported) {
                 if (strcasecmp($cookieLang, $supported) === 0) {
                     return $supported;

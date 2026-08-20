@@ -18,6 +18,7 @@ class CodexAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'codex';
+
     protected int $apiType = ApiType::CODEX->value;
 
     /** @var array<int, string> */

@@ -43,7 +43,7 @@ trait OpenAICompatibleTrait
         $body = $info->requestBody;
 
         // 应用参数覆盖
-        if (!empty($info->paramOverride)) {
+        if (! empty($info->paramOverride)) {
             foreach ($info->paramOverride as $key => $value) {
                 $body[$key] = $value;
             }
@@ -63,7 +63,7 @@ trait OpenAICompatibleTrait
         $info->isRerank = $info->relayMode === RelayMode::Rerank;
 
         // 流式选项支持
-        if ($info->isStream && $info->supportStreamOptions && !isset($body['stream_options'])) {
+        if ($info->isStream && $info->supportStreamOptions && ! isset($body['stream_options'])) {
             $body['stream_options'] = ['include_usage' => true];
         }
 
@@ -102,7 +102,7 @@ trait OpenAICompatibleTrait
      */
     public function formatResponse(RelayInfo $info): void
     {
-        if (!$info->isStream) {
+        if (! $info->isStream) {
             $body = json_decode($info->responseBody, true);
             if (is_array($body) && isset($body['usage'])) {
                 $info->promptTokens = (int) ($body['usage']['prompt_tokens'] ?? 0);
@@ -118,6 +118,7 @@ trait OpenAICompatibleTrait
     {
         if ($info->isStream) {
             $this->streamHandler($info);
+
             return;
         }
 
@@ -151,6 +152,7 @@ trait OpenAICompatibleTrait
                 $info->recordFirstResponse();
                 echo $data;
                 flush();
+
                 return strlen($data);
             },
             CURLOPT_TIMEOUT => 300,
@@ -202,6 +204,7 @@ trait OpenAICompatibleTrait
     {
         $pathMap = $this->getDefaultPathMap();
         $path = $pathMap[$info->relayMode] ?? '/v1/chat/completions';
+
         return $info->getUpstreamUrl($path);
     }
 
@@ -213,7 +216,7 @@ trait OpenAICompatibleTrait
     protected function buildRequestHeaders(RelayInfo $info): array
     {
         $headers = [
-            'Authorization' => 'Bearer ' . $info->apiKey,
+            'Authorization' => 'Bearer '.$info->apiKey,
             'Content-Type' => 'application/json',
         ];
 
@@ -228,15 +231,16 @@ trait OpenAICompatibleTrait
     /**
      * 格式化 cURL 头
      *
-     * @param array<string, string> $headers
+     * @param  array<string, string>  $headers
      * @return array<int, string>
      */
     protected function formatCurlHeaders(array $headers): array
     {
         $result = [];
         foreach ($headers as $key => $value) {
-            $result[] = $key . ': ' . $value;
+            $result[] = $key.': '.$value;
         }
+
         return $result;
     }
 }

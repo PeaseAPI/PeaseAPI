@@ -17,12 +17,13 @@ class SunoTaskAdapter extends TaskAdapter
     protected function buildSubmitUrl(string $baseUrl, RelayInfo $info): string
     {
         $action = $info->getParam('suno_action', 'generate');
-        return $baseUrl . '/api/v1/suno/' . $action;
+
+        return $baseUrl.'/api/v1/suno/'.$action;
     }
 
     protected function buildFetchUrl(string $baseUrl, string $taskId, RelayInfo $info): string
     {
-        return $baseUrl . '/api/v1/suno/fetch/' . $taskId;
+        return $baseUrl.'/api/v1/suno/fetch/'.$taskId;
     }
 
     protected function buildRequestBody(RelayInfo $info): array

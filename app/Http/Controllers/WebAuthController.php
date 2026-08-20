@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Enums\UserRole;
+use App\Models\User;
 use App\Services\SmsCodeService;
-use App\Services\EmailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -20,6 +19,7 @@ class WebAuthController extends Controller
         if (Auth::check()) {
             return redirect()->route('dashboard');
         }
+
         return view('auth.login');
     }
 
@@ -32,16 +32,16 @@ class WebAuthController extends Controller
 
         if ($loginType === 'sms') {
             $validated = $request->validate([
-                'phone'    => ['required', 'string', 'regex:/^1[3-9]\d{9}$/'],
+                'phone' => ['required', 'string', 'regex:/^1[3-9]\d{9}$/'],
                 'sms_code' => ['required', 'string', 'digits:6'],
             ]);
 
             $user = User::where('phone', $validated['phone'])->first();
-            if (!$user) {
+            if (! $user) {
                 return back()->withErrors(['phone' => '该手机号尚未注册'])->withInput();
             }
 
-            if (!app(SmsCodeService::class)->verify($validated['phone'], $validated['sms_code'])) {
+            if (! app(SmsCodeService::class)->verify($validated['phone'], $validated['sms_code'])) {
                 return back()->withErrors(['sms_code' => '短信验证码错误或已过期'])->withInput();
             }
 
@@ -67,7 +67,7 @@ class WebAuthController extends Controller
             ->orWhere('phone', $credentials['username'])
             ->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             return back()->withErrors(['username' => '账号或密码错误'])->withInput();
         }
 
@@ -87,6 +87,7 @@ class WebAuthController extends Controller
         if (Auth::check()) {
             return redirect()->route('dashboard');
         }
+
         return view('auth.register');
     }
 
@@ -99,34 +100,34 @@ class WebAuthController extends Controller
 
         if ($registerType === 'phone') {
             $validated = $request->validate([
-                'phone'                => ['required', 'string', 'regex:/^1[3-9]\d{9}$/', Rule::unique('users', 'phone')],
-                'sms_code'             => ['required', 'string', 'digits:6'],
-                'password'             => ['required', 'string', 'min:8', 'confirmed'],
+                'phone' => ['required', 'string', 'regex:/^1[3-9]\d{9}$/', Rule::unique('users', 'phone')],
+                'sms_code' => ['required', 'string', 'digits:6'],
+                'password' => ['required', 'string', 'min:8', 'confirmed'],
             ]);
 
-            if (!app(SmsCodeService::class)->verify($validated['phone'], $validated['sms_code'])) {
+            if (! app(SmsCodeService::class)->verify($validated['phone'], $validated['sms_code'])) {
                 return back()->withErrors(['sms_code' => '短信验证码错误或已过期'])->withInput();
             }
 
             // 手机号注册：自动生成用户名
-            $username = 'user_' . Str::random(8);
+            $username = 'user_'.Str::random(8);
             while (User::where('username', $username)->exists()) {
-                $username = 'user_' . Str::random(8);
+                $username = 'user_'.Str::random(8);
             }
 
             $user = User::create([
-                'username'      => $username,
-                'phone'         => $validated['phone'],
-                'password'      => Hash::make($validated['password']),
-                'display_name'  => $username,
-                'role'          => UserRole::USER->value,
-                'status'        => 1,
-                'quota'         => 0,
-                'used_quota'    => 0,
+                'username' => $username,
+                'phone' => $validated['phone'],
+                'password' => Hash::make($validated['password']),
+                'display_name' => $username,
+                'role' => UserRole::USER->value,
+                'status' => 1,
+                'quota' => 0,
+                'used_quota' => 0,
                 'request_count' => 0,
-                'group'         => 'default',
-                'aff_code'      => strtoupper(Str::random(8)),
-                'created_at'    => time(),
+                'group' => 'default',
+                'aff_code' => strtoupper(Str::random(8)),
+                'created_at' => time(),
                 'last_login_at' => time(),
             ]);
 
@@ -139,23 +140,23 @@ class WebAuthController extends Controller
         // 邮箱注册
         $validated = $request->validate([
             'username' => ['required', 'string', 'min:3', 'max:32', 'alpha_num', Rule::unique('users', 'username')],
-            'email'    => ['required', 'email', Rule::unique('users', 'email')],
+            'email' => ['required', 'email', Rule::unique('users', 'email')],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         $user = User::create([
-            'username'      => $validated['username'],
-            'email'         => $validated['email'],
-            'password'      => Hash::make($validated['password']),
-            'display_name'  => $validated['username'],
-            'role'          => UserRole::USER->value,
-            'status'        => 1,
-            'quota'         => 0,
-            'used_quota'    => 0,
+            'username' => $validated['username'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'display_name' => $validated['username'],
+            'role' => UserRole::USER->value,
+            'status' => 1,
+            'quota' => 0,
+            'used_quota' => 0,
             'request_count' => 0,
-            'group'         => 'default',
-            'aff_code'      => strtoupper(Str::random(8)),
-            'created_at'    => time(),
+            'group' => 'default',
+            'aff_code' => strtoupper(Str::random(8)),
+            'created_at' => time(),
             'last_login_at' => time(),
         ]);
 
@@ -170,6 +171,7 @@ class WebAuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect()->route('home');
     }
 
@@ -192,17 +194,17 @@ class WebAuthController extends Controller
 
         if ($resetType === 'phone') {
             $validated = $request->validate([
-                'phone'                => ['required', 'string', 'regex:/^1[3-9]\d{9}$/'],
-                'sms_code'             => ['required', 'string', 'digits:6'],
-                'password'             => ['required', 'string', 'min:8', 'confirmed'],
+                'phone' => ['required', 'string', 'regex:/^1[3-9]\d{9}$/'],
+                'sms_code' => ['required', 'string', 'digits:6'],
+                'password' => ['required', 'string', 'min:8', 'confirmed'],
             ]);
 
             $user = User::where('phone', $validated['phone'])->first();
-            if (!$user) {
+            if (! $user) {
                 return back()->withErrors(['phone' => '该手机号尚未注册'])->withInput();
             }
 
-            if (!app(SmsCodeService::class)->verify($validated['phone'], $validated['sms_code'])) {
+            if (! app(SmsCodeService::class)->verify($validated['phone'], $validated['sms_code'])) {
                 return back()->withErrors(['sms_code' => '短信验证码错误或已过期'])->withInput();
             }
 
@@ -241,13 +243,13 @@ class WebAuthController extends Controller
         // 场景校验：注册时手机号不应已注册；登录/重置时手机号应已注册
         $exists = User::where('phone', $phone)->exists();
         if ($scene === 'register' && $exists) {
-            return response()->json(['success' => false, 'message' => '该手机号已注册']);
+            return response()->json(['success' => false, 'message' => __('This phone number is already registered')]);
         }
-        if (in_array($scene, ['login', 'reset'], true) && !$exists) {
-            return response()->json(['success' => false, 'message' => '该手机号尚未注册']);
+        if (in_array($scene, ['login', 'reset'], true) && ! $exists) {
+            return response()->json(['success' => false, 'message' => __('This phone number is not registered')]);
         }
         if ($scene === 'change_phone' && $exists) {
-            return response()->json(['success' => false, 'message' => '该手机号已被其他账号绑定']);
+            return response()->json(['success' => false, 'message' => __('This phone number is already bound to another account')]);
         }
 
         $ip = $request->ip() ?? '';

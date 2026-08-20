@@ -78,19 +78,21 @@ abstract class TaskAdapter extends BaseAdapter implements ChannelAdapterInterfac
      */
     protected function handleSubmitResponse(Response $response, RelayInfo $info): array
     {
-        if (!$response->successful()) {
-            Log::error("Task submit failed", [
+        if (! $response->successful()) {
+            Log::error('Task submit failed', [
                 'platform' => $this->platform,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
+
             return [
                 'success' => false,
-                'message' => '任务提交失败: ' . $response->body(),
+                'message' => '任务提交失败: '.$response->body(),
             ];
         }
 
         $data = $response->json();
+
         return $this->parseSubmitResponse($data, $info);
     }
 
@@ -99,14 +101,15 @@ abstract class TaskAdapter extends BaseAdapter implements ChannelAdapterInterfac
      */
     protected function handleFetchResponse(Response $response, RelayInfo $info): array
     {
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return [
                 'success' => false,
-                'message' => '任务查询失败',
+                'message' => __('Task query failed'),
             ];
         }
 
         $data = $response->json();
+
         return $this->parseFetchResponse($data, $info);
     }
 
@@ -144,7 +147,7 @@ abstract class TaskAdapter extends BaseAdapter implements ChannelAdapterInterfac
 
         return [
             'Content-Type' => 'application/json',
-            'Authorization' => 'Bearer ' . $apiKey,
+            'Authorization' => 'Bearer '.$apiKey,
         ];
     }
 
@@ -157,8 +160,10 @@ abstract class TaskAdapter extends BaseAdapter implements ChannelAdapterInterfac
         // 支持多 key，取第一个
         if (str_contains($key, "\n")) {
             $keys = array_filter(explode("\n", $key));
+
             return $keys[array_rand($keys)] ?? '';
         }
+
         return $key;
     }
 
@@ -200,7 +205,7 @@ abstract class TaskAdapter extends BaseAdapter implements ChannelAdapterInterfac
 
     public function errorHandler(RelayInfo $info): void
     {
-        $error = $info->getError() ?? ['message' => '未知错误'];
+        $error = $info->getError() ?? ['message' => __('Unknown error')];
         $info->setResponseBody(json_encode([
             'success' => false,
             'message' => $error['message'] ?? '任务处理失败',

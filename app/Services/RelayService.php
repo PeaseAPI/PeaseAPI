@@ -2,27 +2,25 @@
 
 namespace App\Services;
 
-use App\Models\Channel;
-use App\Models\Token;
-use App\Models\Log;
 use App\Models\Ability;
-use App\Enums\ApiType;
-use Illuminate\Http\Client\PendingRequest;
+use App\Models\Channel;
+use App\Models\Log;
+use App\Models\Token;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log as LaravelLog;
 
 class RelayService
 {
-    public function relay(Token $token, string $abilityName, array $payload, string $requestId = null): array
+    public function relay(Token $token, string $abilityName, array $payload, ?string $requestId = null): array
     {
         $ability = Ability::where('name', $abilityName)->where('enabled', true)->first();
-        if (!$ability) {
-            return ['success' => false, 'error' => 'Ability not found or disabled', 'status' => 404];
+        if (! $ability) {
+            return ['success' => false, 'error' => __('Ability not found or disabled'), 'status' => 404];
         }
 
         $tokenAbility = $token->abilities()->where('ability_id', $ability->id)->first();
-        if (!$tokenAbility) {
-            return ['success' => false, 'error' => 'Token does not have this ability', 'status' => 403];
+        if (! $tokenAbility) {
+            return ['success' => false, 'error' => __('Token does not have this ability'), 'status' => 403];
         }
 
         $channels = Channel::whereHas('abilities', function ($q) use ($ability) {
@@ -30,7 +28,7 @@ class RelayService
         })->where('status', 1)->orderBy('priority', 'desc')->get();
 
         if ($channels->isEmpty()) {
-            return ['success' => false, 'error' => 'No available channels', 'status' => 503];
+            return ['success' => false, 'error' => __('No available channels'), 'status' => 503];
         }
 
         $lastError = null;
@@ -39,12 +37,14 @@ class RelayService
                 $response = $this->sendRequest($channel, $ability, $payload);
                 if ($response['success']) {
                     $this->logRequest($token, $channel, $ability, $response, $requestId);
+
                     return $response;
                 }
                 $lastError = $response['error'] ?? 'Unknown error';
             } catch (\Exception $e) {
                 $lastError = $e->getMessage();
-                LaravelLog::error("Channel {$channel->id} failed: " . $e->getMessage());
+                LaravelLog::error("Channel {$channel->id} failed: ".$e->getMessage());
+
                 continue;
             }
         }
@@ -56,16 +56,16 @@ class RelayService
     {
         $baseUrl = rtrim($channel->base_url, '/');
         $path = $ability->setting['path'] ?? '';
-        $url = $baseUrl . $path;
+        $url = $baseUrl.$path;
 
         $headers = [];
         if ($channel->type === 1) { // OpenAI
-            $headers['Authorization'] = 'Bearer ' . $channel->key;
+            $headers['Authorization'] = 'Bearer '.$channel->key;
         } elseif ($channel->type === 2) { // Anthropic
             $headers['x-api-key'] = $channel->key;
             $headers['anthropic-version'] = '2023-06-01';
         } else {
-            $headers['Authorization'] = 'Bearer ' . $channel->key;
+            $headers['Authorization'] = 'Bearer '.$channel->key;
         }
 
         $timeout = config('pease-api.relay.timeout', 120);
@@ -73,6 +73,7 @@ class RelayService
 
         if ($response->successful()) {
             $data = $response->json();
+
             return ['success' => true, 'data' => $data, 'status' => $response->status()];
         }
 

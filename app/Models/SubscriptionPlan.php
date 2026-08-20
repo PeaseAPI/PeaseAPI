@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * 订阅计划表
@@ -83,7 +85,7 @@ class SubscriptionPlan extends Model
             return $cache[$column];
         }
         try {
-            return $cache[$column] = \Illuminate\Support\Facades\Schema::hasColumn('subscription_plans', $column);
+            return $cache[$column] = Schema::hasColumn('subscription_plans', $column);
         } catch (\Throwable $e) {
             // 查询失败时保守返回 false，避免阻断页面
             return $cache[$column] = false;
@@ -93,7 +95,7 @@ class SubscriptionPlan extends Model
     /**
      * 获取启用中的订阅计划（容错：旧表无 status/sort 列时回退为全表查询）。
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, self>
+     * @return Collection<int, self>
      */
     public static function getActivePlans()
     {

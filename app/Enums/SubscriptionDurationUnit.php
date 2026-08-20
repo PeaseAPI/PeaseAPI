@@ -12,7 +12,7 @@ enum SubscriptionDurationUnit: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::YEAR => '年',
             self::MONTH => '月',
             self::DAY => '天',

@@ -19,7 +19,7 @@ class SubscriptionResetService
 
         Subscription::where('status', 1)
             ->where('period_end', '<', $now)
-            ->chunkById(100, function ($subscriptions) use (&$count, $now) {
+            ->chunkById(100, function ($subscriptions) use (&$count) {
                 foreach ($subscriptions as $subscription) {
                     $this->expireSubscription($subscription);
                     $count++;
@@ -27,6 +27,7 @@ class SubscriptionResetService
             });
 
         Log::info('subscription reset expired', ['count' => $count]);
+
         return $count;
     }
 
@@ -55,6 +56,7 @@ class SubscriptionResetService
         }
 
         Log::info('subscription period quota reset', ['count' => $count]);
+
         return $count;
     }
 

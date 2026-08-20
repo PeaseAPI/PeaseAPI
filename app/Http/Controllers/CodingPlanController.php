@@ -269,6 +269,7 @@ class CodingPlanController extends Controller
             if ($plan->isCodingPlan() && $plan->coding_vendor) {
                 $planArray['pool_overview'] = $this->poolService->vendorOverview($plan->coding_vendor);
             }
+
             return $planArray;
         });
 
@@ -378,8 +379,10 @@ class CodingPlanController extends Controller
                 return (int) $value;
             }
             $ts = strtotime($value);
+
             return $ts !== false ? $ts : 0;
         }
+
         return 0;
     }
 }

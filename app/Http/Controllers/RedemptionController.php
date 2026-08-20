@@ -44,7 +44,7 @@ class RedemptionController extends Controller
         if ($keyword = $request->input('keyword')) {
             $query->where(function ($q) use ($keyword) {
                 $q->where('name', 'like', "%{$keyword}%")
-                  ->orWhere('key', 'like', "%{$keyword}%");
+                    ->orWhere('key', 'like', "%{$keyword}%");
             });
         }
 
@@ -74,7 +74,7 @@ class RedemptionController extends Controller
         if ($keyword !== '') {
             $query->where(function ($q) use ($keyword) {
                 $q->where('name', 'like', "%{$keyword}%")
-                  ->orWhere('key', 'like', "%{$keyword}%");
+                    ->orWhere('key', 'like', "%{$keyword}%");
             });
         }
 
@@ -89,7 +89,7 @@ class RedemptionController extends Controller
     public function show(int $id): JsonResponse
     {
         $redemption = Redemption::find($id);
-        if (!$redemption) {
+        if (! $redemption) {
             return $this->error('兑换码不存在', 404);
         }
 
@@ -128,8 +128,9 @@ class RedemptionController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('批量创建兑换码失败: ' . $e->getMessage());
-            return $this->error('批量创建失败: ' . $e->getMessage(), 500);
+            Log::error('批量创建兑换码失败: '.$e->getMessage());
+
+            return $this->error('批量创建失败: '.$e->getMessage(), 500);
         }
 
         return $this->success($redemptions);
@@ -142,7 +143,7 @@ class RedemptionController extends Controller
     {
         $id = (int) $request->input('id');
         $redemption = Redemption::find($id);
-        if (!$redemption) {
+        if (! $redemption) {
             return $this->error('兑换码不存在', 404);
         }
 
@@ -162,7 +163,7 @@ class RedemptionController extends Controller
     public function destroy(int $id): JsonResponse
     {
         $redemption = Redemption::find($id);
-        if (!$redemption) {
+        if (! $redemption) {
             return $this->error('兑换码不存在', 404);
         }
 
@@ -202,7 +203,7 @@ class RedemptionController extends Controller
             $result = DB::transaction(function () use ($key, $user) {
                 // 行锁防止并发兑换
                 $redemption = Redemption::where('key', $key)->lockForUpdate()->first();
-                if (!$redemption) {
+                if (! $redemption) {
                     throw new \DomainException('兑换码无效', 404);
                 }
 
@@ -222,7 +223,7 @@ class RedemptionController extends Controller
                 }
 
                 // 防止同一用户重复兑换（通过 used_user_ids 字段，若存在）
-                if (!empty($redemption->used_user_ids)) {
+                if (! empty($redemption->used_user_ids)) {
                     $usedUserIds = json_decode($redemption->used_user_ids, true) ?: [];
                     if (in_array($user->id, $usedUserIds, true)) {
                         throw new \DomainException('您已兑换过此兑换码', 400);
@@ -248,7 +249,8 @@ class RedemptionController extends Controller
         } catch (\DomainException $e) {
             return $this->error($e->getMessage(), (int) $e->getCode() ?: 400);
         } catch (\Throwable $e) {
-            Log::error('兑换码兑换失败: ' . $e->getMessage());
+            Log::error('兑换码兑换失败: '.$e->getMessage());
+
             return $this->error('兑换失败，请稍后重试', 500);
         }
 
@@ -257,7 +259,7 @@ class RedemptionController extends Controller
         $user->refresh();
 
         return $this->success([
-            'message' => '兑换成功',
+            'message' => __('Redemption successful'),
             'quota' => $result->quota,
             'balance' => $user->quota,
         ]);
@@ -299,7 +301,7 @@ class RedemptionController extends Controller
      */
     private function generateKey(): string
     {
-        return 'sk-' . Str::random(24);
+        return 'sk-'.Str::random(24);
     }
 
     /**

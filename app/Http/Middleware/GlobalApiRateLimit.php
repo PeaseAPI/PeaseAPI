@@ -24,7 +24,7 @@ class GlobalApiRateLimit
         if ($attempts >= $maxAttempts) {
             return response()->json([
                 'error' => [
-                    'message' => '请求过于频繁，请稍后再试',
+                    'message' => __('Too many requests, please try again later.'),
                     'type' => 'rate_limit_error',
                     'code' => 'rate_limit_exceeded',
                 ],
@@ -48,7 +48,7 @@ class GlobalApiRateLimit
     {
         $apiKey = $request->header('Authorization', '');
         if (str_starts_with($apiKey, 'Bearer ')) {
-            return 'api:' . md5(substr($apiKey, 7, 32));
+            return 'api:'.md5(substr($apiKey, 7, 32));
         }
 
         $userId = $request->attributes->get('api_user_id', 0);
@@ -56,6 +56,6 @@ class GlobalApiRateLimit
             return "user:{$userId}";
         }
 
-        return 'ip:' . $request->ip();
+        return 'ip:'.$request->ip();
     }
 }

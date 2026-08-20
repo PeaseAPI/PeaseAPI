@@ -18,6 +18,7 @@ class ReplicateAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'replicate';
+
     protected int $apiType = ApiType::REPLICATE->value;
 
     /** @var array<int, string> */

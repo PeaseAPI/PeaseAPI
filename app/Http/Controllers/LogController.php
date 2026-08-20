@@ -13,7 +13,7 @@ class LogController extends Controller
     {
         $filters = $request->only([
             'user_id', 'token_id', 'channel_id', 'type',
-            'model', 'start_time', 'end_time', 'request_id'
+            'model', 'start_time', 'end_time', 'request_id',
         ]);
 
         if ($request->user()->role < 100) {

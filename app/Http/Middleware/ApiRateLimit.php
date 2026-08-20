@@ -10,12 +10,13 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * API Rate Limit Middleware - 对标 new-api middleware/rate.go
- * 
+ *
  * 基于 Redis 的滑动窗口限流
  */
 class ApiRateLimit
 {
     protected int $maxAttempts;
+
     protected int $decaySeconds;
 
     public function __construct()
@@ -35,10 +36,10 @@ class ApiRateLimit
         // 检查限流
         if ($this->tooManyAttempts($key, $maxAttempts)) {
             $retryAfter = $this->availableAt($key) - time();
-            
+
             return response()->json([
                 'error' => [
-                    'message' => '请求过于频繁，请稍后再试',
+                    'message' => __('Too many requests, please try again later.'),
                     'type' => 'rate_limit_error',
                     'code' => 'rate_limit_exceeded',
                 ],
@@ -70,7 +71,7 @@ class ApiRateLimit
         // 优先使用 API Key
         $apiKey = $request->header('Authorization', '');
         if (str_starts_with($apiKey, 'Bearer ')) {
-            return 'api:' . md5(substr($apiKey, 7, 32));
+            return 'api:'.md5(substr($apiKey, 7, 32));
         }
 
         // 使用用户 ID
@@ -80,7 +81,7 @@ class ApiRateLimit
         }
 
         // 使用 IP
-        return 'ip:' . $request->ip();
+        return 'ip:'.$request->ip();
     }
 
     /**
@@ -115,6 +116,7 @@ class ApiRateLimit
     protected function remaining(string $key, int $maxAttempts): int
     {
         $attempts = $this->attempts($key);
+
         return max(0, $maxAttempts - $attempts);
     }
 
@@ -124,6 +126,7 @@ class ApiRateLimit
     protected function availableAt(string $key): int
     {
         $ttl = cache()->ttl("rate_limit:{$key}");
+
         return $ttl > 0 ? time() + $ttl : time() + 60;
     }
 }

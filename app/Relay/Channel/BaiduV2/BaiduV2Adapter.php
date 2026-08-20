@@ -18,6 +18,7 @@ class BaiduV2Adapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'baiduv2';
+
     protected int $apiType = ApiType::BAIDU_V2->value;
 
     /** @var array<int, string> */

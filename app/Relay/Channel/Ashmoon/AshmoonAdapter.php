@@ -7,7 +7,6 @@ namespace App\Relay\Channel\Ashmoon;
 use App\Enums\ApiType;
 use App\Relay\Channel\BaseAdapter;
 use App\Relay\Channel\OpenAICompatibleTrait;
-use App\Relay\Common\RelayInfo;
 use App\Relay\Constant\RelayMode;
 
 /**
@@ -20,6 +19,7 @@ class AshmoonAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'ashmoon';
+
     protected int $apiType = ApiType::ASHMOON->value;
 
     /** @var array<int, string> */

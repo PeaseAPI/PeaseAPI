@@ -23,7 +23,7 @@ class TurnstileCheck
 
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$this->shouldVerify($request)) {
+        if (! $this->shouldVerify($request)) {
             return $next($request);
         }
 
@@ -32,7 +32,7 @@ class TurnstileCheck
             return $this->deny('缺少 Turnstile 验证令牌');
         }
 
-        if (!$this->verify($token, $request->ip())) {
+        if (! $this->verify($token, $request->ip())) {
             return $this->deny('Turnstile 验证失败');
         }
 
@@ -41,7 +41,7 @@ class TurnstileCheck
 
     protected function shouldVerify(Request $request): bool
     {
-        if (!config('pease-api.security.turnstile_enabled', false)) {
+        if (! config('pease-api.security.turnstile_enabled', false)) {
             return false;
         }
 

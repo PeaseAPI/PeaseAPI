@@ -36,6 +36,7 @@ storage/installed
 storage/logs/*
 storage/pail
 yarn-error.log
+public/node_modules/
 
 # 头像目录：保留目录但忽略上传的图片文件
 public/avatars/*

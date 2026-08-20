@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use App\Enums\UserRole;
 
 class AdminAuth
 {
     /**
      * Handle an incoming request.
-     * 
+     *
      * Role levels:
      * - User: role = 1
      * - Admin: role = 10
@@ -21,7 +21,7 @@ class AdminAuth
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return $this->unauthorizedResponse($request, '请先登录');
         }
 
@@ -47,8 +47,8 @@ class AdminAuth
                 'error' => [
                     'message' => $message,
                     'type' => 'access_denied',
-                    'code' => 'admin_access_required'
-                ]
+                    'code' => 'admin_access_required',
+                ],
             ], 403);
         }
 

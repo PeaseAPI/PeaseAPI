@@ -17,12 +17,13 @@ class JimengAdapter extends BaseAdapter
     protected function getBaseUri(RelayInfo $info): string
     {
         $channel = $info->getChannel();
+
         return rtrim($channel->base_url ?: 'https://jimeng.jianying.com', '/');
     }
 
     protected function getRequestUrl(RelayInfo $info): string
     {
-        return $this->getBaseUri($info) . '/';
+        return $this->getBaseUri($info).'/';
     }
 
     protected function formatRequest(RelayInfo $info): void
@@ -43,7 +44,7 @@ class JimengAdapter extends BaseAdapter
 
         return [
             'Content-Type' => 'application/json',
-            'Authorization' => 'Bearer ' . $apiKey,
+            'Authorization' => 'Bearer '.$apiKey,
         ];
     }
 

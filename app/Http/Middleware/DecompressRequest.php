@@ -10,7 +10,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Request Decompression Middleware - 对标 new-api middleware/decompress.go
- * 
+ *
  * 支持解压 gzip, deflate 请求体
  */
 class DecompressRequest
@@ -18,7 +18,7 @@ class DecompressRequest
     public function handle(Request $request, Closure $next): Response
     {
         $contentEncoding = $request->header('Content-Encoding', '');
-        
+
         if ($contentEncoding === 'gzip') {
             $content = $request->getContent();
             $decoded = gzdecode($content);
@@ -34,7 +34,7 @@ class DecompressRequest
                 $request->headers->remove('Content-Encoding');
             }
         }
-        
+
         return $next($request);
     }
 }

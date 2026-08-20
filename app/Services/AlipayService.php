@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 /**
  * 原生支付宝支付服务（RSA2，纯 openssl 实现，无第三方依赖）
@@ -11,13 +10,19 @@ use Illuminate\Support\Facades\Log;
 class AlipayService
 {
     private const GATEWAY = 'https://openapi.alipay.com/gateway.do';
+
     private const GATEWAY_SANDBOX = 'https://openapi-sandbox.dl.alipaydev.com/gateway.do';
 
     private string $appId;
+
     private string $privateKey;
+
     private string $alipayPublicKey;
+
     private string $gateway;
+
     private string $charset = 'UTF-8';
+
     private string $signType = 'RSA2';
 
     public function __construct()
@@ -55,7 +60,7 @@ class AlipayService
 
         $key = 'alipay_trade_precreate_response';
         if (! isset($json[$key])) {
-            throw new \RuntimeException('支付宝响应格式异常: ' . $body);
+            throw new \RuntimeException('支付宝响应格式异常: '.$body);
         }
 
         if (! $this->verifyResponseSign($body, $key)) {
@@ -65,8 +70,8 @@ class AlipayService
         $sub = $json[$key];
         if (($sub['code'] ?? '') !== '10000') {
             throw new \RuntimeException(
-                '支付宝下单失败: ' . ($sub['sub_msg'] ?? $sub['msg'] ?? '未知错误') .
-                ' (code=' . ($sub['code'] ?? '') . ',sub_code=' . ($sub['sub_code'] ?? '') . ')'
+                '支付宝下单失败: '.($sub['sub_msg'] ?? $sub['msg'] ?? '未知错误').
+                ' (code='.($sub['code'] ?? '').',sub_code='.($sub['sub_code'] ?? '').')'
             );
         }
 
@@ -94,7 +99,7 @@ class AlipayService
         }
         $params['sign'] = $this->sign($this->buildSignString($params));
 
-        return $this->gateway . '?' . http_build_query($params);
+        return $this->gateway.'?'.http_build_query($params);
     }
 
     /**
@@ -113,6 +118,7 @@ class AlipayService
         if (! isset($json[$key])) {
             return [];
         }
+
         return $json[$key];
     }
 
@@ -129,6 +135,7 @@ class AlipayService
         unset($params['sign'], $params['sign_type']);
 
         $signStr = $this->buildSignString($params);
+
         return $this->verify($signStr, $sign, $signType);
     }
 
@@ -147,6 +154,7 @@ class AlipayService
         if ($notifyUrl !== '') {
             $params['notify_url'] = $notifyUrl;
         }
+
         return $params;
     }
 
@@ -162,8 +170,9 @@ class AlipayService
             if ($v === '' || $v === null) {
                 continue;
             }
-            $pairs[] = $k . '=' . $v;
+            $pairs[] = $k.'='.$v;
         }
+
         return implode('&', $pairs);
     }
 
@@ -175,8 +184,9 @@ class AlipayService
         $key = $this->normalizePrivateKey($this->privateKey);
         $signature = '';
         if (! openssl_sign($data, $signature, $key, OPENSSL_ALGO_SHA256)) {
-            throw new \RuntimeException('支付宝签名失败: ' . openssl_error_string());
+            throw new \RuntimeException('支付宝签名失败: '.openssl_error_string());
         }
+
         return base64_encode($signature);
     }
 
@@ -191,6 +201,7 @@ class AlipayService
         if ($raw === false) {
             $raw = $sign;
         }
+
         return openssl_verify($data, $raw, $key, $algo) === 1;
     }
 
@@ -199,11 +210,11 @@ class AlipayService
      */
     private function verifyResponseSign(string $body, string $responseKey): bool
     {
-        $start = strpos($body, '"' . $responseKey . '":');
+        $start = strpos($body, '"'.$responseKey.'":');
         if ($start === false) {
             return false;
         }
-        $start += strlen('"' . $responseKey . '":');
+        $start += strlen('"'.$responseKey.'":');
         $objStart = strpos($body, '{', $start);
         if ($objStart === false) {
             return false;
@@ -239,14 +250,15 @@ class AlipayService
     private function normalizePrivateKey(string $key)
     {
         if (strpos($key, '-----BEGIN') === false) {
-            $key = "-----BEGIN RSA PRIVATE KEY-----\n" .
-                chunk_split($key, 64, "\n") .
+            $key = "-----BEGIN RSA PRIVATE KEY-----\n".
+                chunk_split($key, 64, "\n").
                 "-----END RSA PRIVATE KEY-----\n";
         }
         $res = openssl_pkey_get_private($key);
         if (! $res) {
-            throw new \RuntimeException('支付宝私钥格式错误: ' . openssl_error_string());
+            throw new \RuntimeException('支付宝私钥格式错误: '.openssl_error_string());
         }
+
         return $res;
     }
 
@@ -256,14 +268,15 @@ class AlipayService
     private function normalizePublicKey(string $key)
     {
         if (strpos($key, '-----BEGIN') === false) {
-            $key = "-----BEGIN PUBLIC KEY-----\n" .
-                chunk_split($key, 64, "\n") .
+            $key = "-----BEGIN PUBLIC KEY-----\n".
+                chunk_split($key, 64, "\n").
                 "-----END PUBLIC KEY-----\n";
         }
         $res = openssl_pkey_get_public($key);
         if (! $res) {
-            throw new \RuntimeException('支付宝公钥格式错误: ' . openssl_error_string());
+            throw new \RuntimeException('支付宝公钥格式错误: '.openssl_error_string());
         }
+
         return $res;
     }
 }

@@ -18,6 +18,7 @@ class LingyiWanwuAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'lingyiwanwu';
+
     protected int $apiType = ApiType::LINGYIWANWU->value;
 
     /** @var array<int, string> */

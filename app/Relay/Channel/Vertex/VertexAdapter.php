@@ -21,6 +21,7 @@ use App\Relay\Common\RelayInfo;
 class VertexAdapter extends BaseAdapter
 {
     protected string $name = 'vertex';
+
     protected int $apiType = 21; // ChannelType::VERTEX
 
     /** @var array<string, string> access_token 缓存: hash(key) => "token|expires_at" */
@@ -40,14 +41,14 @@ class VertexAdapter extends BaseAdapter
             ],
         ];
 
-        if (!empty($body['system'])) {
+        if (! empty($body['system'])) {
             $geminiBody['systemInstruction'] = ['parts' => [['text' => $body['system']]]];
         }
 
         $info->upstreamBody = json_encode($geminiBody);
 
         [$project, $region] = $this->resolveProjectRegion($info);
-        $action = !empty($body['stream']) ? 'streamGenerateContent' : 'generateContent';
+        $action = ! empty($body['stream']) ? 'streamGenerateContent' : 'generateContent';
         $info->upstreamUrl = sprintf(
             'https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:%s',
             $region,
@@ -66,14 +67,14 @@ class VertexAdapter extends BaseAdapter
         $model = is_array($reqBody) ? ($reqBody['model'] ?? 'gemini-1.5-pro') : 'gemini-1.5-pro';
 
         $openai = [
-            'id' => 'chatcmpl-' . uniqid(),
+            'id' => 'chatcmpl-'.uniqid(),
             'object' => 'chat.completion',
             'created' => time(),
             'model' => $model,
             'choices' => [],
         ];
 
-        if (!empty($body['candidates'])) {
+        if (! empty($body['candidates'])) {
             $content = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
             $openai['choices'][] = [
                 'index' => 0,
@@ -96,7 +97,7 @@ class VertexAdapter extends BaseAdapter
             CURLOPT_POSTFIELDS => $info->upstreamBody,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
-                'Authorization: Bearer ' . $accessToken,
+                'Authorization: Bearer '.$accessToken,
             ],
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 120,
@@ -113,7 +114,7 @@ class VertexAdapter extends BaseAdapter
         $accessToken = $this->getAccessToken($channel->key);
 
         // Vertex 流式需 alt=sse
-        $url = $info->upstreamUrl . '?alt=sse';
+        $url = $info->upstreamUrl.'?alt=sse';
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -121,7 +122,7 @@ class VertexAdapter extends BaseAdapter
             CURLOPT_POSTFIELDS => $info->upstreamBody,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
-                'Authorization: Bearer ' . $accessToken,
+                'Authorization: Bearer '.$accessToken,
             ],
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 300,
@@ -204,13 +205,14 @@ class VertexAdapter extends BaseAdapter
     protected function parseServiceAccount(string $key): ?array
     {
         $key = trim($key);
-        if (!str_starts_with($key, '{')) {
+        if (! str_starts_with($key, '{')) {
             return null;
         }
         $data = json_decode($key, true);
-        if (!is_array($data) || empty($data['private_key']) || empty($data['client_email'])) {
+        if (! is_array($data) || empty($data['private_key']) || empty($data['client_email'])) {
             return null;
         }
+
         return $data;
     }
 
@@ -241,7 +243,7 @@ class VertexAdapter extends BaseAdapter
         $expiresIn = (int) ($data['expires_in'] ?? 3600);
 
         $cacheKey = hash('sha256', json_encode($sa));
-        self::$tokenCache[$cacheKey] = $token . '|' . (string) ($now + $expiresIn);
+        self::$tokenCache[$cacheKey] = $token.'|'.(string) ($now + $expiresIn);
 
         return $token;
     }
@@ -284,6 +286,7 @@ class VertexAdapter extends BaseAdapter
                 'parts' => [['text' => $msg['content']]],
             ];
         }
+
         return $contents;
     }
 }

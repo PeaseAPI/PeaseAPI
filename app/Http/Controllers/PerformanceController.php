@@ -10,9 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Str;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -130,7 +128,7 @@ class PerformanceController extends Controller
         $target = $request->input('file', 'laravel.log');
         $content = '';
 
-        $targetFile = $logPath . '/' . basename($target);
+        $targetFile = $logPath.'/'.basename($target);
         if (is_file($targetFile)) {
             $lines = file($targetFile);
             $content = implode('', array_slice($lines ?: [], -$tail));
@@ -150,7 +148,7 @@ class PerformanceController extends Controller
         $deleted = 0;
 
         if ($target) {
-            $file = $logPath . '/' . basename($target);
+            $file = $logPath.'/'.basename($target);
             if (is_file($file) && @unlink($file)) {
                 $deleted = 1;
             }
@@ -207,7 +205,7 @@ class PerformanceController extends Controller
     {
         try {
             $conn = config('database.default');
-            $config = config('database.connections.' . $conn);
+            $config = config('database.connections.'.$conn);
             $pdo = DB::connection()->getPdo();
 
             return [
@@ -281,17 +279,17 @@ class PerformanceController extends Controller
     protected function humanSize(int $bytes): string
     {
         if ($bytes < 1024) {
-            return $bytes . ' B';
+            return $bytes.' B';
         }
         $units = ['KB', 'MB', 'GB', 'TB'];
         $size = $bytes / 1024;
         foreach ($units as $unit) {
             if ($size < 1024) {
-                return round($size, 2) . ' ' . $unit;
+                return round($size, 2).' '.$unit;
             }
             $size /= 1024;
         }
 
-        return round($size, 2) . ' PB';
+        return round($size, 2).' PB';
     }
 }

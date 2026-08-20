@@ -72,15 +72,15 @@ class DeploymentController extends Controller
         try {
             $response = Http::withToken($data['api_key'])
                 ->timeout(15)
-                ->get($data['endpoint'] . '/api/v1/status');
+                ->get($data['endpoint'].'/api/v1/status');
 
             if ($response->successful()) {
                 return $this->success($response->json(), '连接成功');
             }
 
-            return $this->error('连接失败: HTTP ' . $response->status());
+            return $this->error('连接失败: HTTP '.$response->status());
         } catch (\Throwable $e) {
-            return $this->error('连接异常: ' . $e->getMessage());
+            return $this->error('连接异常: '.$e->getMessage());
         }
     }
 

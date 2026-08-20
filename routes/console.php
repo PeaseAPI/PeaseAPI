@@ -1,14 +1,18 @@
 <?php
 
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Schedule;
 use App\Console\Commands\CleanLogs;
 use App\Console\Commands\FixAbilities;
 use App\Console\Commands\PollTasks;
 use App\Console\Commands\RefreshPricing;
-use App\Console\Commands\ResetSubscriptions;
 use App\Console\Commands\ResetCodingPlanUsage;
+use App\Console\Commands\ResetSubscriptions;
 use App\Console\Commands\SyncChannelCache;
+use App\Models\AuthFlow;
+use App\Models\PerfMetric;
+use App\Models\SystemInstance;
+use App\Models\UserSession;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 /*
 |--------------------------------------------------------------------------
@@ -94,18 +98,18 @@ Schedule::command(RefreshPricing::class)
 
 // Expire stale auth flows / sessions - hourly
 Schedule::call(function () {
-    \App\Models\AuthFlow::where('expires_at', '<', now())->delete();
-    \App\Models\UserSession::where('expires_at', '<', now())->delete();
+    AuthFlow::where('expires_at', '<', now())->delete();
+    UserSession::where('expires_at', '<', now())->delete();
 })->name('pease:auth-cleanup')->hourly()->onOneServer();
 
 // System instance heartbeat - every minute
 Schedule::call(function () {
-    \App\Models\SystemInstance::where('node_name', config('app.name', 'pease-api'))
+    SystemInstance::where('node_name', config('app.name', 'pease-api'))
         ->update(['last_heartbeat' => now()->timestamp]);
 })->name('pease:instance-heartbeat')->everyMinute()->onOneServer();
 
 // Clean expired perf metrics - daily
 Schedule::call(function () {
     $retentionDays = (int) env('PERF_METRICS_RETENTION_DAYS', 30);
-    \App\Models\PerfMetric::where('created_at', '<', now()->subDays($retentionDays))->delete();
+    PerfMetric::where('created_at', '<', now()->subDays($retentionDays))->delete();
 })->name('pease:perf-metrics-cleanup')->dailyAt('05:00')->onOneServer();

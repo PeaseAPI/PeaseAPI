@@ -18,6 +18,7 @@ class MoonshotAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'moonshot';
+
     protected int $apiType = ApiType::MOONSHOT_KIMI->value;
 
     /** @var array<int, string> */

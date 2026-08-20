@@ -18,6 +18,7 @@ class PalmAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'palm';
+
     protected int $apiType = ApiType::PALM->value;
 
     /** @var array<int, string> */

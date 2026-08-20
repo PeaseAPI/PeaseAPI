@@ -51,8 +51,8 @@ class VolcengineAdapter extends BaseAdapter
         // 例如: doubao-lite -> ark-doubao-lite
         if (isset($info->request['model'])) {
             $model = $info->request['model'];
-            if (!str_starts_with($model, 'ark-')) {
-                $info->request['model'] = 'ark-' . $model;
+            if (! str_starts_with($model, 'ark-')) {
+                $info->request['model'] = 'ark-'.$model;
             }
         }
 

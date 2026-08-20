@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\Token;
 use App\Models\Log;
-use App\Models\Redemption;
-use Illuminate\Http\Request;
+use App\Models\Token;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -14,7 +12,7 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
-        
+
         // Get user stats
         $stats = [
             'balance' => $user->quota - $user->used_quota,

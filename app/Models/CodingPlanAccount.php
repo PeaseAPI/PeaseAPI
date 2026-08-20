@@ -16,7 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CodingPlanAccount extends Model
 {
     public const STATUS_DISABLED = 0;
+
     public const STATUS_ENABLED = 1;
+
     public const STATUS_EXHAUSTED = 2;
 
     protected $table = 'coding_plan_accounts';
@@ -118,6 +120,7 @@ class CodingPlanAccount extends Model
         if ($this->quota_monthly <= 0) {
             return 0;
         }
+
         return (int) min(100, (int) round($this->used_monthly * 100 / $this->quota_monthly));
     }
 

@@ -44,9 +44,9 @@ class UserApiController extends Controller
         $user = Auth::user();
 
         $validated = $request->validate([
-            'username' => 'nullable|string|min:3|max:32|alpha_num|unique:users,username,' . $user->id,
+            'username' => 'nullable|string|min:3|max:32|alpha_num|unique:users,username,'.$user->id,
             'display_name' => 'nullable|string|max:50',
-            'email' => 'nullable|email|unique:users,email,' . $user->id,
+            'email' => 'nullable|email|unique:users,email,'.$user->id,
         ]);
 
         if (array_key_exists('username', $validated) && $validated['username'] !== null) {
@@ -55,14 +55,14 @@ class UserApiController extends Controller
         if (array_key_exists('display_name', $validated)) {
             $user->display_name = $validated['display_name'];
         }
-        if (!empty($validated['email'])) {
+        if (! empty($validated['email'])) {
             $user->email = $validated['email'];
         }
 
         $user->save();
 
         return response()->json([
-            'message' => '个人信息已更新',
+            'message' => __('Personal information updated'),
             'user' => [
                 'id' => $user->id,
                 'username' => $user->username,
@@ -85,17 +85,17 @@ class UserApiController extends Controller
 
         $file = $request->file('avatar');
         $ext = $file->getClientOriginalExtension();
-        $filename = $user->id . '_' . Str::random(10) . '.' . $ext;
-        $relativePath = 'avatars/' . $filename;
+        $filename = $user->id.'_'.Str::random(10).'.'.$ext;
+        $relativePath = 'avatars/'.$filename;
 
         // 确保目录存在
         $destDir = public_path('avatars');
-        if (!is_dir($destDir)) {
+        if (! is_dir($destDir)) {
             @mkdir($destDir, 0775, true);
         }
 
         // 删除旧头像（仅本地文件，不处理 http 外链）
-        if ($user->avatar && !preg_match('#^https?://#i', $user->avatar)) {
+        if ($user->avatar && ! preg_match('#^https?://#i', $user->avatar)) {
             $oldFile = public_path($user->avatar);
             if (is_file($oldFile)) {
                 @unlink($oldFile);
@@ -108,7 +108,7 @@ class UserApiController extends Controller
         $user->save();
 
         return response()->json([
-            'message' => '头像更新成功',
+            'message' => __('Avatar updated successfully'),
             'avatar' => $user->avatar_url,
         ]);
     }
@@ -124,21 +124,21 @@ class UserApiController extends Controller
         ]);
 
         // 校验验证码
-        if (!$smsCodeService->verify($validated['phone'], $validated['sms_code'])) {
-            return response()->json(['error' => '验证码错误或已过期'], 400);
+        if (! $smsCodeService->verify($validated['phone'], $validated['sms_code'])) {
+            return response()->json(['error' => __('Verification code is invalid or expired')], 400);
         }
 
         // 检查手机号是否已被其他用户占用
         $exists = User::where('phone', $validated['phone'])->where('id', '!=', $user->id)->exists();
         if ($exists) {
-            return response()->json(['error' => '该手机号已被其他账号绑定'], 400);
+            return response()->json(['error' => __('This phone number is already bound to another account')], 400);
         }
 
         $user->phone = $validated['phone'];
         $user->save();
 
         return response()->json([
-            'message' => '手机号更新成功',
+            'message' => __('Phone number updated successfully'),
             'phone' => $user->phone,
         ]);
     }
@@ -153,14 +153,14 @@ class UserApiController extends Controller
             'new_password' => 'required|string|min:8|confirmed',
         ]);
 
-        if (!Hash::check($validated['current_password'], $user->password)) {
-            return response()->json(['error' => '当前密码不正确'], 400);
+        if (! Hash::check($validated['current_password'], $user->password)) {
+            return response()->json(['error' => __('Current password is incorrect')], 400);
         }
 
         $user->password = Hash::make($validated['new_password']);
         $user->save();
 
-        return response()->json(['message' => '密码已更新']);
+        return response()->json(['message' => __('Password updated')]);
     }
 
     // Admin only - User list
@@ -169,7 +169,7 @@ class UserApiController extends Controller
         /** @var User $user */
         $user = Auth::user();
         if ($user->role < 100) {
-            return response()->json(['error' => 'Admin access required'], 403);
+            return response()->json(['error' => __('Admin access required')], 403);
         }
 
         $query = User::query();
@@ -178,7 +178,7 @@ class UserApiController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('username', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -200,10 +200,11 @@ class UserApiController extends Controller
         /** @var User $user */
         $user = Auth::user();
         if ($user->role < 100) {
-            return response()->json(['error' => 'Admin access required'], 403);
+            return response()->json(['error' => __('Admin access required')], 403);
         }
 
         $targetUser = User::with(['tokens', 'subscriptions'])->findOrFail($id);
+
         return response()->json($targetUser);
     }
 
@@ -212,14 +213,14 @@ class UserApiController extends Controller
         /** @var User $user */
         $user = Auth::user();
         if ($user->role < 100) {
-            return response()->json(['error' => 'Admin access required'], 403);
+            return response()->json(['error' => __('Admin access required')], 403);
         }
 
         $targetUser = User::findOrFail($id);
 
         $validated = $request->validate([
-            'username' => 'sometimes|string|min:3|max:32|alpha_num|unique:users,username,' . $id,
-            'email' => 'sometimes|email|unique:users,email,' . $id,
+            'username' => 'sometimes|string|min:3|max:32|alpha_num|unique:users,username,'.$id,
+            'email' => 'sometimes|email|unique:users,email,'.$id,
             'status' => 'sometimes|integer|in:0,1',
             'role' => 'sometimes|integer',
             'quota' => 'sometimes|integer|min:0',
@@ -243,7 +244,7 @@ class UserApiController extends Controller
 
         $targetUser->save();
 
-        return response()->json(['message' => 'User updated', 'user' => $targetUser]);
+        return response()->json(['message' => __('User updated'), 'user' => $targetUser]);
     }
 
     public function destroy(int $id)
@@ -251,17 +252,17 @@ class UserApiController extends Controller
         /** @var User $user */
         $user = Auth::user();
         if ($user->role < 100) {
-            return response()->json(['error' => 'Admin access required'], 403);
+            return response()->json(['error' => __('Admin access required')], 403);
         }
 
         $targetUser = User::findOrFail($id);
         if ($targetUser->id === $user->id) {
-            return response()->json(['error' => 'Cannot delete yourself'], 400);
+            return response()->json(['error' => __('Cannot delete yourself')], 400);
         }
 
         $targetUser->delete();
 
-        return response()->json(['message' => 'User deleted']);
+        return response()->json(['message' => __('User deleted')]);
     }
 
     public function updateBalance(Request $request, int $id)
@@ -269,7 +270,7 @@ class UserApiController extends Controller
         /** @var User $user */
         $user = Auth::user();
         if ($user->role < 100) {
-            return response()->json(['error' => 'Admin access required'], 403);
+            return response()->json(['error' => __('Admin access required')], 403);
         }
 
         $targetUser = User::findOrFail($id);
@@ -280,12 +281,12 @@ class UserApiController extends Controller
         } elseif ($amount < 0) {
             $absAmount = abs($amount);
             if ($targetUser->quota < $absAmount) {
-                return response()->json(['error' => 'Insufficient balance'], 400);
+                return response()->json(['error' => __('Insufficient balance')], 400);
             }
             $targetUser->decrement('quota', $absAmount);
         }
 
-        return response()->json(['message' => 'Balance updated', 'user' => $targetUser]);
+        return response()->json(['message' => __('Balance updated'), 'user' => $targetUser]);
     }
 
     public function resetPassword(Request $request, int $id)
@@ -293,7 +294,7 @@ class UserApiController extends Controller
         /** @var User $user */
         $user = Auth::user();
         if ($user->role < 100) {
-            return response()->json(['error' => 'Admin access required'], 403);
+            return response()->json(['error' => __('Admin access required')], 403);
         }
 
         $targetUser = User::findOrFail($id);
@@ -302,6 +303,6 @@ class UserApiController extends Controller
         $targetUser->password = Hash::make($newPassword);
         $targetUser->save();
 
-        return response()->json(['message' => 'Password reset', 'new_password' => $newPassword]);
+        return response()->json(['message' => __('Password reset'), 'new_password' => $newPassword]);
     }
 }

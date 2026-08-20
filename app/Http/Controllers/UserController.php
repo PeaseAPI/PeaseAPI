@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Enums\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -15,14 +14,16 @@ class UserController extends Controller
         if ($request->has('search')) {
             $search = $request->search;
             $query->where('username', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                ->orWhere('email', 'like', "%{$search}%");
         }
+
         return response()->json($query->orderBy('created_time', 'desc')->paginate(20));
     }
 
     public function show(int $id)
     {
         $user = User::findOrFail($id);
+
         return response()->json($user);
     }
 
@@ -34,6 +35,7 @@ class UserController extends Controller
             $data['password'] = Hash::make($request->password);
         }
         $user->update($data);
+
         return response()->json($user);
     }
 
@@ -41,7 +43,8 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
         $user->delete();
-        return response()->json(['message' => 'User deleted']);
+
+        return response()->json(['message' => __('User deleted')]);
     }
 
     public function updateBalance(Request $request, int $id)
@@ -53,6 +56,7 @@ class UserController extends Controller
         } elseif ($amount < 0) {
             $user->decrement('balance', abs($amount));
         }
+
         return response()->json($user);
     }
 }

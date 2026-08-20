@@ -18,6 +18,7 @@ class CozeAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'coze';
+
     protected int $apiType = ApiType::COZE->value;
 
     /** @var array<int, string> */

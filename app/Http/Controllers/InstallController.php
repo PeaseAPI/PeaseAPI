@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\OptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Hash;
 
 class InstallController extends Controller
 {
@@ -26,7 +27,7 @@ class InstallController extends Controller
     public function index()
     {
         if (self::isInstalled()) {
-            return redirect('/')->with('error', 'Application is already installed.');
+            return redirect('/')->with('error', __('Application is already installed.'));
         }
 
         // Check if migration is done (file marker survives server restart)
@@ -35,6 +36,7 @@ class InstallController extends Controller
             if ($marker === 'done') {
                 return view('install', ['step' => 3]);
             }
+
             // Migration pending or failed - show migrating page
             return view('install', ['step' => 'migrating']);
         }
@@ -46,7 +48,7 @@ class InstallController extends Controller
             'envChecks' => $this->getEnvironmentChecks(),
             'dirChecks' => $this->getDirectoryChecks(),
             'disabledFuncChecks' => $disabledFuncChecks,
-            'hasDisabledFuncWarning' => !empty($disabledFuncChecks),
+            'hasDisabledFuncWarning' => ! empty($disabledFuncChecks),
         ]);
     }
 
@@ -56,7 +58,7 @@ class InstallController extends Controller
     public function process(Request $request)
     {
         if (self::isInstalled()) {
-            return redirect('/')->with('error', 'Application is already installed.');
+            return redirect('/')->with('error', __('Application is already installed.'));
         }
 
         $step = (int) $request->input('step', 1);
@@ -81,17 +83,17 @@ class InstallController extends Controller
         // Check only required (non-optional) items
         // 禁用函数检测是 optional 的，不会阻断安装
         $requiredEnvPassed = collect($envChecks)
-            ->filter(fn($c) => !isset($c['optional']) || !$c['optional'])
-            ->every(fn($c) => $c['passed']);
-        $requiredDirPassed = collect($dirChecks)->every(fn($c) => $c['passed']);
+            ->filter(fn ($c) => ! isset($c['optional']) || ! $c['optional'])
+            ->every(fn ($c) => $c['passed']);
+        $requiredDirPassed = collect($dirChecks)->every(fn ($c) => $c['passed']);
 
-        if (!$requiredEnvPassed || !$requiredDirPassed) {
+        if (! $requiredEnvPassed || ! $requiredDirPassed) {
             return view('install', [
                 'step' => 1,
                 'envChecks' => $envChecks,
                 'dirChecks' => $dirChecks,
                 'disabledFuncChecks' => $disabledFuncChecks,
-                'hasDisabledFuncWarning' => !empty($disabledFuncChecks),
+                'hasDisabledFuncWarning' => ! empty($disabledFuncChecks),
                 'error' => '请修复必需的環境问题后重试（可选项目可以跳过）。',
             ]);
         }
@@ -137,7 +139,7 @@ class InstallController extends Controller
             return view('install', [
                 'step' => 2,
                 'dbDefaults' => $validated,
-                'error' => '数据库连接失败：' . $e->getMessage(),
+                'error' => '数据库连接失败：'.$e->getMessage(),
             ]);
         }
 
@@ -211,9 +213,11 @@ class InstallController extends Controller
         try {
             Artisan::call('migrate:fresh', ['--force' => true, '--seed' => false]);
             File::put(storage_path('install_step3'), 'done');
+
             return response()->json(['status' => 'done']);
         } catch (\Exception $e) {
-            File::put(storage_path('install_step3'), 'failed:' . $e->getMessage());
+            File::put(storage_path('install_step3'), 'failed:'.$e->getMessage());
+
             return response()->json(['status' => 'failed', 'error' => $e->getMessage()]);
         }
     }
@@ -224,7 +228,7 @@ class InstallController extends Controller
     public function step3()
     {
         if (self::isInstalled()) {
-            return redirect('/')->with('error', 'Application is already installed.');
+            return redirect('/')->with('error', __('Application is already installed.'));
         }
 
         return view('install', [
@@ -264,29 +268,29 @@ class InstallController extends Controller
                 'last_login_at' => time(),
             ]);
 
-        // Save system settings to options table
-        $options = [];
-        if (!empty($validated['system_name'])) {
-            $options['SystemName'] = $validated['system_name'];
-        }
-        if (!empty($validated['server_address'])) {
-            $options['ServerAddress'] = $validated['server_address'];
-        }
-        if (!empty($validated['system_logo'])) {
-            $options['SystemLogo'] = $validated['system_logo'];
-        }
-        if (!empty($options)) {
-            \App\Services\OptionService::setMany($options);
-        }
+            // Save system settings to options table
+            $options = [];
+            if (! empty($validated['system_name'])) {
+                $options['SystemName'] = $validated['system_name'];
+            }
+            if (! empty($validated['server_address'])) {
+                $options['ServerAddress'] = $validated['server_address'];
+            }
+            if (! empty($validated['system_logo'])) {
+                $options['SystemLogo'] = $validated['system_logo'];
+            }
+            if (! empty($options)) {
+                OptionService::setMany($options);
+            }
 
-        // Mark as installed - 创建 public/install.lock 文件
-        File::put(public_path('install.lock'), json_encode([
-            'installed_at' => now()->toIso8601String(),
-            'version' => config('pease-api.version', '1.0.0'),
-        ]));
+            // Mark as installed - 创建 public/install.lock 文件
+            File::put(public_path('install.lock'), json_encode([
+                'installed_at' => now()->toIso8601String(),
+                'version' => config('pease-api.version', '1.0.0'),
+            ]));
 
-        // Clean up the step 2→3 marker file
-        File::delete(storage_path('install_step3'));
+            // Clean up the step 2→3 marker file
+            File::delete(storage_path('install_step3'));
 
             // Generate app key if not set (skip if the environment forbids shell execution)
             if (empty(env('APP_KEY')) || env('APP_KEY') === 'SomeRandomStringSomeRandomString') {
@@ -294,7 +298,7 @@ class InstallController extends Controller
             }
 
             // Create symbolic link for storage when possible, but do not fail if exec() is disabled
-            if (!File::exists(public_path('storage'))) {
+            if (! File::exists(public_path('storage'))) {
                 $this->ensureStorageSymlink();
             }
 
@@ -304,7 +308,7 @@ class InstallController extends Controller
         } catch (\Exception $e) {
             return view('install', [
                 'step' => 3,
-                'error' => '创建管理员失败：' . $e->getMessage(),
+                'error' => '创建管理员失败：'.$e->getMessage(),
             ]);
         }
 
@@ -315,7 +319,7 @@ class InstallController extends Controller
     protected function ensureAppKeyInEnv(): void
     {
         $envPath = base_path('.env');
-        if (!is_file($envPath)) {
+        if (! is_file($envPath)) {
             return;
         }
 
@@ -326,15 +330,15 @@ class InstallController extends Controller
 
         if (preg_match('/^APP_KEY=(.+)$/m', $envContent, $matches)) {
             $currentKey = trim($matches[1]);
-            if (!empty($currentKey) && $currentKey !== 'SomeRandomStringSomeRandomString') {
+            if (! empty($currentKey) && $currentKey !== 'SomeRandomStringSomeRandomString') {
                 return;
             }
         }
 
-        $newKey = 'base64:' . base64_encode(random_bytes(32));
-        $newEnvContent = preg_replace('/^APP_KEY=.*$/m', 'APP_KEY=' . $newKey, $envContent);
+        $newKey = 'base64:'.base64_encode(random_bytes(32));
+        $newEnvContent = preg_replace('/^APP_KEY=.*$/m', 'APP_KEY='.$newKey, $envContent);
         if ($newEnvContent === null || $newEnvContent === $envContent) {
-            $newEnvContent = rtrim($envContent) . PHP_EOL . 'APP_KEY=' . $newKey . PHP_EOL;
+            $newEnvContent = rtrim($envContent).PHP_EOL.'APP_KEY='.$newKey.PHP_EOL;
         }
 
         @file_put_contents($envPath, $newEnvContent);
@@ -345,11 +349,11 @@ class InstallController extends Controller
         $publicStoragePath = public_path('storage');
         $storagePath = base_path('storage/app/public');
 
-        if (is_dir($publicStoragePath) || !is_dir($storagePath)) {
+        if (is_dir($publicStoragePath) || ! is_dir($storagePath)) {
             return;
         }
 
-        if (!function_exists('symlink')) {
+        if (! function_exists('symlink')) {
             return;
         }
 
@@ -358,7 +362,7 @@ class InstallController extends Controller
 
     protected function skipCacheCommandsIfUnavailable(): void
     {
-        if (!function_exists('exec')) {
+        if (! function_exists('exec')) {
             return;
         }
 
@@ -468,7 +472,7 @@ class InstallController extends Controller
 
         return collect($dirs)->map(function ($path) {
             return [
-                'name' => str_replace(base_path() . '/', '', $path),
+                'name' => str_replace(base_path().'/', '', $path),
                 'path' => $path,
                 'passed' => is_writable($path),
             ];
@@ -526,8 +530,8 @@ class InstallController extends Controller
 
         foreach ($values as $key => $value) {
             // Handle values with spaces or special characters
-            if (preg_match('/[\s=#]/', $value) && !preg_match('/^".*"$/', $value)) {
-                $value = '"' . $value . '"';
+            if (preg_match('/[\s=#]/', $value) && ! preg_match('/^".*"$/', $value)) {
+                $value = '"'.$value.'"';
             }
 
             // Replace existing key

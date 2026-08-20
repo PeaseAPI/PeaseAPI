@@ -18,6 +18,7 @@ class SiliconFlowAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'siliconflow';
+
     protected int $apiType = ApiType::SILICONFLOW->value;
 
     /** @var array<int, string> */

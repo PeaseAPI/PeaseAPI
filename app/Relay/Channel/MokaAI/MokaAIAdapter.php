@@ -18,6 +18,7 @@ class MokaAIAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'mokaai';
+
     protected int $apiType = ApiType::MOKA_ML->value;
 
     /** @var array<int, string> */

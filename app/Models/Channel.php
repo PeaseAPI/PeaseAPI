@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class Channel extends Model
 {
     protected $table = 'channels';
+
     public $timestamps = false;
 
     // 1:1 对齐 Go 版 model/channel.go 的所有字段
@@ -21,28 +22,28 @@ class Channel extends Model
     ];
 
     protected $casts = [
-        'id'                  => 'integer',
-        'type'                => 'integer',
-        'status'              => 'integer',
-        'weight'              => 'integer',
-        'created_time'        => 'integer',
-        'test_time'           => 'integer',
-        'response_time'       => 'integer',
-        'balance'             => 'decimal:4',
-        'balance_updated_time'=> 'integer',
-        'used_quota'          => 'integer',
-        'priority'            => 'integer',
-        'auto_ban'            => 'integer',
+        'id' => 'integer',
+        'type' => 'integer',
+        'status' => 'integer',
+        'weight' => 'integer',
+        'created_time' => 'integer',
+        'test_time' => 'integer',
+        'response_time' => 'integer',
+        'balance' => 'decimal:4',
+        'balance_updated_time' => 'integer',
+        'used_quota' => 'integer',
+        'priority' => 'integer',
+        'auto_ban' => 'integer',
         // JSON / 数组字段自动转换
-        'models'              => 'array',
-        'model_mapping'       => 'array',
+        'models' => 'array',
+        'model_mapping' => 'array',
         'status_code_mapping' => 'array',
-        'other_info'          => 'array',
-        'setting'             => 'array',
-        'param_override'      => 'array',
-        'header_override'     => 'array',
-        'channel_info'        => 'array',
-        'settings'            => 'array',
+        'other_info' => 'array',
+        'setting' => 'array',
+        'param_override' => 'array',
+        'header_override' => 'array',
+        'channel_info' => 'array',
+        'settings' => 'array',
     ];
 
     // ===== Scopes（对齐 Go 版查询条件）=====
@@ -70,7 +71,7 @@ class Channel extends Model
     public function scopeByGroup(Builder $q, string $group): Builder
     {
         // group 字段为逗号分隔多组
-        return $q->whereRaw("FIND_IN_SET(?, `group`)", [$group]);
+        return $q->whereRaw('FIND_IN_SET(?, `group`)', [$group]);
     }
 
     public function scopeByType(Builder $q, int $type): Builder
@@ -85,12 +86,15 @@ class Channel extends Model
 
     public function scopeSearch(Builder $q, ?string $kw): Builder
     {
-        if (empty($kw)) return $q;
+        if (empty($kw)) {
+            return $q;
+        }
+
         return $q->where(function ($sq) use ($kw) {
             $sq->where('id', $kw)
-               ->orWhere('name', 'like', "%{$kw}%")
-               ->orWhere('tag', 'like', "%{$kw}%")
-               ->orWhere('models', 'like', "%{$kw}%");
+                ->orWhere('name', 'like', "%{$kw}%")
+                ->orWhere('tag', 'like', "%{$kw}%")
+                ->orWhere('models', 'like', "%{$kw}%");
         });
     }
 
@@ -99,11 +103,18 @@ class Channel extends Model
     // models 读取时若为字符串则自动拆分
     public function getModelsAttribute($value): array
     {
-        if (is_array($value)) return $value;
-        if (empty($value)) return [];
+        if (is_array($value)) {
+            return $value;
+        }
+        if (empty($value)) {
+            return [];
+        }
         $decoded = json_decode($value, true);
-        if (is_array($decoded)) return $decoded;
-        return array_filter(array_map('trim', explode("\n", (string)$value)));
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        return array_filter(array_map('trim', explode("\n", (string) $value)));
     }
 
     // ===== Relations =====
@@ -130,6 +141,7 @@ class Channel extends Model
     public function getSupportedModels(): array
     {
         $models = $this->models ?? [];
+
         return array_values(array_unique($models));
     }
 
@@ -138,7 +150,10 @@ class Channel extends Model
      */
     public function getGroups(): array
     {
-        if (empty($this->group)) return ['default'];
+        if (empty($this->group)) {
+            return ['default'];
+        }
+
         return array_filter(array_map('trim', explode(',', $this->group)));
     }
 
@@ -148,6 +163,7 @@ class Channel extends Model
     public function getModelMapping(string $model): ?string
     {
         $mapping = $this->model_mapping ?? [];
+
         return $mapping[$model] ?? null;
     }
 
@@ -157,7 +173,8 @@ class Channel extends Model
     public function getMappedStatus(int $upstreamStatus): ?int
     {
         $map = $this->status_code_mapping ?? [];
-        return $map[(string)$upstreamStatus] ?? null;
+
+        return $map[(string) $upstreamStatus] ?? null;
     }
 
     /**
@@ -165,7 +182,10 @@ class Channel extends Model
      */
     public function getKeys(): array
     {
-        if (empty($this->key)) return [];
+        if (empty($this->key)) {
+            return [];
+        }
+
         return array_filter(array_map('trim', explode("\n", $this->key)));
     }
 }

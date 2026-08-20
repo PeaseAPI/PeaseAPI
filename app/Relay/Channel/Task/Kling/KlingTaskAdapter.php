@@ -17,13 +17,15 @@ class KlingTaskAdapter extends TaskAdapter
     protected function buildSubmitUrl(string $baseUrl, RelayInfo $info): string
     {
         $action = $info->getParam('kling_action', 'text2video');
-        return $baseUrl . '/v1/videos/' . $action;
+
+        return $baseUrl.'/v1/videos/'.$action;
     }
 
     protected function buildFetchUrl(string $baseUrl, string $taskId, RelayInfo $info): string
     {
         $action = $info->getParam('kling_action', 'text2video');
-        return $baseUrl . '/v1/videos/' . $action . '/' . $taskId;
+
+        return $baseUrl.'/v1/videos/'.$action.'/'.$taskId;
     }
 
     protected function buildRequestBody(RelayInfo $info): array

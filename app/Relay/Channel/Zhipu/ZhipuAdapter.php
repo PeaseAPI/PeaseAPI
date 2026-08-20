@@ -18,6 +18,7 @@ class ZhipuAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'zhipu';
+
     protected int $apiType = ApiType::ZHIPU_BIGMODEL->value;
 
     /** @var array<int, string> */

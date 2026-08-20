@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Channel;
 use App\Models\Ability;
 use App\Models\Pricing;
 use Illuminate\Support\Facades\Cache;
@@ -21,8 +20,8 @@ class TextQuotaService
     {
         $modelRatio = $this->getModelRatio($model);
         $groupRatio = $this->getGroupRatio($group);
-        
-        return (int)($promptTokens * $modelRatio * $groupRatio);
+
+        return (int) ($promptTokens * $modelRatio * $groupRatio);
     }
 
     /**
@@ -33,8 +32,8 @@ class TextQuotaService
         $modelRatio = $this->getModelRatio($model);
         $groupRatio = $this->getGroupRatio($group);
         $completionRatio = $this->getCompletionRatio($model);
-        
-        return (int)($completionTokens * $modelRatio * $completionRatio * $groupRatio);
+
+        return (int) ($completionTokens * $modelRatio * $completionRatio * $groupRatio);
     }
 
     /**
@@ -42,7 +41,7 @@ class TextQuotaService
      */
     public function calculateTotalCost(int $promptTokens, int $completionTokens, string $model, string $group = 'default'): int
     {
-        return $this->calculatePromptCost($promptTokens, $model, $group) 
+        return $this->calculatePromptCost($promptTokens, $model, $group)
              + $this->calculateCompletionCost($completionTokens, $model, $group);
     }
 
@@ -52,10 +51,11 @@ class TextQuotaService
     public function getModelRatio(string $model): float
     {
         $cacheKey = "model_ratio:{$model}";
-        
+
         return Cache::remember($cacheKey, 3600, function () use ($model) {
             $pricing = Pricing::where('model_name', $model)->first();
-            return $pricing ? (float)$pricing->input_ratio : 1.0;
+
+            return $pricing ? (float) $pricing->input_ratio : 1.0;
         });
     }
 
@@ -65,11 +65,12 @@ class TextQuotaService
     public function getGroupRatio(string $group): float
     {
         $cacheKey = "group_ratio:{$group}";
-        
+
         return Cache::remember($cacheKey, 3600, function () use ($group) {
             // 从配置或数据库获取分组倍率
             $ratio = config("pease-api.billing.group_ratios.{$group}", 1.0);
-            return (float)$ratio;
+
+            return (float) $ratio;
         });
     }
 
@@ -79,10 +80,11 @@ class TextQuotaService
     public function getCompletionRatio(string $model): float
     {
         $cacheKey = "completion_ratio:{$model}";
-        
+
         return Cache::remember($cacheKey, 3600, function () use ($model) {
             $pricing = Pricing::where('model_name', $model)->first();
-            return $pricing ? (float)$pricing->output_ratio : 1.0;
+
+            return $pricing ? (float) $pricing->output_ratio : 1.0;
         });
     }
 
@@ -92,18 +94,18 @@ class TextQuotaService
     public function getModelPrice(string $model): array
     {
         $pricing = Pricing::where('model_name', $model)->first();
-        
-        if (!$pricing) {
+
+        if (! $pricing) {
             // 默认价格
             return [
                 'input' => 0.002,
                 'output' => 0.002,
             ];
         }
-        
+
         return [
-            'input' => (float)$pricing->input_price,
-            'output' => (float)$pricing->output_price,
+            'input' => (float) $pricing->input_price,
+            'output' => (float) $pricing->output_price,
         ];
     }
 
@@ -114,8 +116,8 @@ class TextQuotaService
     {
         $cacheRatio = config('pease-api.billing.cache_ratio', 0.1); // 默认缓存折扣 10%
         $modelRatio = $this->getModelRatio($model);
-        
-        return (int)($cachedTokens * $modelRatio * $cacheRatio);
+
+        return (int) ($cachedTokens * $modelRatio * $cacheRatio);
     }
 
     /**
@@ -124,7 +126,7 @@ class TextQuotaService
     public function batchCalculateCost(array $models): array
     {
         $results = [];
-        
+
         foreach ($models as $model) {
             $results[$model] = [
                 'model_ratio' => $this->getModelRatio($model),
@@ -132,7 +134,7 @@ class TextQuotaService
                 'price' => $this->getModelPrice($model),
             ];
         }
-        
+
         return $results;
     }
 
@@ -158,6 +160,7 @@ class TextQuotaService
     public function getModelGroup(string $model): string
     {
         $ability = Ability::where('model', $model)->first();
+
         return $ability ? $ability->group : 'default';
     }
 

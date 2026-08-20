@@ -18,6 +18,7 @@ class XinferenceAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'xinference';
+
     protected int $apiType = ApiType::XINFERENCE->value;
 
     /** @var array<int, string> */

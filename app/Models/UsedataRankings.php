@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UsedataRankings extends Model
 {
-    protected $fillable = ["user_id", "period", "quota_used", "request_count", "rank"];
+    protected $fillable = ['user_id', 'period', 'quota_used', 'request_count', 'rank'];
 
     public function user(): BelongsTo
     {

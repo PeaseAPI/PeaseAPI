@@ -70,7 +70,7 @@ enum ApiType: int
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::OPENAI => 'OpenAI',
             self::ANTHROPIC => 'Anthropic',
             self::MIDJOURNEY => 'Midjourney',

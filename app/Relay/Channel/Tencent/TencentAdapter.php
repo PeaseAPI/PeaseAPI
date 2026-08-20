@@ -18,6 +18,7 @@ class TencentAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'tencent';
+
     protected int $apiType = ApiType::TENCENT_HUNYUAN->value;
 
     /** @var array<int, string> */

@@ -60,7 +60,7 @@ class PeaseInstall extends Command
         $this->newLine();
 
         // 3. 生成 APP_KEY
-        if (!$this->option('skip-key')) {
+        if (! $this->option('skip-key')) {
             $this->info('【3/6】生成应用密钥 (APP_KEY)...');
             $this->generateAppKey();
         } else {
@@ -80,7 +80,7 @@ class PeaseInstall extends Command
         $this->newLine();
 
         // 6. 数据库迁移
-        if (!$this->option('skip-migrate')) {
+        if (! $this->option('skip-migrate')) {
             $this->info('【6/6】执行数据库迁移...');
             $this->runMigration();
         } else {
@@ -161,15 +161,15 @@ class PeaseInstall extends Command
             $disabledFunctions
         );
 
-        if (!empty($dangerousFunctions)) {
+        if (! empty($dangerousFunctions)) {
             $this->newLine();
-            $this->warn('  ⚠ 检测到以下函数被禁用：' . implode(', ', $dangerousFunctions));
+            $this->warn('  ⚠ 检测到以下函数被禁用：'.implode(', ', $dangerousFunctions));
             $this->line('  <fg=gray>PeaseAPI 运行时不需要这些函数，本安装命令也不依赖它们。</fg>');
             $this->line('  <fg=gray>本项目的 composer.json 已移除依赖这些函数的自动脚本，</fg>');
             $this->line('  <fg=gray>直接 `composer install` + `php artisan pease:install` 即可，无需解禁。</fg>');
         }
 
-        if (!$allPassed) {
+        if (! $allPassed) {
             $this->newLine();
             $this->error('环境检测未通过，请修复上述问题后重试。');
             exit(1);
@@ -186,6 +186,7 @@ class PeaseInstall extends Command
 
         if (file_exists($envPath)) {
             $this->line('  <fg=green>✓</> .env 文件已存在');
+
             return;
         }
 
@@ -204,8 +205,9 @@ class PeaseInstall extends Command
     {
         $key = config('app.key');
 
-        if (!empty($key) && !$this->option('force')) {
+        if (! empty($key) && ! $this->option('force')) {
             $this->line('  <fg=gray>• APP_KEY 已设置，跳过生成（使用 --force 可强制重新生成）</>');
+
             return;
         }
 
@@ -250,7 +252,7 @@ class PeaseInstall extends Command
 
         // 通过 Artisan 清除其他缓存（视图、事件等）
         try {
-            $output = new BufferedOutput();
+            $output = new BufferedOutput;
             Artisan::call('optimize:clear', [], $output);
             $this->line('  <fg=green>✓</> artisan optimize:clear 完成');
         } catch (\Exception $e) {
@@ -265,12 +267,12 @@ class PeaseInstall extends Command
      */
     protected function runPackageDiscover(): void
     {
-        $output = new BufferedOutput();
+        $output = new BufferedOutput;
         Artisan::call('package:discover', ['--ansi' => true], $output);
         $result = $output->fetch();
         $this->line('  <fg=green>✓</> 包发现完成');
         if (trim($result)) {
-            $this->line('  <fg=gray>' . trim($result) . '</>');
+            $this->line('  <fg=gray>'.trim($result).'</>');
         }
     }
 
@@ -282,7 +284,7 @@ class PeaseInstall extends Command
      */
     protected function publishLaravelAssets(): void
     {
-        $output = new BufferedOutput();
+        $output = new BufferedOutput;
         try {
             Artisan::call('vendor:publish', [
                 '--tag' => 'laravel-assets',
@@ -300,8 +302,9 @@ class PeaseInstall extends Command
      */
     protected function runMigration(): void
     {
-        if (!$this->confirm('是否现在执行数据库迁移？（请确保已配置 .env 中的数据库连接信息）', true)) {
+        if (! $this->confirm('是否现在执行数据库迁移？（请确保已配置 .env 中的数据库连接信息）', true)) {
             $this->line('  <fg=gray>• 已跳过数据库迁移，可稍后手动执行 php artisan migrate</>');
+
             return;
         }
 
@@ -309,7 +312,7 @@ class PeaseInstall extends Command
             $this->call('migrate', ['--force' => true]);
             $this->line('  <fg=green>✓</> 数据库迁移完成');
         } catch (\Exception $e) {
-            $this->error('  数据库迁移失败：' . $e->getMessage());
+            $this->error('  数据库迁移失败：'.$e->getMessage());
             $this->line('  <fg=gray>请检查 .env 中的数据库配置后手动执行：php artisan migrate</>');
         }
     }
@@ -337,19 +340,19 @@ class PeaseInstall extends Command
     protected function cleanAvatarData(): void
     {
         try {
-            $output = new BufferedOutput();
+            $output = new BufferedOutput;
             Artisan::call('pease:clean-avatar', [], $output);
             $result = trim($output->fetch());
             if ($result !== '') {
                 // 逐行输出，保持安装日志整洁
                 foreach (explode("\n", $result) as $line) {
-                    $this->line('  <fg=gray>' . $line . '</>');
+                    $this->line('  <fg=gray>'.$line.'</>');
                 }
             }
             $this->line('  <fg=green>✓</> 头像脏数据清理完成');
         } catch (\Throwable $e) {
             // 清理失败不阻断安装流程
-            $this->line('  <fg=gray>• 头像脏数据清理跳过（' . $e->getMessage() . '）</>');
+            $this->line('  <fg=gray>• 头像脏数据清理跳过（'.$e->getMessage().'）</>');
         }
     }
 
@@ -365,6 +368,7 @@ class PeaseInstall extends Command
             $current = readlink($link);
             if ($current === $target) {
                 $this->line('  <fg=green>✓</> public/storage 已存在且链接正确');
+
                 return;
             }
 
@@ -373,24 +377,26 @@ class PeaseInstall extends Command
 
         if (file_exists($link) || is_dir($link)) {
             $this->warn('  public/storage 已存在且不是软链接，请手动检查该路径');
+
             return;
         }
 
-        if (!is_dir(public_path())) {
+        if (! is_dir(public_path())) {
             @mkdir(public_path(), 0755, true);
         }
 
         if (@symlink($target, $link)) {
             $this->line('  <fg=green>✓</> 已创建 public/storage 软链接');
+
             return;
         }
 
         try {
-            $output = new BufferedOutput();
+            $output = new BufferedOutput;
             Artisan::call('storage:link', [], $output);
             $this->line('  <fg=green>✓</> 已通过 artisan storage:link 创建链接');
         } catch (\Throwable $e) {
-            $this->warn('  未能自动创建 public/storage 软链接：' . $e->getMessage());
+            $this->warn('  未能自动创建 public/storage 软链接：'.$e->getMessage());
             $this->warn('  请手动在项目根目录执行 `php artisan storage:link` 或创建软链接');
         }
     }

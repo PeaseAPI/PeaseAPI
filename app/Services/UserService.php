@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\User;
-use App\Models\Token;
 use App\Models\Log;
+use App\Models\Token;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -42,17 +42,17 @@ class UserService
     {
         $allowedFields = ['email', 'group', 'status', 'quota', 'role'];
         $updateData = [];
-        
+
         foreach ($allowedFields as $field) {
             if (isset($data[$field])) {
                 $updateData[$field] = $data[$field];
             }
         }
-        
-        if (!empty($updateData)) {
+
+        if (! empty($updateData)) {
             $user->update($updateData);
         }
-        
+
         return true;
     }
 
@@ -64,9 +64,9 @@ class UserService
         // 删除相关数据
         Token::where('user_id', $user->id)->delete();
         Log::where('user_id', $user->id)->delete();
-        
+
         $user->delete();
-        
+
         return true;
     }
 
@@ -118,6 +118,7 @@ class UserService
     public function updateQuota(User $user, int $amount): bool
     {
         $user->update(['quota' => $amount]);
+
         return true;
     }
 
@@ -127,6 +128,7 @@ class UserService
     public function addQuota(User $user, int $amount): bool
     {
         $user->increment('quota', $amount);
+
         return true;
     }
 
@@ -138,10 +140,10 @@ class UserService
         if ($user->quota < $amount) {
             return false;
         }
-        
+
         $user->decrement('quota', $amount);
         $user->increment('used_quota', $amount);
-        
+
         return true;
     }
 
@@ -151,6 +153,7 @@ class UserService
     public function updateGroup(User $user, string $group): bool
     {
         $user->update(['group' => $group]);
+
         return true;
     }
 
@@ -160,6 +163,7 @@ class UserService
     public function updateStatus(User $user, int $status): bool
     {
         $user->update(['status' => $status]);
+
         return true;
     }
 
@@ -169,6 +173,7 @@ class UserService
     public function updateRole(User $user, int $role): bool
     {
         $user->update(['role' => $role]);
+
         return true;
     }
 
@@ -195,7 +200,7 @@ class UserService
         if (empty($user->aff_code)) {
             $user->update(['aff_code' => Str::random(16)]);
         }
-        
+
         return $user->aff_code;
     }
 
@@ -205,17 +210,17 @@ class UserService
     public function processInvite(User $user, string $affCode): bool
     {
         $inviter = User::where('aff_code', $affCode)->first();
-        
-        if (!$inviter || $inviter->id === $user->id) {
+
+        if (! $inviter || $inviter->id === $user->id) {
             return false;
         }
-        
+
         $user->update(['inviter_id' => $inviter->id]);
-        
+
         // 给邀请者增加配额奖励
         $inviteBonus = config('pease-api.billing.invite_bonus', 1000);
         $inviter->increment('quota', $inviteBonus);
-        
+
         return true;
     }
 
@@ -253,7 +258,7 @@ class UserService
         // 先删除相关数据
         Token::whereIn('user_id', $userIds)->delete();
         Log::whereIn('user_id', $userIds)->delete();
-        
+
         return User::whereIn('id', $userIds)->delete();
     }
 

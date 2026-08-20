@@ -21,8 +21,11 @@ use Illuminate\Support\Str;
 class EmailService
 {
     private const VERIFICATION_CACHE_PREFIX = 'email_verification:';
+
     private const PASSWORD_RESET_CACHE_PREFIX = 'password_reset:';
+
     private const VERIFICATION_TTL = 600;       // 10 minutes
+
     private const PASSWORD_RESET_TTL = 1800;    // 30 minutes
 
     /**
@@ -34,7 +37,7 @@ class EmailService
     {
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        Cache::put(self::VERIFICATION_CACHE_PREFIX . $email, $code, self::VERIFICATION_TTL);
+        Cache::put(self::VERIFICATION_CACHE_PREFIX.$email, $code, self::VERIFICATION_TTL);
 
         $this->applySmtpConfig();
         Mail::to($email)->queue(new EmailVerificationMail($code));
@@ -47,14 +50,15 @@ class EmailService
      */
     public function verifyCode(string $email, string $code): bool
     {
-        $cached = Cache::get(self::VERIFICATION_CACHE_PREFIX . $email);
+        $cached = Cache::get(self::VERIFICATION_CACHE_PREFIX.$email);
         if ($cached === null) {
             return false;
         }
         if (! hash_equals((string) $cached, $code)) {
             return false;
         }
-        Cache::forget(self::VERIFICATION_CACHE_PREFIX . $email);
+        Cache::forget(self::VERIFICATION_CACHE_PREFIX.$email);
+
         return true;
     }
 
@@ -66,10 +70,10 @@ class EmailService
     public function sendPasswordReset(string $email): string
     {
         $token = Str::random(64);
-        Cache::put(self::PASSWORD_RESET_CACHE_PREFIX . $token, $email, self::PASSWORD_RESET_TTL);
+        Cache::put(self::PASSWORD_RESET_CACHE_PREFIX.$token, $email, self::PASSWORD_RESET_TTL);
 
         $serverAddress = OptionService::get('ServerAddress', config('app.url', ''));
-        $link = rtrim((string) $serverAddress, '/') . '/reset?token=' . $token;
+        $link = rtrim((string) $serverAddress, '/').'/reset?token='.$token;
 
         $this->applySmtpConfig();
         Mail::to($email)->queue(new PasswordResetMail($link, $email));
@@ -82,11 +86,12 @@ class EmailService
      */
     public function consumePasswordResetToken(string $token): ?string
     {
-        $email = Cache::get(self::PASSWORD_RESET_CACHE_PREFIX . $token);
+        $email = Cache::get(self::PASSWORD_RESET_CACHE_PREFIX.$token);
         if ($email === null) {
             return null;
         }
-        Cache::forget(self::PASSWORD_RESET_CACHE_PREFIX . $token);
+        Cache::forget(self::PASSWORD_RESET_CACHE_PREFIX.$token);
+
         return (string) $email;
     }
 

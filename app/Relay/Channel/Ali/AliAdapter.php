@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Http;
 class AliAdapter extends BaseAdapter
 {
     protected string $name = 'ali';
+
     protected int $apiType = ApiType::ALI_DASHSCOPE->value;
 
     /** @var array<int, string> */
@@ -34,7 +35,7 @@ class AliAdapter extends BaseAdapter
         $body = $info->requestBody;
 
         // 应用参数覆盖
-        if (!empty($info->paramOverride)) {
+        if (! empty($info->paramOverride)) {
             foreach ($info->paramOverride as $key => $value) {
                 $body[$key] = $value;
             }
@@ -76,7 +77,7 @@ class AliAdapter extends BaseAdapter
      */
     public function formatResponse(RelayInfo $info): void
     {
-        if (!$info->isStream) {
+        if (! $info->isStream) {
             $body = json_decode($info->responseBody, true);
             if (is_array($body) && isset($body['usage'])) {
                 $info->promptTokens = (int) ($body['usage']['prompt_tokens'] ?? 0);
@@ -92,6 +93,7 @@ class AliAdapter extends BaseAdapter
     {
         if ($info->isStream) {
             $this->streamHandler($info);
+
             return;
         }
 
@@ -125,6 +127,7 @@ class AliAdapter extends BaseAdapter
                 $info->recordFirstResponse();
                 echo $data;
                 flush();
+
                 return strlen($data);
             },
             CURLOPT_TIMEOUT => 300,
@@ -165,6 +168,7 @@ class AliAdapter extends BaseAdapter
     private function buildRequestUrl(RelayInfo $info): string
     {
         $path = '/compatible-mode/v1/chat/completions';
+
         return $info->getUpstreamUrl($path);
     }
 
@@ -176,7 +180,7 @@ class AliAdapter extends BaseAdapter
     private function buildRequestHeaders(RelayInfo $info): array
     {
         $headers = [
-            'Authorization' => 'Bearer ' . $info->apiKey,
+            'Authorization' => 'Bearer '.$info->apiKey,
             'Content-Type' => 'application/json',
         ];
 
@@ -190,15 +194,16 @@ class AliAdapter extends BaseAdapter
     /**
      * 格式化 cURL 头
      *
-     * @param array<string, string> $headers
+     * @param  array<string, string>  $headers
      * @return array<int, string>
      */
     private function formatCurlHeaders(array $headers): array
     {
         $result = [];
         foreach ($headers as $key => $value) {
-            $result[] = $key . ': ' . $value;
+            $result[] = $key.': '.$value;
         }
+
         return $result;
     }
 }

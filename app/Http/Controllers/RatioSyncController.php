@@ -39,7 +39,7 @@ class RatioSyncController extends Controller
         ]);
 
         $channel = Channel::findOrFail($data['channel_id']);
-        $url = $data['url'] ?? rtrim((string) $channel->base_url, '/') . '/pricing';
+        $url = $data['url'] ?? rtrim((string) $channel->base_url, '/').'/pricing';
 
         try {
             $response = Http::withToken((string) $channel->key)
@@ -47,7 +47,7 @@ class RatioSyncController extends Controller
                 ->get($url);
 
             if (! $response->successful()) {
-                return $this->error('上游返回错误状态码: ' . $response->status());
+                return $this->error('上游返回错误状态码: '.$response->status());
             }
 
             return $this->success([
@@ -55,7 +55,7 @@ class RatioSyncController extends Controller
                 'pricing' => $response->json(),
             ]);
         } catch (\Throwable $e) {
-            return $this->error('拉取上游倍率失败: ' . $e->getMessage());
+            return $this->error('拉取上游倍率失败: '.$e->getMessage());
         }
     }
 }

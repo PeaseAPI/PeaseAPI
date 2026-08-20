@@ -18,6 +18,7 @@ class MistralAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'mistral';
+
     protected int $apiType = ApiType::MISTRAL->value;
 
     /** @var array<int, string> */

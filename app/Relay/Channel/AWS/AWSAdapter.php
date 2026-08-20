@@ -15,7 +15,7 @@ class AWSAdapter extends BaseAdapter
     public function formatRequest(RelayInfo $info): void
     {
         $body = $info->requestBody;
-        
+
         $awsBody = [
             'modelId' => $body['model'] ?? 'anthropic.claude-3-sonnet-20240229-v1:0',
             'messages' => $body['messages'] ?? [],
@@ -32,16 +32,16 @@ class AWSAdapter extends BaseAdapter
     public function formatResponse(RelayInfo $info): void
     {
         $body = json_decode($info->responseBody, true);
-        
+
         $openai = [
-            'id' => 'chatcmpl-' . uniqid(),
+            'id' => 'chatcmpl-'.uniqid(),
             'object' => 'chat.completion',
             'created' => time(),
             'model' => $info->model,
             'choices' => [],
         ];
 
-        if (!empty($body['output']['message']['content'])) {
+        if (! empty($body['output']['message']['content'])) {
             $content = $body['output']['message']['content'][0]['text'] ?? '';
             $openai['choices'][] = [
                 'index' => 0,
@@ -56,14 +56,14 @@ class AWSAdapter extends BaseAdapter
     public function doRequest(RelayInfo $info): void
     {
         $channel = $info->channel;
-        
+
         $ch = curl_init($info->upstreamUrl);
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $info->upstreamBody,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
-                'Authorization: Bearer ' . $channel->key,
+                'Authorization: Bearer '.$channel->key,
             ],
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 120,

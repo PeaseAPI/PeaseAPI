@@ -9,11 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UserSession extends Model
 {
-    protected $fillable = ["user_id", "token", "ip", "user_agent", "expires_at"];
+    protected $fillable = ['user_id', 'token', 'ip', 'user_agent', 'expires_at'];
 
     protected function casts(): array
     {
-        return ["expires_at" => "datetime"];
+        return ['expires_at' => 'datetime'];
     }
 
     public function user(): BelongsTo

@@ -18,6 +18,7 @@ class JinaAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'jina';
+
     protected int $apiType = ApiType::JINA->value;
 
     /** @var array<int, string> */

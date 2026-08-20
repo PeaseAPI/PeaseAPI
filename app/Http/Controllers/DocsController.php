@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Services\OptionService;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
 
@@ -20,13 +20,14 @@ class DocsController extends Controller
         $passwordLoginEnabled = true;
         try {
             if (app()->bound('db') && \DB::connection()->getPdo()) {
-                $systemName = \App\Services\OptionService::get('SystemName', $systemName);
-                $systemLogo = \App\Services\OptionService::get('SystemLogo', '');
-                $systemFooter = \App\Services\OptionService::get('SystemFooter', '');
-                $registerEnabled = (bool) \App\Services\OptionService::get('RegisterEnabled', true);
-                $passwordLoginEnabled = (bool) \App\Services\OptionService::get('PasswordLoginEnabled', true);
+                $systemName = OptionService::get('SystemName', $systemName);
+                $systemLogo = OptionService::get('SystemLogo', '');
+                $systemFooter = OptionService::get('SystemFooter', '');
+                $registerEnabled = (bool) OptionService::get('RegisterEnabled', true);
+                $passwordLoginEnabled = (bool) OptionService::get('PasswordLoginEnabled', true);
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         $docs = [
             [
@@ -60,28 +61,29 @@ class DocsController extends Controller
         $passwordLoginEnabled = true;
         try {
             if (app()->bound('db') && \DB::connection()->getPdo()) {
-                $systemName = \App\Services\OptionService::get('SystemName', $systemName);
-                $systemLogo = \App\Services\OptionService::get('SystemLogo', '');
-                $systemFooter = \App\Services\OptionService::get('SystemFooter', '');
-                $registerEnabled = (bool) \App\Services\OptionService::get('RegisterEnabled', true);
-                $passwordLoginEnabled = (bool) \App\Services\OptionService::get('PasswordLoginEnabled', true);
+                $systemName = OptionService::get('SystemName', $systemName);
+                $systemLogo = OptionService::get('SystemLogo', '');
+                $systemFooter = OptionService::get('SystemFooter', '');
+                $registerEnabled = (bool) OptionService::get('RegisterEnabled', true);
+                $passwordLoginEnabled = (bool) OptionService::get('PasswordLoginEnabled', true);
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         $docsMap = [
             'deployment' => ['title' => '部署指南', 'icon' => '🚀', 'file' => 'deployment.md'],
             'usage-guide' => ['title' => '使用手册', 'icon' => '📖', 'file' => 'usage-guide.md'],
         ];
 
-        if (!isset($docsMap[$slug])) {
+        if (! isset($docsMap[$slug])) {
             abort(404);
         }
 
         $doc = $docsMap[$slug];
-        $filePath = base_path('docs/' . $doc['file']);
+        $filePath = base_path('docs/'.$doc['file']);
 
-        if (!File::exists($filePath)) {
-            abort(404, '文档文件不存在');
+        if (! File::exists($filePath)) {
+            abort(404, __('Document file does not exist'));
         }
 
         $markdownContent = File::get($filePath);

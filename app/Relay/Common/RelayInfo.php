@@ -7,8 +7,10 @@ namespace App\Relay\Common;
 use App\Enums\ApiType;
 use App\Enums\ChannelType;
 use App\Models\Channel;
+use App\Models\CodingPlanAccount;
 use App\Models\Token;
 use App\Models\User;
+use App\Services\CodingPlanPoolService;
 use Illuminate\Http\Request;
 
 /**
@@ -21,91 +23,141 @@ class RelayInfo
 {
     // Token 信息
     public int $tokenId = 0;
+
     public string $tokenKey = '';
+
     public string $tokenGroup = '';
+
     public bool $tokenUnlimited = false;
 
     // 用户信息
     public int $userId = 0;
+
     public string $userGroup = 'default';
+
     public ?User $user = null;
 
     // 渠道信息
     public int $channelType = 0;
+
     public int $channelId = 0;
+
     public bool $channelIsMultiKey = false;
+
     public int $channelMultiKeyIndex = 0;
+
     public string $channelBaseUrl = '';
+
     public int $apiType = 0;
+
     public string $apiVersion = '';
+
     public string $apiKey = '';
+
     public string $organization = '';
+
     public int $channelCreateTime = 0;
+
     /** @var array<string, mixed> */
     public array $paramOverride = [];
+
     /** @var array<string, mixed> */
     public array $headersOverride = [];
+
     /** @var array<string, mixed> */
     public array $channelSetting = [];
+
     /** @var array<string, mixed> */
     public array $channelOtherSettings = [];
+
     public string $upstreamModelName = '';
+
     public bool $isModelMapped = false;
+
     public bool $supportStreamOptions = false;
 
     // 请求信息
     public string $relayMode = '';
+
     public int $relayFormat = 0;
+
     public string $requestModel = '';
+
     public string $modelName = '';
+
     public bool $isStream = false;
+
     public bool $isImage = false;
+
     public bool $isAudio = false;
+
     public bool $isRerank = false;
+
     public ?Request $request = null;
+
     public ?Channel $channel = null;
 
     // 时间信息
     public float $startTime = 0.0;
+
     public float $firstResponseTime = 0.0;
+
     public bool $isFirstResponse = true;
 
     // Token 计数
     public int $promptTokens = 0;
+
     public int $completionTokens = 0;
+
     public int $estimatePromptTokens = 0;
 
     // 计费信息
     public float $modelRatio = 1.0;
+
     public float $groupRatio = 1.0;
+
     public float $completionRatio = 1.0;
+
     public float $cacheRatio = 0.0;
+
     public int $quota = 0;
+
     public int $preConsumedQuota = 0;
 
     // 响应信息
     public int $responseStatus = 0;
+
     public string $responseBody = '';
+
     /** @var array<string, string> */
     public array $responseHeaders = [];
 
     // 流式处理
     public bool $sendLastReasoningResponse = false;
+
     public string $lastMessageType = 'none';
+
     public bool $hasSentThinkingContent = false;
 
     // Claude 转换信息
     public string $claudeLastMessagesType = 'none';
+
     public int $claudeIndex = 0;
+
     public ?array $claudeUsage = null;
+
     public string $claudeFinishReason = '';
+
     public bool $claudeDone = false;
+
     public int $claudeToolCallBaseIndex = 0;
+
     public int $claudeToolCallMaxIndexOffset = 0;
 
     // Reranker 信息
     /** @var array<int, mixed> */
     public array $rerankerDocuments = [];
+
     public bool $rerankerReturnDocuments = false;
 
     // Responses API 信息
@@ -118,6 +170,7 @@ class RelayInfo
 
     // 上游请求（适配器使用）
     public string $upstreamBody = '';
+
     public string $upstreamUrl = '';
 
     // 其他渠道列表（重试时记录）
@@ -130,9 +183,12 @@ class RelayInfo
     public string $requestId = '';
 
     // Coding Plan 账号池（若当前渠道关联账号池，则持有选中的账号实例）
-    public ?\App\Models\CodingPlanAccount $codingPlanAccount = null;
+    public ?CodingPlanAccount $codingPlanAccount = null;
+
     public ?int $codingPlanAccountId = null;
+
     public string $codingVendor = '';
+
     public int $codingSubmitsPerRequest = 1;
 
     /**
@@ -140,7 +196,7 @@ class RelayInfo
      */
     public static function fromRequest(Request $request, Token $token, User $user): self
     {
-        $info = new self();
+        $info = new self;
         $info->request = $request;
         $info->tokenId = (int) $token->id;
         $info->tokenKey = $token->key;
@@ -170,7 +226,7 @@ class RelayInfo
         $this->channelCreateTime = (int) ($channel->created_time ?? 0);
 
         $channelInfo = $this->parseJson($channel->channel_info);
-        $this->channelIsMultiKey = !empty($channelInfo['multi_key']);
+        $this->channelIsMultiKey = ! empty($channelInfo['multi_key']);
         $this->channelMultiKeyIndex = (int) ($channelInfo['multi_key_index'] ?? 0);
 
         $this->channelSetting = $this->parseJson($channel->setting);
@@ -194,24 +250,24 @@ class RelayInfo
      */
     public function applyCodingPlanAccount(): void
     {
-        if (!$this->channel || $this->channelId <= 0) {
+        if (! $this->channel || $this->channelId <= 0) {
             return;
         }
 
         // 通过 channel_id 检测是否存在关联的 coding plan 账号
-        $firstAccount = \App\Models\CodingPlanAccount::where('channel_id', $this->channelId)
-            ->where('status', '!=', \App\Models\CodingPlanAccount::STATUS_DISABLED)
+        $firstAccount = CodingPlanAccount::where('channel_id', $this->channelId)
+            ->where('status', '!=', CodingPlanAccount::STATUS_DISABLED)
             ->first();
 
-        if (!$firstAccount) {
+        if (! $firstAccount) {
             return; // 非 coding plan 渠道，走默认凭证
         }
 
         $vendor = $firstAccount->vendor;
         $this->codingVendor = $vendor;
 
-        /** @var \App\Services\CodingPlanPoolService $pool */
-        $pool = app(\App\Services\CodingPlanPoolService::class);
+        /** @var CodingPlanPoolService $pool */
+        $pool = app(CodingPlanPoolService::class);
         $account = $pool->pickAccount($vendor);
 
         if ($account === null) {
@@ -225,7 +281,7 @@ class RelayInfo
         if ($plainKey !== null && $plainKey !== '') {
             $this->apiKey = $plainKey;
         }
-        if (!empty($account->base_url)) {
+        if (! empty($account->base_url)) {
             $this->channelBaseUrl = $account->base_url;
         }
 
@@ -239,8 +295,8 @@ class RelayInfo
      * 在上游请求完成后调用（成功或失败均记录）。若上游返回配额超限类错误，
      * 会将账号标记为耗尽，下次请求自动切换到同供应商的其他账号。
      *
-     * @param bool $success 请求是否成功
-     * @param string|null $error 错误信息（失败时填写）
+     * @param  bool  $success  请求是否成功
+     * @param  string|null  $error  错误信息（失败时填写）
      */
     public function recordCodingPlanUsage(bool $success, ?string $error = null): void
     {
@@ -248,8 +304,8 @@ class RelayInfo
             return;
         }
 
-        /** @var \App\Services\CodingPlanPoolService $pool */
-        $pool = app(\App\Services\CodingPlanPoolService::class);
+        /** @var CodingPlanPoolService $pool */
+        $pool = app(CodingPlanPoolService::class);
 
         $pool->recordUsage(
             $this->codingPlanAccount,
@@ -343,7 +399,8 @@ class RelayInfo
         if ($path !== '' && str_starts_with($path, '/')) {
             $path = substr($path, 1);
         }
-        return $baseUrl . ($path !== '' ? '/' . $path : '');
+
+        return $baseUrl.($path !== '' ? '/'.$path : '');
     }
 
     /**
@@ -431,6 +488,7 @@ class RelayInfo
             return $json;
         }
         $decoded = json_decode((string) $json, true);
+
         return is_array($decoded) ? $decoded : [];
     }
 

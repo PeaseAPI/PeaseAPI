@@ -18,6 +18,7 @@ class CohereAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'cohere';
+
     protected int $apiType = ApiType::COHERE->value;
 
     /** @var array<int, string> */
@@ -39,7 +40,7 @@ class CohereAdapter extends BaseAdapter
     protected function buildRequestHeaders(RelayInfo $info): array
     {
         $headers = [
-            'Authorization' => 'Bearer ' . $info->apiKey,
+            'Authorization' => 'Bearer '.$info->apiKey,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
         ];

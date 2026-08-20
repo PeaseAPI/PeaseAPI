@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class MissingModel extends Model
 {
-    protected $fillable = ["model_name", "channel_id", "reported_at"];
+    protected $fillable = ['model_name', 'channel_id', 'reported_at'];
 
     protected function casts(): array
     {
-        return ["reported_at" => "datetime"];
+        return ['reported_at' => 'datetime'];
     }
 }

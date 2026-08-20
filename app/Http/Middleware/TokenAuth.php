@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Token;
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
-use App\Models\Token;
-use App\Models\User;
-use App\Enums\UserRole;
 
 class TokenAuth
 {
@@ -22,14 +21,14 @@ class TokenAuth
     {
         // 1. Validate Authorization header
         $authHeader = $request->header('Authorization');
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+        if (! $authHeader || ! str_starts_with($authHeader, 'Bearer ')) {
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => 'Missing or invalid authorization header',
+                    'message' => __('Missing or invalid authorization header'),
                     'type' => 'invalid_request_error',
-                    'code' => 'missing_authorization'
-                ]
+                    'code' => 'missing_authorization',
+                ],
             ], 401);
         }
 
@@ -39,24 +38,24 @@ class TokenAuth
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => 'Invalid API key format',
+                    'message' => __('Invalid API key format'),
                     'type' => 'invalid_request_error',
-                    'code' => 'invalid_api_key'
-                ]
+                    'code' => 'invalid_api_key',
+                ],
             ], 401);
         }
 
         // 3. Find token in database
         $token = Token::where('key', $key)->first();
-        if (!$token) {
+        if (! $token) {
             // Use generic error message to prevent enumeration
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => 'Invalid API key',
+                    'message' => __('Invalid API key'),
                     'type' => 'invalid_request_error',
-                    'code' => 'invalid_api_key'
-                ]
+                    'code' => 'invalid_api_key',
+                ],
             ], 401);
         }
 
@@ -65,10 +64,10 @@ class TokenAuth
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => 'API token is disabled',
+                    'message' => __('API token is disabled'),
                     'type' => 'invalid_request_error',
-                    'code' => 'token_disabled'
-                ]
+                    'code' => 'token_disabled',
+                ],
             ], 403);
         }
 
@@ -77,23 +76,23 @@ class TokenAuth
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => 'API token has expired',
+                    'message' => __('API token has expired'),
                     'type' => 'invalid_request_error',
-                    'code' => 'token_expired'
-                ]
+                    'code' => 'token_expired',
+                ],
             ], 403);
         }
 
         // 6. Check if user exists and is active
         $user = User::find($token->user_id);
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => 'User not found',
+                    'message' => __('User not found'),
                     'type' => 'invalid_request_error',
-                    'code' => 'user_not_found'
-                ]
+                    'code' => 'user_not_found',
+                ],
             ], 403);
         }
 
@@ -101,48 +100,49 @@ class TokenAuth
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => 'User account is disabled',
+                    'message' => __('User account is disabled'),
                     'type' => 'invalid_request_error',
-                    'code' => 'user_disabled'
-                ]
+                    'code' => 'user_disabled',
+                ],
             ], 403);
         }
 
         // 7. Check IP restrictions (if configured)
-        if (!$token->isIpAllowed($request->ip())) {
+        if (! $token->isIpAllowed($request->ip())) {
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => 'IP address not allowed for this token',
+                    'message' => __('IP address not allowed for this token'),
                     'type' => 'invalid_request_error',
-                    'code' => 'ip_not_allowed'
-                ]
+                    'code' => 'ip_not_allowed',
+                ],
             ], 403);
         }
 
         // 8. Check if token has available quota (unless unlimited)
-        if (!$token->hasAvailableQuota()) {
+        if (! $token->hasAvailableQuota()) {
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => 'Insufficient quota',
+                    'message' => __('Insufficient quota'),
                     'type' => 'insufficient_quota',
-                    'code' => 'quota_exceeded'
-                ]
+                    'code' => 'quota_exceeded',
+                ],
             ], 403);
         }
 
         // 9. Rate limiting per token
-        $rateLimitKey = 'token:' . $token->id;
+        $rateLimitKey = 'token:'.$token->id;
         if (RateLimiter::tooManyAttempts($rateLimitKey, $this->maxRequestsPerMinute)) {
             $seconds = RateLimiter::availableIn($rateLimitKey);
+
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => 'Rate limit exceeded. Please retry after ' . $seconds . ' seconds',
+                    'message' => 'Rate limit exceeded. Please retry after '.$seconds.' seconds',
                     'type' => 'rate_limit_exceeded',
-                    'code' => 'rate_limit_exceeded'
-                ]
+                    'code' => 'rate_limit_exceeded',
+                ],
             ], 429);
         }
         RateLimiter::hit($rateLimitKey, 60);
@@ -163,14 +163,14 @@ class TokenAuth
 
         // 12. Check model restrictions if enabled
         $model = $request->input('model') ?? $request->input('messages.0.model') ?? '';
-        if (!empty($model) && !$token->isModelAllowed($model)) {
+        if (! empty($model) && ! $token->isModelAllowed($model)) {
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => 'Model not allowed for this token',
+                    'message' => __('Model not allowed for this token'),
                     'type' => 'invalid_request_error',
-                    'code' => 'model_not_allowed'
-                ]
+                    'code' => 'model_not_allowed',
+                ],
             ], 403);
         }
 

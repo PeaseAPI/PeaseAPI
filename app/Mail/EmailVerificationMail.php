@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Services\OptionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -18,8 +19,7 @@ class EmailVerificationMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public readonly string $code,
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {
@@ -34,7 +34,7 @@ class EmailVerificationMail extends Mailable implements ShouldQueue
             markdown: 'emails.verification',
             with: [
                 'code' => $this->code,
-                'systemName' => \App\Services\OptionService::get('SystemName', config('app.name', 'Pease API')),
+                'systemName' => OptionService::get('SystemName', config('app.name', 'Pease API')),
             ],
         );
     }

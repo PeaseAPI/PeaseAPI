@@ -1,34 +1,32 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\WebAuthController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AbilityController;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\InstallController;
-use App\Http\Controllers\Api\UserApiController;
 use App\Http\Controllers\Api\ChannelApiController;
 use App\Http\Controllers\Api\TokenApiController;
+use App\Http\Controllers\Api\UserApiController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocsController;
+use App\Http\Controllers\InstallController;
 use App\Http\Controllers\LogController;
-use App\Http\Controllers\AbilityController;
-use App\Http\Controllers\RedemptionController;
 use App\Http\Controllers\OptionController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\SubscriptionController;
-use App\Http\Controllers\CheckinController;
 use App\Http\Controllers\PerformanceController;
+use App\Http\Controllers\RedemptionController;
+use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SystemInfoController;
-use App\Http\Controllers\RankingController;
-use App\Http\Controllers\DocsController;
+use App\Http\Controllers\WebAuthController;
 use App\Http\Middleware\AdminAuth;
-use App\Http\Middleware\RootAuth;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 // Install route - 如果 install.lock 存在则禁止访问安装页面
 Route::get('/install', function () {
-    if (\App\Http\Controllers\InstallController::isInstalled()) {
+    if (InstallController::isInstalled()) {
         return response()->view('errors.install-locked', [], 403);
     }
-    return app(\App\Http\Controllers\InstallController::class)->index();
+
+    return app(InstallController::class)->index();
 })->name('install.index');
 Route::post('/install', [InstallController::class, 'process'])->name('install.process');
 Route::post('/install/migrate', [InstallController::class, 'runMigration'])->name('install.migrate');
@@ -47,13 +45,14 @@ Route::get('/docs/{slug}', [DocsController::class, 'show'])->name('docs.show');
 
 // Public home page - 检查 public/install.lock 文件
 Route::get('/', function () {
-    if (!\App\Http\Controllers\InstallController::isInstalled()) {
+    if (! InstallController::isInstalled()) {
         return redirect()->route('install.index');
     }
     // 已登录用户直接进入控制台
     if (Auth::check()) {
         return redirect()->route('dashboard');
     }
+
     // 未登录用户显示前台首页模板
     return view('welcome');
 })->name('home');
@@ -152,7 +151,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/abilities', [AdminController::class, 'abilities'])->name('admin.abilities');
         Route::get('/logs', [AdminController::class, 'logs'])->name('admin.logs');
         Route::get('/redemptions', [AdminController::class, 'redemptions'])->name('admin.redemptions');
-        Route::get('/options', function () { return redirect()->route('admin.system-settings'); })->name('admin.options');
+        Route::get('/options', function () {
+            return redirect()->route('admin.system-settings');
+        })->name('admin.options');
         Route::get('/system-settings', [AdminController::class, 'systemSettings'])->name('admin.system-settings');
         Route::get('/system-info', [SystemInfoController::class, 'index'])->name('admin.system-info');
         Route::post('/system-instances/cleanup', [SystemInfoController::class, 'cleanup'])->name('admin.system-instances.cleanup');

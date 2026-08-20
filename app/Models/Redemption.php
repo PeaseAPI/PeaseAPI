@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Redemption extends Model
 {
     protected $table = 'redemptions';
+
     public $timestamps = false;
 
     protected $fillable = [

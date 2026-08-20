@@ -106,7 +106,7 @@ class SubscriptionController extends Controller
             return $this->error('订阅计划不存在');
         }
 
-        $tradeNo = 'SE' . date('YmdHis') . Str::random(8);
+        $tradeNo = 'SE'.date('YmdHis').Str::random(8);
 
         return $this->success([
             'trade_no' => $tradeNo,
@@ -127,7 +127,7 @@ class SubscriptionController extends Controller
             return $this->error('订阅计划不存在');
         }
 
-        $tradeNo = 'SS' . date('YmdHis') . Str::random(8);
+        $tradeNo = 'SS'.date('YmdHis').Str::random(8);
 
         return $this->success([
             'trade_no' => $tradeNo,
@@ -148,7 +148,7 @@ class SubscriptionController extends Controller
             return $this->error('订阅计划不存在');
         }
 
-        $tradeNo = 'SC' . date('YmdHis') . Str::random(8);
+        $tradeNo = 'SC'.date('YmdHis').Str::random(8);
 
         return $this->success(['trade_no' => $tradeNo]);
     }
@@ -164,7 +164,7 @@ class SubscriptionController extends Controller
             return $this->error('订阅计划不存在');
         }
 
-        $tradeNo = 'SW' . date('YmdHis') . Str::random(8);
+        $tradeNo = 'SW'.date('YmdHis').Str::random(8);
 
         return $this->success(['trade_no' => $tradeNo]);
     }
@@ -430,6 +430,7 @@ class SubscriptionController extends Controller
     private function calcPeriodEnd(SubscriptionPlan $plan, int $now): int
     {
         $duration = max(1, (int) $plan->duration);
+
         return match ($plan->duration_unit) {
             'day' => strtotime("+{$duration} days", $now),
             'year' => strtotime("+{$duration} years", $now),
@@ -460,7 +461,7 @@ class SubscriptionController extends Controller
     {
         $user = $request->user();
         if (! $user || (int) $user->role < 10) {
-            abort(403, '无权限访问');
+            abort(403, __('No permission to access'));
         }
     }
 }

@@ -18,6 +18,7 @@ class ZhipuV4Adapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'zhipuv4';
+
     protected int $apiType = ApiType::ZHIPU->value;
 
     /** @var array<int, string> */

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
@@ -14,6 +13,7 @@ class User extends Authenticatable
     public $timestamps = false; // We use integer Unix timestamps, not Laravel's auto-timestamps
 
     protected $table = 'users';
+
     protected $primaryKey = 'id';
 
     protected $fillable = [
@@ -144,7 +144,7 @@ class User extends Authenticatable
 
         // 协议相对 URL（//xxx），补全为 https
         if (strpos($this->avatar, '//') === 0) {
-            return 'https:' . $this->avatar;
+            return 'https:'.$this->avatar;
         }
 
         // 本地相对路径：规范化并校验文件是否存在，避免重装后 404
@@ -153,14 +153,14 @@ class User extends Authenticatable
 
         // 同一请求内缓存已校验结果，避免重复磁盘 IO
         static $existsCache = [];
-        if (!array_key_exists($absolute, $existsCache)) {
+        if (! array_key_exists($absolute, $existsCache)) {
             $existsCache[$absolute] = is_file($absolute);
         }
 
-        if (!$existsCache[$absolute]) {
+        if (! $existsCache[$absolute]) {
             return '';
         }
 
-        return '/' . $relative;
+        return '/'.$relative;
     }
 }

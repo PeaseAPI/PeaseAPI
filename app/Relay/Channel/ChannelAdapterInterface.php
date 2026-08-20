@@ -67,6 +67,7 @@ interface ChannelAdapterInterface
 abstract class BaseAdapter implements ChannelAdapterInterface
 {
     protected string $name = 'base';
+
     protected int $apiType = 0;
 
     /** @var array<int, string> */

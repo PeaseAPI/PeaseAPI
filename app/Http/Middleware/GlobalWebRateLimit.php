@@ -17,13 +17,13 @@ class GlobalWebRateLimit
 {
     public function handle(Request $request, Closure $next, int $maxAttempts = 100, int $decaySeconds = 60): Response
     {
-        $key = 'web:' . $request->ip();
+        $key = 'web:'.$request->ip();
 
         $attempts = (int) cache()->get("rate_limit:{$key}", 0);
         if ($attempts >= $maxAttempts) {
             return response()->json([
                 'success' => false,
-                'message' => '请求过于频繁，请稍后再试',
+                'message' => __('Too many requests, please try again later.'),
             ], Response::HTTP_TOO_MANY_REQUESTS, [
                 'Retry-After' => (string) $decaySeconds,
             ]);

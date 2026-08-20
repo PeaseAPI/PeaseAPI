@@ -47,6 +47,7 @@ abstract class BaseAdapter implements ChannelAdapterInterface
         foreach ($headers as $key => $value) {
             $result[] = "{$key}: {$value}";
         }
+
         return $result;
     }
 }

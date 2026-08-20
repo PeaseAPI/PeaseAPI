@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Channel;
 use App\Models\Ability;
+use App\Models\Channel;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 
@@ -20,19 +20,19 @@ class ChannelSelectService
     public function selectChannel(string $model, string $group = 'default', ?User $user = null): ?Channel
     {
         $channels = $this->getAvailableChannels($model, $group);
-        
+
         if (empty($channels)) {
             return null;
         }
-        
+
         $channels = $this->sortByWeight($channels);
-        
+
         if ($user) {
             $channels = $this->applyAffinity($channels, $user, $model);
         }
-        
+
         $channels = $this->filterByHealth($channels);
-        
+
         return $channels[0] ?? null;
     }
 
@@ -46,7 +46,7 @@ class ChannelSelectService
             ->where('enabled', true)
             ->orderBy('priority', 'desc')
             ->get();
-        
+
         if ($abilities->isEmpty()) {
             $abilities = Ability::where('model', $model)
                 ->where('group', 'default')
@@ -54,9 +54,9 @@ class ChannelSelectService
                 ->orderBy('priority', 'desc')
                 ->get();
         }
-        
+
         $channelIds = $abilities->pluck('channel_id')->toArray();
-        
+
         return Channel::whereIn('id', $channelIds)
             ->where('status', 1)
             ->get()
@@ -71,7 +71,7 @@ class ChannelSelectService
         usort($channels, function ($a, $b) {
             return ($b['weight'] ?? 0) <=> ($a['weight'] ?? 0);
         });
-        
+
         return $channels;
     }
 
@@ -82,17 +82,22 @@ class ChannelSelectService
     {
         $affinityKey = "channel_affinity:{$user->id}:{$model}";
         $preferredChannelId = Cache::get($affinityKey);
-        
-        if (!$preferredChannelId) {
+
+        if (! $preferredChannelId) {
             return $channels;
         }
-        
+
         usort($channels, function ($a, $b) use ($preferredChannelId) {
-            if ($a['id'] == $preferredChannelId) return -1;
-            if ($b['id'] == $preferredChannelId) return 1;
+            if ($a['id'] == $preferredChannelId) {
+                return -1;
+            }
+            if ($b['id'] == $preferredChannelId) {
+                return 1;
+            }
+
             return 0;
         });
-        
+
         return $channels;
     }
 
@@ -114,11 +119,11 @@ class ChannelSelectService
             if (($channel['response_time'] ?? 0) > 30000) {
                 return false;
             }
-            
+
             if (($channel['auto_ban'] ?? 1) === 0 && ($channel['status'] ?? 1) !== 1) {
                 return false;
             }
-            
+
             return true;
         });
     }
@@ -131,7 +136,7 @@ class ChannelSelectService
         $channels = $this->getAvailableChannels($model, $group);
         $channels = $this->sortByWeight($channels);
         $channels = $this->filterByHealth($channels);
-        
+
         return array_slice($channels, 0, $count);
     }
 
@@ -164,11 +169,11 @@ class ChannelSelectService
     public function getChannelLoad(int $channelId): array
     {
         $channel = Channel::find($channelId);
-        
-        if (!$channel) {
+
+        if (! $channel) {
             return ['channel_id' => $channelId, 'status' => 'not_found'];
         }
-        
+
         return [
             'channel_id' => $channelId,
             'status' => $channel->status,

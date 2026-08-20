@@ -6,14 +6,13 @@ namespace App\Http\Middleware;
 
 use App\Models\Ability;
 use App\Models\Channel;
-use App\Setting\RatioSetting\ModelRatio;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Distributor 中间件 - 对标 new-api middleware/distributor.go
- * 
+ *
  * 职责:
  * 1. 解析请求获取模型名称
  * 2. 检查 Token 模型限制
@@ -30,11 +29,11 @@ class Distributor
     {
         // 1. 获取模型名称和分组
         $modelRequest = $this->getModelRequest($request);
-        
+
         if ($modelRequest['model'] === '') {
             return response()->json([
                 'error' => [
-                    'message' => '模型名称不能为空',
+                    'message' => __('Model name cannot be empty'),
                     'type' => 'invalid_request_error',
                     'code' => 'model_name_required',
                 ],
@@ -48,11 +47,11 @@ class Distributor
             if ($modelLimitEnabled) {
                 $modelLimit = $request->attributes->get('token_model_limit', []);
                 $matchName = $this->formatMatchingModelName($modelRequest['model']);
-                
-                if (!isset($modelLimit[$matchName]) || !$modelLimit[$matchName]) {
+
+                if (! isset($modelLimit[$matchName]) || ! $modelLimit[$matchName]) {
                     return response()->json([
                         'error' => [
-                            'message' => "Token 无权访问模型: {$modelRequest['model']}",
+                            'message' => __('Token is not allowed to access model: :model', ['model' => $modelRequest['model']]),
                             'type' => 'invalid_request_error',
                             'code' => 'token_model_forbidden',
                         ],
@@ -68,20 +67,20 @@ class Distributor
         $channel = $this->getChannelFromAffinity($request, $modelRequest['model'], $usingGroup);
 
         // 5. 如果没有 affinity 渠道，进行正常选择
-        if (!$channel) {
+        if (! $channel) {
             $channel = $this->selectChannel($modelRequest['model'], $usingGroup, $request->path());
         }
 
         // 6. 如果仍未找到渠道
-        if (!$channel) {
+        if (! $channel) {
             $groupDisplay = $usingGroup;
             if ($usingGroup === 'auto') {
                 $groupDisplay = "auto({$modelRequest['group']})";
             }
-            
+
             return response()->json([
                 'error' => [
-                    'message' => "分组 {$groupDisplay} 下没有找到模型 {$modelRequest['model']} 的可用渠道",
+                    'message' => __('No available channel for model :model in group :group', ['group' => $groupDisplay, 'model' => $modelRequest['model']]),
                     'type' => 'invalid_request_error',
                     'code' => 'no_channel_available',
                 ],
@@ -106,7 +105,7 @@ class Distributor
         // 从请求体获取
         $content = $request->getContent();
         $body = json_decode($content, true);
-        
+
         if (is_array($body)) {
             $model = $body['model'] ?? '';
             // 检查 group 参数
@@ -136,19 +135,19 @@ class Distributor
     {
         $affinityKey = "channel_affinity:{$request->attributes->get('api_user_id', 0)}:{$usingGroup}:{$model}";
         $preferredChannelId = cache()->get($affinityKey);
-        
-        if (!$preferredChannelId) {
+
+        if (! $preferredChannelId) {
             return null;
         }
 
         $channel = Channel::find($preferredChannelId);
-        
-        if (!$channel || $channel->status !== 1) {
+
+        if (! $channel || $channel->status !== 1) {
             return null;
         }
 
         // 检查渠道是否支持当前请求路径和模型
-        if (!$this->channelSupportsRequestPath($channel, $request->path(), $model)) {
+        if (! $this->channelSupportsRequestPath($channel, $request->path(), $model)) {
             return null;
         }
 
@@ -165,14 +164,14 @@ class Distributor
             ->where('enabled', true)
             ->first();
 
-        if (!$ability) {
+        if (! $ability) {
             return null;
         }
 
         // 查询启用的渠道
-        $query = Channel::whereHas('abilities', function ($q) use ($ability, $model, $group) {
+        $query = Channel::whereHas('abilities', function ($q) use ($ability) {
             $q->where('ability_id', $ability->id)
-              ->where('enabled', true);
+                ->where('enabled', true);
         })->where('status', 1);
 
         // 按优先级和权重排序
@@ -216,13 +215,13 @@ class Distributor
     {
         // 获取渠道支持的模型列表
         $models = $channel->models ?? [];
-        
+
         if (is_string($models)) {
             $models = json_decode($models, true) ?: [];
         }
 
         // 检查模型是否在支持列表中
-        if (!empty($models) && !in_array($model, $models, true)) {
+        if (! empty($models) && ! in_array($model, $models, true)) {
             return false;
         }
 

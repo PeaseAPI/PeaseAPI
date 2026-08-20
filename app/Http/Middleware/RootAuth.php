@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use App\Enums\UserRole;
 
 class RootAuth
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return $this->unauthorizedResponse($request, '请先登录');
         }
 
@@ -39,8 +39,8 @@ class RootAuth
                 'error' => [
                     'message' => $message,
                     'type' => 'access_denied',
-                    'code' => 'root_access_required'
-                ]
+                    'code' => 'root_access_required',
+                ],
             ], 403);
         }
 

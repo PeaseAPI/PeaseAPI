@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\User;
-use App\Models\Token;
 use App\Models\Log;
+use App\Models\Token;
+use App\Models\User;
 
 /**
  * 配额管理服务 - 用户配额扣减、退还
@@ -21,10 +21,10 @@ class QuotaService
         if ($user->quota < $amount) {
             return false;
         }
-        
+
         $user->decrement('quota', $amount);
         $user->increment('used_quota', $amount);
-        
+
         return true;
     }
 
@@ -35,7 +35,7 @@ class QuotaService
     {
         $user->increment('quota', $amount);
         $user->decrement('used_quota', $amount);
-        
+
         return true;
     }
 
@@ -47,14 +47,14 @@ class QuotaService
         if ($token->unlimited_quota) {
             return true;
         }
-        
-        if ($token->remain_quota < $amount && !$token->unlimited_quota) {
+
+        if ($token->remain_quota < $amount && ! $token->unlimited_quota) {
             return false;
         }
-        
+
         $token->decrement('remain_quota', $amount);
         $token->increment('used_quota', $amount);
-        
+
         return true;
     }
 
@@ -66,10 +66,10 @@ class QuotaService
         if ($token->unlimited_quota) {
             return true;
         }
-        
+
         $token->increment('remain_quota', $amount);
         $token->decrement('used_quota', $amount);
-        
+
         return true;
     }
 
@@ -89,7 +89,7 @@ class QuotaService
         if ($token->unlimited_quota) {
             return true;
         }
-        
+
         return $token->remain_quota >= $amount;
     }
 
@@ -109,7 +109,7 @@ class QuotaService
         if ($token->unlimited_quota) {
             return PHP_INT_MAX;
         }
-        
+
         return $token->remain_quota;
     }
 
@@ -119,6 +119,7 @@ class QuotaService
     public function resetUserQuota(User $user, int $amount): bool
     {
         $user->update(['quota' => $amount]);
+
         return true;
     }
 
@@ -128,7 +129,7 @@ class QuotaService
     public function addQuota(User $user, int $amount, string $source = 'top_up'): bool
     {
         $user->increment('quota', $amount);
-        
+
         // 记录充值日志
         Log::create([
             'user_id' => $user->id,
@@ -137,7 +138,7 @@ class QuotaService
             'quota' => $amount,
             'created_time' => time(),
         ]);
-        
+
         return true;
     }
 
@@ -147,11 +148,11 @@ class QuotaService
     public function batchCheckTokenQuota(array $tokens, int $amount): array
     {
         $results = [];
-        
+
         foreach ($tokens as $token) {
             $results[$token->id] = $this->hasEnoughTokenQuota($token, $amount);
         }
-        
+
         return $results;
     }
 
@@ -164,7 +165,7 @@ class QuotaService
             'total' => $user->quota + $user->used_quota,
             'available' => $user->quota,
             'used' => $user->used_quota,
-            'usage_percent' => ($user->quota + $user->used_quota) > 0 
+            'usage_percent' => ($user->quota + $user->used_quota) > 0
                 ? round($user->used_quota / ($user->quota + $user->used_quota) * 100, 2)
                 : 0,
         ];

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Token;
-use App\Models\Ability;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -41,7 +40,7 @@ class TokenApiController extends Controller
             'expired_at' => 'nullable|integer',
         ]);
 
-        $validated['key'] = 'sk-' . bin2hex(random_bytes(24));
+        $validated['key'] = 'sk-'.bin2hex(random_bytes(24));
         $validated['user_id'] = $user->id;
         $validated['status'] = 1;
         $validated['created_at'] = time();
@@ -61,7 +60,7 @@ class TokenApiController extends Controller
         $token = Token::with('abilities')->findOrFail($id);
 
         if ($user->role < 100 && $token->user_id !== $user->id) {
-            return response()->json(['error' => 'Access denied'], 403);
+            return response()->json(['error' => __('Access denied')], 403);
         }
 
         return response()->json($token);
@@ -73,7 +72,7 @@ class TokenApiController extends Controller
         $token = Token::findOrFail($id);
 
         if ($user->role < 100 && $token->user_id !== $user->id) {
-            return response()->json(['error' => 'Access denied'], 403);
+            return response()->json(['error' => __('Access denied')], 403);
         }
 
         $validated = $request->validate([
@@ -99,11 +98,12 @@ class TokenApiController extends Controller
         $token = Token::findOrFail($id);
 
         if ($user->role < 100 && $token->user_id !== $user->id) {
-            return response()->json(['error' => 'Access denied'], 403);
+            return response()->json(['error' => __('Access denied')], 403);
         }
 
         $token->delete();
-        return response()->json(['message' => 'Token deleted']);
+
+        return response()->json(['message' => __('Token deleted')]);
     }
 
     public function regenerate(int $id)
@@ -112,10 +112,10 @@ class TokenApiController extends Controller
         $token = Token::findOrFail($id);
 
         if ($user->role < 100 && $token->user_id !== $user->id) {
-            return response()->json(['error' => 'Access denied'], 403);
+            return response()->json(['error' => __('Access denied')], 403);
         }
 
-        $token->key = 'sk-' . bin2hex(random_bytes(24));
+        $token->key = 'sk-'.bin2hex(random_bytes(24));
         $token->save();
 
         return response()->json($token);

@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\Log;
+use App\Models\User;
 
 class BillingService
 {
@@ -28,16 +28,22 @@ class BillingService
     public function calculatePrice(string $model, int $promptTokens, int $completionTokens): int
     {
         $pricePerToken = config("pease-api.billing.prices.{$model}", 0);
-        return (int)(($promptTokens + $completionTokens) * $pricePerToken);
+
+        return (int) (($promptTokens + $completionTokens) * $pricePerToken);
     }
 
-    public function getUserUsage(User $user, int $startTime = null, int $endTime = null): array
+    public function getUserUsage(User $user, ?int $startTime = null, ?int $endTime = null): array
     {
         $query = Log::where('user_id', $user->id);
-        if ($startTime) $query->where('created_at', '>=', $startTime);
-        if ($endTime) $query->where('created_at', '<=', $endTime);
+        if ($startTime) {
+            $query->where('created_at', '>=', $startTime);
+        }
+        if ($endTime) {
+            $query->where('created_at', '<=', $endTime);
+        }
 
         $logs = $query->get();
+
         return [
             'total_requests' => $logs->count(),
             'total_tokens' => $logs->sum('prompt_tokens') + $logs->sum('completion_tokens'),

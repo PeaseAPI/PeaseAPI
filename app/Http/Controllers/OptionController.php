@@ -68,6 +68,7 @@ class OptionController extends Controller
         }
         $pricing['DisplayInCurrencyEnabled'] = $public['DisplayInCurrencyEnabled'] ?? true;
         $pricing['DisplayTokenStatEnabled'] = $public['DisplayTokenStatEnabled'] ?? true;
+
         return response()->json(['success' => true, 'data' => $pricing]);
     }
 
@@ -83,12 +84,13 @@ class OptionController extends Controller
         $all = OptionService::loadAll();
         // Mask secret keys
         foreach (OptionService::SECRET_KEYS as $key) {
-            if (!empty($all[$key])) {
+            if (! empty($all[$key])) {
                 $all[$key] = '******';
             } else {
                 $all[$key] = '';
             }
         }
+
         return response()->json(['success' => true, 'data' => $all]);
     }
 
@@ -99,27 +101,29 @@ class OptionController extends Controller
     {
         // Support both JSON API (flat key=>value) and form POST (options[Key])
         $options = $request->input('options');
-        if (!is_array($options) || empty($options)) {
+        if (! is_array($options) || empty($options)) {
             $options = $request->except(['_token', '_method']);
         }
-        if (!is_array($options) || empty($options)) {
-            return response()->json(['success' => false, 'message' => 'No options provided'], 400);
+        if (! is_array($options) || empty($options)) {
+            return response()->json(['success' => false, 'message' => __('No options provided')], 400);
         }
 
         $updated = [];
         $skipped = [];
         foreach ($options as $key => $value) {
-            if (!is_string($key) || $key === '') {
+            if (! is_string($key) || $key === '') {
                 continue;
             }
             // Skip masked secrets
             if (OptionService::isSecret($key) && ($value === '******' || $value === '')) {
                 $skipped[] = $key;
+
                 continue;
             }
-            if (!OptionService::isKnown($key)) {
+            if (! OptionService::isKnown($key)) {
                 Log::debug('OptionController.update: unknown key skipped', ['key' => $key]);
                 $skipped[] = $key;
+
                 continue;
             }
             OptionService::set($key, $value);
@@ -135,10 +139,11 @@ class OptionController extends Controller
         if ($request->expectsJson() || $request->isXmlHttpRequest()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Options updated',
+                'message' => __('Options updated'),
                 'data' => ['updated' => $updated, 'skipped' => $skipped],
             ]);
         }
+
         return redirect()->route('admin.system-settings')->with('success', __('Settings saved successfully.'));
     }
 
@@ -148,12 +153,13 @@ class OptionController extends Controller
     public function paymentCompliance(Request $request): JsonResponse
     {
         $acknowledged = (bool) $request->input('acknowledged', false);
-        if (!$acknowledged) {
-            return response()->json(['success' => false, 'message' => 'Acknowledgement required'], 400);
+        if (! $acknowledged) {
+            return response()->json(['success' => false, 'message' => __('Acknowledgement required')], 400);
         }
         OptionService::set('PaymentComplianceAcknowledged', true);
         OptionService::set('PaymentComplianceAcknowledgedAt', time());
-        return response()->json(['success' => true, 'message' => 'Payment compliance acknowledged']);
+
+        return response()->json(['success' => true, 'message' => __('Payment compliance acknowledged')]);
     }
 
     /**
@@ -161,24 +167,25 @@ class OptionController extends Controller
      */
     public function affinityCacheStat(): JsonResponse
     {
-        if (!OptionService::get('ChannelAffinityEnabled', false)) {
+        if (! OptionService::get('ChannelAffinityEnabled', false)) {
             return response()->json(['success' => true, 'data' => ['enabled' => false, 'count' => 0]]);
         }
 
         $redis = $this->redis();
         if ($redis === null) {
-            return response()->json(['success' => true, 'data' => ['enabled' => true, 'count' => 0, 'error' => 'Redis unavailable']]);
+            return response()->json(['success' => true, 'data' => ['enabled' => true, 'count' => 0, 'error' => __('Redis unavailable')]]);
         }
 
-        $prefix = config('pease-api.cache_prefix', 'pease:') . 'affinity:';
+        $prefix = config('pease-api.cache_prefix', 'pease:').'affinity:';
         try {
-            $keys = $redis->keys($prefix . '*');
+            $keys = $redis->keys($prefix.'*');
             $count = is_array($keys) ? count($keys) : 0;
             $samples = [];
             foreach (array_slice((array) $keys, 0, 10) as $key) {
                 $shortKey = str_starts_with($key, $prefix) ? substr($key, strlen($prefix)) : $key;
                 $samples[$shortKey] = $redis->ttl($key);
             }
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -203,16 +210,17 @@ class OptionController extends Controller
     {
         $redis = $this->redis();
         if ($redis === null) {
-            return response()->json(['success' => true, 'data' => ['deleted' => 0, 'error' => 'Redis unavailable']]);
+            return response()->json(['success' => true, 'data' => ['deleted' => 0, 'error' => __('Redis unavailable')]]);
         }
 
-        $prefix = config('pease-api.cache_prefix', 'pease:') . 'affinity:';
+        $prefix = config('pease-api.cache_prefix', 'pease:').'affinity:';
         try {
-            $keys = $redis->keys($prefix . '*');
+            $keys = $redis->keys($prefix.'*');
             $deleted = 0;
-            if (is_array($keys) && !empty($keys)) {
+            if (is_array($keys) && ! empty($keys)) {
                 $deleted = $redis->del($keys);
             }
+
             return response()->json(['success' => true, 'data' => ['deleted' => $deleted]]);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -230,7 +238,8 @@ class OptionController extends Controller
         OptionService::set('ModelPrice', []);
         OptionService::set('CacheRatio', []);
         Cache::forget('pricing');
-        return response()->json(['success' => true, 'message' => 'Model ratios reset to defaults']);
+
+        return response()->json(['success' => true, 'message' => __('Model ratios reset to defaults')]);
     }
 
     /**
@@ -238,15 +247,16 @@ class OptionController extends Controller
      */
     public function waffoPancakeCatalog(): JsonResponse
     {
-        if (!OptionService::get('WaffoPancakeEnabled', false)) {
-            return response()->json(['success' => false, 'message' => 'Waffo-Pancake not enabled'], 400);
+        if (! OptionService::get('WaffoPancakeEnabled', false)) {
+            return response()->json(['success' => false, 'message' => __('Waffo-Pancake not enabled')], 400);
         }
+
         // Placeholder: integrate with Waffo-Pancake API in production
         return response()->json([
             'success' => true,
             'data' => [
                 'products' => [],
-                'message' => 'Catalog integration pending - configure WaffoPancakeMerchantId/WaffoPancakeApiKey',
+                'message' => __('Catalog integration pending - configure WaffoPancakeMerchantId/WaffoPancakeApiKey'),
             ],
         ]);
     }
@@ -262,7 +272,8 @@ class OptionController extends Controller
         ]);
         OptionService::set('WaffoPancakeMerchantId', $validated['merchant_id']);
         OptionService::set('WaffoPancakeApiKey', $validated['api_key']);
-        return response()->json(['success' => true, 'message' => 'Waffo-Pancake paired']);
+
+        return response()->json(['success' => true, 'message' => __('Waffo-Pancake paired')]);
     }
 
     /**
@@ -277,7 +288,8 @@ class OptionController extends Controller
                 OptionService::set($key, $data[$key]);
             }
         }
-        return response()->json(['success' => true, 'message' => 'Waffo-Pancake config saved']);
+
+        return response()->json(['success' => true, 'message' => __('Waffo-Pancake config saved')]);
     }
 
     /**
@@ -291,12 +303,13 @@ class OptionController extends Controller
             'quota' => 'required|integer|min:0',
             'period' => 'sometimes|string|in:monthly,yearly,lifetime',
         ]);
+
         // Placeholder: call Waffo-Pancake API to create product
         return response()->json([
             'success' => true,
-            'message' => 'Subscription product created (stub)',
+            'message' => __('Subscription product created (stub)'),
             'data' => [
-                'product_id' => 'stub_' . substr(md5(uniqid('', true)), 0, 12),
+                'product_id' => 'stub_'.substr(md5(uniqid('', true)), 0, 12),
                 'name' => $validated['name'],
                 'price' => $validated['price'],
                 'quota' => $validated['quota'],
@@ -330,6 +343,7 @@ class OptionController extends Controller
     private function contentResponse(string $key, string $default = ''): JsonResponse
     {
         $value = OptionService::get($key, $default);
+
         return response()->json(['success' => true, 'data' => $value]);
     }
 
@@ -341,10 +355,22 @@ class OptionController extends Controller
         try {
             return app('redis');
         } catch (\Throwable $e) {
-            return new class {
-                public function keys($pattern) { return []; }
-                public function ttl($key) { return -2; }
-                public function del($keys) { return 0; }
+            return new class
+            {
+                public function keys($pattern)
+                {
+                    return [];
+                }
+
+                public function ttl($key)
+                {
+                    return -2;
+                }
+
+                public function del($keys)
+                {
+                    return 0;
+                }
             };
         }
     }

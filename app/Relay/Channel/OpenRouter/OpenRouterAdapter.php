@@ -18,6 +18,7 @@ class OpenRouterAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'openrouter';
+
     protected int $apiType = ApiType::OPENROUTER->value;
 
     /** @var array<int, string> */

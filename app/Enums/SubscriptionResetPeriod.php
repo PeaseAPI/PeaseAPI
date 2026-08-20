@@ -12,7 +12,7 @@ enum SubscriptionResetPeriod: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::NEVER => '从不',
             self::DAILY => '每天',
             self::WEEKLY => '每周',

@@ -1,41 +1,37 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\ChannelController;
-use App\Http\Controllers\TokenController;
 use App\Http\Controllers\AbilityController;
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ChannelController;
+use App\Http\Controllers\CheckinController;
+use App\Http\Controllers\CodingPlanController;
+use App\Http\Controllers\DeploymentController;
+use App\Http\Controllers\GroupController;
+use App\Http\Controllers\InstallController;
 use App\Http\Controllers\LogController;
-use App\Http\Controllers\TopUpController;
-use App\Http\Controllers\SubscriptionController;
-use App\Http\Controllers\RelayController;
-use App\Http\Controllers\OptionController;
-use App\Http\Controllers\RedemptionController;
 use App\Http\Controllers\MidjourneyController;
-use App\Http\Controllers\SunoController;
-use App\Http\Controllers\VideoController;
 use App\Http\Controllers\ModelController;
 use App\Http\Controllers\OAuthController;
-use App\Http\Controllers\CheckinController;
-use App\Http\Controllers\AdminController;
-use App\Http\Controllers\InstallController;
-use App\Http\Controllers\WebAuthController;
-use App\Http\Controllers\PerformanceController;
-use App\Http\Controllers\SystemTaskController;
+use App\Http\Controllers\OptionController;
+use App\Http\Controllers\RedemptionController;
+use App\Http\Controllers\RelayController;
+use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\SunoController;
 use App\Http\Controllers\SystemInfoController;
-use App\Http\Controllers\VendorController;
-use App\Http\Controllers\CodingPlanController;
-use App\Http\Controllers\AuthzController;
-use App\Http\Controllers\RankingController;
-use App\Http\Controllers\GroupController;
-use App\Http\Controllers\RatioSyncController;
+use App\Http\Controllers\SystemTaskController;
+use App\Http\Controllers\TokenController;
+use App\Http\Controllers\TopUpController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserDataController;
-use App\Http\Controllers\DeploymentController;
-use App\Http\Middleware\TokenAuth;
+use App\Http\Controllers\VendorController;
+use App\Http\Controllers\VideoController;
+use App\Http\Controllers\WebAuthController;
 use App\Http\Middleware\AdminAuth;
-use App\Http\Middleware\RootAuth;
 use App\Http\Middleware\ApiRateLimit;
+use App\Http\Middleware\RootAuth;
+use App\Http\Middleware\TokenAuth;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -118,7 +114,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/user/auth/refresh', [AuthController::class, 'refresh']);
     Route::post('/user/auth/logout', [AuthController::class, 'logout']);
-    
+
     // User Self Management
     Route::get('/user/self', [UserController::class, 'self']);
     Route::put('/user/self', [UserController::class, 'updateSelf']);
@@ -126,15 +122,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user/self/groups', [UserController::class, 'groups']);
     Route::get('/user/models', [ModelController::class, 'userModels']);
     Route::get('/user/groups', [UserController::class, 'userGroups']);
-    
+
     // Sessions
     Route::get('/user/sessions', [AuthController::class, 'sessions']);
     Route::delete('/user/sessions/{sid}', [AuthController::class, 'deleteSession']);
     Route::post('/user/sessions/revoke-others', [AuthController::class, 'revokeOtherSessions']);
-    
+
     // Access Token
     Route::get('/user/token', [TokenController::class, 'createAccessToken']);
-    
+
     // Passkey
     Route::get('/user/passkey', [WebAuthController::class, 'list']);
     Route::post('/user/passkey/register/begin', [WebAuthController::class, 'registerBegin']);
@@ -144,7 +140,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/user/passkey', [WebAuthController::class, 'delete']);
     Route::post('/user/passkey/login/begin', [WebAuthController::class, 'loginBegin']);
     Route::post('/user/passkey/login/finish', [WebAuthController::class, 'loginFinish']);
-    
+
     // 2FA
     Route::get('/user/2fa/status', [AuthController::class, 'twoFactorStatus']);
     Route::post('/user/2fa/setup', [AuthController::class, 'setupTwoFactor']);
@@ -152,11 +148,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user/2fa/disable', [AuthController::class, 'disableTwoFactor']);
     Route::post('/user/2fa/backup_codes', [AuthController::class, 'generateBackupCodes']);
     Route::post('/user/login/2fa', [AuthController::class, 'verifyTwoFactor']);
-    
+
     // User Aff
     Route::get('/user/aff', [UserController::class, 'affiliate']);
     Route::post('/user/aff_transfer', [UserController::class, 'affiliateTransfer']);
-    
+
     // TopUp / Payment
     Route::get('/user/topup/info', [TopUpController::class, 'info']);
     Route::get('/user/topup/self', [TopUpController::class, 'selfList']);
@@ -173,27 +169,27 @@ Route::middleware('auth:sanctum')->group(function () {
     // 原生微信支付 / 支付宝支付下单（需登录）
     Route::post('/user/wechat/pay', [TopUpController::class, 'wechatPay']);
     Route::post('/user/alipay/pay', [TopUpController::class, 'alipayPay']);
-    
+
     // User Settings
     Route::put('/user/setting', [UserController::class, 'updateSettings']);
-    
+
     // Checkin
     Route::get('/user/checkin', [CheckinController::class, 'status']);
     Route::post('/user/checkin', [CheckinController::class, 'checkin']);
-    
+
     // OAuth Bindings
     Route::get('/user/oauth/bindings', [OAuthController::class, 'listBindings']);
     Route::delete('/user/oauth/bindings/{provider_id}', [OAuthController::class, 'unbind']);
-    
+
     // Logs
     Route::get('/log/self', [LogController::class, 'selfLogs']);
     Route::get('/log/self/search', [LogController::class, 'searchSelfLogs']);
     Route::get('/log/self/stat', [LogController::class, 'selfStat']);
-    
+
     // Data/Usage
     Route::get('/data/self', [LogController::class, 'selfData']);
     Route::get('/data/flow/self', [LogController::class, 'selfFlow']);
-    
+
     // Tokens (self)
     Route::get('/token/', [TokenController::class, 'selfTokens']);
     Route::post('/token/', [TokenController::class, 'store']);
@@ -203,7 +199,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/token/{id}/key', [TokenController::class, 'revealKey']);
     Route::post('/token/batch', [TokenController::class, 'batchDelete']);
     Route::post('/token/batch/keys', [TokenController::class, 'batchGetKeys']);
-    
+
     // Subscriptions
     Route::get('/subscription/self', [SubscriptionController::class, 'mySubscription']);
     Route::put('/subscription/self/preference', [SubscriptionController::class, 'updatePreference']);
@@ -212,13 +208,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/subscription/stripe/pay', [SubscriptionController::class, 'payWithStripe']);
     Route::post('/subscription/creem/pay', [SubscriptionController::class, 'payWithCreem']);
     Route::post('/subscription/waffo-pancake/pay', [SubscriptionController::class, 'payWithWaffoPancake']);
-    
+
     // Midjourney
     Route::get('/mj/self', [MidjourneyController::class, 'selfTasks']);
-    
+
     // Tasks
     Route::get('/task/self', [VideoController::class, 'selfTasks']);
-    
+
     // Redemptions
     Route::post('/redemption/', [RedemptionController::class, 'redeem']);
     Route::get('/redemption/', [RedemptionController::class, 'myRedemptions']);
@@ -245,7 +241,7 @@ Route::middleware(['auth:sanctum', AdminAuth::class])->group(function () {
     Route::get('/user/{id}/oauth/bindings', [OAuthController::class, 'adminListBindings']);
     Route::delete('/user/{id}/oauth/bindings/{provider_id}', [OAuthController::class, 'adminUnbind']);
     Route::delete('/user/{id}/bindings/{binding_type}', [OAuthController::class, 'adminClearBindings']);
-    
+
     // Channels (Admin)
     Route::get('/channel/', [ChannelController::class, 'index']);
     Route::get('/channel/search', [ChannelController::class, 'search']);
@@ -286,26 +282,26 @@ Route::middleware(['auth:sanctum', AdminAuth::class])->group(function () {
     Route::post('/channel/upstream_updates/apply_all', [ChannelController::class, 'applyAllUpstreamUpdates']);
     Route::post('/channel/upstream_updates/detect', [ChannelController::class, 'detectUpstreamUpdate']);
     Route::post('/channel/upstream_updates/detect_all', [ChannelController::class, 'detectAllUpstreamUpdates']);
-    
+
     // Abilities (Admin)
     Route::get('/ability/', [AbilityController::class, 'index']);
     Route::post('/ability/', [AbilityController::class, 'store']);
     Route::put('/ability/', [AbilityController::class, 'update']);
     Route::delete('/ability/{id}', [AbilityController::class, 'destroy']);
     Route::post('/ability/batch', [AbilityController::class, 'batchSync']);
-    
+
     // Logs (Admin)
     Route::get('/log/', [LogController::class, 'index']);
     Route::get('/log/stat', [LogController::class, 'stat']);
     Route::get('/log/search', [LogController::class, 'search']);
     Route::get('/log/token', [LogController::class, 'tokenLogs']);
     Route::get('/log/channel_affinity_usage_cache', [LogController::class, 'affinityCacheStat']);
-    
+
     // Data/Usage (Admin)
     Route::get('/data/', [UserDataController::class, 'index']);
     Route::get('/data/users', [UserDataController::class, 'users']);
     Route::get('/data/flow', [UserDataController::class, 'flow']);
-    
+
     // Redemptions (Admin)
     Route::get('/redemption/search', [RedemptionController::class, 'search']);
     Route::get('/redemption/{id}', [RedemptionController::class, 'show']);
@@ -313,7 +309,7 @@ Route::middleware(['auth:sanctum', AdminAuth::class])->group(function () {
     Route::delete('/redemption/invalid', [RedemptionController::class, 'deleteInvalid']);
     Route::delete('/redemption/{id}', [RedemptionController::class, 'destroy']);
     Route::post('/redemption/batch', [RedemptionController::class, 'batchCreate']);
-    
+
     // Subscriptions (Admin)
     Route::get('/subscription/admin/plans', [SubscriptionController::class, 'allPlans']);
     Route::post('/subscription/admin/plans', [SubscriptionController::class, 'createPlan']);
@@ -326,7 +322,7 @@ Route::middleware(['auth:sanctum', AdminAuth::class])->group(function () {
     Route::post('/subscription/admin/users/{id}/subscriptions/reset', [SubscriptionController::class, 'resetUserSubscription']);
     Route::post('/subscription/admin/user_subscriptions/{id}/invalidate', [SubscriptionController::class, 'invalidateSubscription']);
     Route::delete('/subscription/admin/user_subscriptions/{id}', [SubscriptionController::class, 'deleteSubscription']);
-    
+
     // Models (Admin)
     Route::get('/models/', [ModelController::class, 'index']);
     Route::get('/models/search', [ModelController::class, 'search']);
@@ -337,7 +333,7 @@ Route::middleware(['auth:sanctum', AdminAuth::class])->group(function () {
     Route::get('/models/sync_upstream/preview', [ModelController::class, 'syncPreview']);
     Route::post('/models/sync_upstream', [ModelController::class, 'syncUpstream']);
     Route::get('/models/missing', [ModelController::class, 'missing']);
-    
+
     // Vendors (Admin)
     Route::get('/vendors/', [VendorController::class, 'index']);
     Route::get('/vendors/search', [VendorController::class, 'search']);
@@ -345,7 +341,7 @@ Route::middleware(['auth:sanctum', AdminAuth::class])->group(function () {
     Route::post('/vendors/', [VendorController::class, 'store']);
     Route::put('/vendors/', [VendorController::class, 'update']);
     Route::delete('/vendors/{id}', [VendorController::class, 'destroy']);
-    
+
     // Deployments (Admin)
     Route::get('/deployments/settings', [DeploymentController::class, 'settings']);
     Route::post('/deployments/settings/test-connection', [DeploymentController::class, 'testConnection']);
@@ -353,7 +349,7 @@ Route::middleware(['auth:sanctum', AdminAuth::class])->group(function () {
     Route::post('/deployments/', [DeploymentController::class, 'store']);
     Route::put('/deployments/{id}', [DeploymentController::class, 'update']);
     Route::delete('/deployments/{id}', [DeploymentController::class, 'destroy']);
-    
+
     // Midjourney (Admin)
     Route::get('/mj/', [MidjourneyController::class, 'index']);
     Route::get('/mj/{id}', [MidjourneyController::class, 'show']);
@@ -367,28 +363,28 @@ Route::middleware(['auth:sanctum', AdminAuth::class])->group(function () {
     Route::post('/mj/task/list-by-condition', [MidjourneyController::class, 'listByCondition']);
     Route::post('/mj/insight-face/swap', [MidjourneyController::class, 'insightFaceSwap']);
     Route::post('/mj/submit/upload-discord-images', [MidjourneyController::class, 'uploadDiscordImages']);
-    
+
     // Tasks (Admin)
     Route::get('/task/', [VideoController::class, 'index']);
     Route::get('/task/{id}', [VideoController::class, 'show']);
-    
+
     // System Tasks (Admin)
     Route::post('/system-task/log-cleanup', [SystemTaskController::class, 'createLogCleanup']);
     Route::get('/system-task/list', [SystemTaskController::class, 'index']);
     Route::get('/system-task/current', [SystemTaskController::class, 'current']);
     Route::get('/system-task/{task_id}', [SystemTaskController::class, 'show']);
-    
+
     // System Info (Admin)
     Route::get('/system-info/instances', [SystemInfoController::class, 'instances']);
     Route::delete('/system-info/stale-instances', [SystemInfoController::class, 'deleteStaleInstances']);
     Route::delete('/system-info/instances/{node_name}', [SystemInfoController::class, 'deleteInstance']);
-    
+
     // Prefill Groups (Admin)
     Route::get('/prefill_group/', [GroupController::class, 'prefillIndex']);
     Route::post('/prefill_group/', [GroupController::class, 'prefillStore']);
     Route::put('/prefill_group/', [GroupController::class, 'prefillUpdate']);
     Route::delete('/prefill_group/{id}', [GroupController::class, 'prefillDestroy']);
-    
+
     // Groups (Admin)
     Route::get('/group/', [GroupController::class, 'index']);
 
@@ -423,7 +419,7 @@ Route::middleware(['auth:sanctum', RootAuth::class])->group(function () {
     Route::post('/option/waffo-pancake/save', [OptionController::class, 'waffoPancakeSave']);
     Route::post('/option/waffo-pancake/subscription-product', [OptionController::class, 'waffoPancakeSubscriptionProduct']);
     Route::get('/option/waffo-pancake/subscription-product-options', [OptionController::class, 'waffoPancakeSubscriptionOptions']);
-    
+
     // Custom OAuth (Root)
     Route::post('/custom-oauth-provider/discovery', [OAuthController::class, 'discovery']);
     Route::get('/custom-oauth-provider/', [OAuthController::class, 'listCustomProviders']);
@@ -431,7 +427,7 @@ Route::middleware(['auth:sanctum', RootAuth::class])->group(function () {
     Route::post('/custom-oauth-provider/', [OAuthController::class, 'createCustomProvider']);
     Route::put('/custom-oauth-provider/{id}', [OAuthController::class, 'updateCustomProvider']);
     Route::delete('/custom-oauth-provider/{id}', [OAuthController::class, 'deleteCustomProvider']);
-    
+
     // Performance (Root)
     Route::get('/performance/stats', [AdminController::class, 'performanceStats']);
     Route::delete('/performance/disk_cache', [AdminController::class, 'clearDiskCache']);
@@ -439,16 +435,16 @@ Route::middleware(['auth:sanctum', RootAuth::class])->group(function () {
     Route::post('/performance/gc', [AdminController::class, 'forceGC']);
     Route::get('/performance/logs', [AdminController::class, 'logFiles']);
     Route::delete('/performance/logs', [AdminController::class, 'clearLogs']);
-    
+
     // Ratio Sync (Root)
     Route::get('/ratio_sync/channels', [ChannelController::class, 'ratioSyncChannels']);
     Route::post('/ratio_sync/fetch', [ChannelController::class, 'fetchRatios']);
-    
+
     // Rankings
     Route::get('/rankings', [AdminController::class, 'rankings']);
     Route::get('/perf-metrics/summary', [AdminController::class, 'perfMetricsSummary']);
     Route::get('/perf-metrics', [AdminController::class, 'perfMetrics']);
-    
+
     // Authz Catalog
     Route::get('/authz/catalog', [AdminController::class, 'authzCatalog']);
 });
@@ -461,26 +457,26 @@ Route::middleware([TokenAuth::class, ApiRateLimit::class])->prefix('v1')->group(
     // Models
     Route::get('models', [RelayController::class, 'models']);
     Route::get('models/{model}', [RelayController::class, 'model']);
-    
+
     // Chat Completions
     Route::post('chat/completions', [RelayController::class, 'chat']);
     Route::post('completions', [RelayController::class, 'completions']);
     Route::post('responses', [RelayController::class, 'responses']);
     Route::post('responses/compact', [RelayController::class, 'responsesCompact']);
-    
+
     // Embeddings
     Route::post('embeddings', [RelayController::class, 'embeddings']);
-    
+
     // Images
     Route::post('images/generations', [RelayController::class, 'imageGenerations']);
     Route::post('images/edits', [RelayController::class, 'imageEdits']);
     Route::post('images/variations', [RelayController::class, 'imageVariations']);
-    
+
     // Audio
     Route::post('audio/transcriptions', [RelayController::class, 'transcriptions']);
     Route::post('audio/translations', [RelayController::class, 'translations']);
     Route::post('audio/speech', [RelayController::class, 'speech']);
-    
+
     // Other
     Route::post('edits', [RelayController::class, 'edits']);
     Route::post('rerank', [RelayController::class, 'rerank']);

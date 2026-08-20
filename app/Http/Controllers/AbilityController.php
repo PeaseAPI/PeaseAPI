@@ -24,8 +24,7 @@ class AbilityController extends Controller
 {
     public function __construct(
         private readonly ChannelService $channelService,
-    ) {
-    }
+    ) {}
 
     // ===== Abilities =====
 
@@ -93,11 +92,11 @@ class AbilityController extends Controller
     {
         try {
             $data = $request->validate([
-                'group'      => ['sometimes', 'string', 'max:64'],
-                'model'      => ['sometimes', 'string', 'max:255'],
+                'group' => ['sometimes', 'string', 'max:64'],
+                'model' => ['sometimes', 'string', 'max:255'],
                 'channel_id' => ['sometimes', 'integer', 'exists:channels,id'],
-                'enabled'    => ['sometimes', 'integer', 'in:0,1'],
-                'priority'   => ['sometimes', 'integer'],
+                'enabled' => ['sometimes', 'integer', 'in:0,1'],
+                'priority' => ['sometimes', 'integer'],
             ]);
 
             $ability = Ability::findOrFail($id);
@@ -193,7 +192,7 @@ class AbilityController extends Controller
             $kw = (string) $request->input('keyword');
             $query->where(function ($q) use ($kw): void {
                 $q->where('name', 'like', "%{$kw}%")
-                  ->orWhere('description', 'like', "%{$kw}%");
+                    ->orWhere('description', 'like', "%{$kw}%");
             });
         }
 
@@ -207,9 +206,9 @@ class AbilityController extends Controller
     public function createPrefillGroup(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'        => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'prefills'    => ['nullable', 'array'],
+            'prefills' => ['nullable', 'array'],
         ]);
 
         $prefill = PrefillGroup::create($data);
@@ -223,10 +222,10 @@ class AbilityController extends Controller
     public function updatePrefillGroup(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'id'          => ['required', 'integer', 'exists:prefill_groups,id'],
-            'name'        => ['sometimes', 'string', 'max:255'],
+            'id' => ['required', 'integer', 'exists:prefill_groups,id'],
+            'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'prefills'    => ['nullable', 'array'],
+            'prefills' => ['nullable', 'array'],
         ]);
 
         $prefill = PrefillGroup::findOrFail($data['id']);
@@ -247,11 +246,11 @@ class AbilityController extends Controller
     private function validateAbility(Request $request): array
     {
         return $request->validate([
-            'group'      => ['required', 'string', 'max:64'],
-            'model'      => ['required', 'string', 'max:255'],
+            'group' => ['required', 'string', 'max:64'],
+            'model' => ['required', 'string', 'max:255'],
             'channel_id' => ['required', 'integer', 'exists:channels,id'],
-            'enabled'    => ['sometimes', 'integer', 'in:0,1'],
-            'priority'   => ['sometimes', 'integer'],
+            'enabled' => ['sometimes', 'integer', 'in:0,1'],
+            'priority' => ['sometimes', 'integer'],
         ]);
     }
 
@@ -261,6 +260,6 @@ class AbilityController extends Controller
             return $this->error('该能力已存在，请勿重复添加', 409);
         }
 
-        return $this->error($action . '失败: ' . $e->getMessage(), 500);
+        return $this->error($action.'失败: '.$e->getMessage(), 500);
     }
 }

@@ -17,12 +17,12 @@ class Cache
 {
     public function handle(Request $request, Closure $next, int $ttl = 60): Response
     {
-        if (!config('pease-api.cache.enabled', false)) {
+        if (! config('pease-api.cache.enabled', false)) {
             return $next($request);
         }
 
         // 仅缓存 GET/HEAD 请求
-        if (!in_array($request->method(), ['GET', 'HEAD'], true)) {
+        if (! in_array($request->method(), ['GET', 'HEAD'], true)) {
             return $next($request);
         }
 
@@ -35,6 +35,7 @@ class Cache
                 $response->headers->set($name, $value);
             }
             $response->headers->set('X-Cache', 'HIT');
+
             return $response;
         }
 
@@ -54,6 +55,6 @@ class Cache
 
     protected function cacheKey(Request $request): string
     {
-        return 'page:' . md5($request->fullUrl() . '|' . $request->header('Accept-Language', ''));
+        return 'page:'.md5($request->fullUrl().'|'.$request->header('Accept-Language', ''));
     }
 }

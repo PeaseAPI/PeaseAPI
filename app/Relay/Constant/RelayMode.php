@@ -11,27 +11,42 @@ namespace App\Relay\Constant;
 class RelayMode
 {
     public const Chat = 'chat';
+
     public const ChatCompletions = 'chat';
+
     public const Completions = 'completions';
+
     public const Embeddings = 'embeddings';
+
     public const ImageGenerations = 'image_generations';
+
     public const ImageEdits = 'image_edits';
+
     public const AudioTranscriptions = 'audio_transcriptions';
+
     public const AudioTranslations = 'audio_translations';
+
     public const AudioSpeech = 'audio_speech';
+
     public const Rerank = 'rerank';
+
     public const Moderations = 'moderations';
+
     public const Responses = 'responses';
+
     public const ResponsesCompact = 'responses_compact';
+
     public const ClaudeMessages = 'claude_messages';
+
     public const GeminiChat = 'gemini_chat';
+
     public const Realtime = 'realtime';
 
     public static function fromPath(string $path): string
     {
         return match (true) {
             str_contains($path, 'chat/completions') => self::Chat,
-            str_contains($path, 'completions') && !str_contains($path, 'chat') => self::Completions,
+            str_contains($path, 'completions') && ! str_contains($path, 'chat') => self::Completions,
             str_contains($path, 'embeddings') => self::Embeddings,
             str_contains($path, 'images/generations') => self::ImageGenerations,
             str_contains($path, 'images/edits') => self::ImageEdits,

@@ -10,10 +10,10 @@ enum ChannelStatus: int
 
     public function label(): string
     {
-        return match($this) {
-            self::ENABLED => "已启用",
-            self::DISABLED => "已禁用",
-            self::AUTO_DISABLED => "自动禁用",
+        return match ($this) {
+            self::ENABLED => '已启用',
+            self::DISABLED => '已禁用',
+            self::AUTO_DISABLED => '自动禁用',
         };
     }
 }

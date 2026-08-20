@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Token extends Model
 {
     protected $table = 'tokens';
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -35,19 +36,19 @@ class Token extends Model
         'accessed_time' => 'integer',
     ];
 
-    public function user() 
-    { 
-        return $this->belongsTo(User::class, 'user_id'); 
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
-    
-    public function abilities() 
-    { 
-        return $this->belongsToMany(Ability::class, 'token_abilities', 'token_id', 'ability_id'); 
+
+    public function abilities()
+    {
+        return $this->belongsToMany(Ability::class, 'token_abilities', 'token_id', 'ability_id');
     }
-    
-    public function logs() 
-    { 
-        return $this->hasMany(Log::class, 'token_id'); 
+
+    public function logs()
+    {
+        return $this->hasMany(Log::class, 'token_id');
     }
 
     /**
@@ -58,12 +59,12 @@ class Token extends Model
         if ($this->unlimited_quota) {
             return true;
         }
-        
+
         // Check expired time
         if ($this->expired_time > 0 && $this->expired_time < time()) {
             return false;
         }
-        
+
         return $this->remain_quota > 0;
     }
 
@@ -75,7 +76,7 @@ class Token extends Model
         if (empty($this->allow_ips)) {
             return true;
         }
-        
+
         $allowedIps = explode(',', $this->allow_ips);
         foreach ($allowedIps as $allowedIp) {
             $allowedIp = trim($allowedIp);
@@ -83,7 +84,7 @@ class Token extends Model
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -95,13 +96,14 @@ class Token extends Model
         if ($pattern === '*' || $pattern === $ip) {
             return true;
         }
-        
+
         // Support wildcard like 192.168.*
         if (str_ends_with($pattern, '*')) {
             $prefix = rtrim($pattern, '*');
+
             return str_starts_with($ip, $prefix);
         }
-        
+
         return false;
     }
 
@@ -110,20 +112,20 @@ class Token extends Model
      */
     public function isModelAllowed(string $model): bool
     {
-        if (!$this->model_limits_enabled || empty($this->model_limits)) {
+        if (! $this->model_limits_enabled || empty($this->model_limits)) {
             return true;
         }
-        
+
         $limits = json_decode($this->model_limits, true);
-        if (!$limits || !is_array($limits)) {
+        if (! $limits || ! is_array($limits)) {
             return true;
         }
-        
+
         // Check exact match
         if (isset($limits[$model])) {
             return $limits[$model] === true || $limits[$model] > 0;
         }
-        
+
         // Check prefix match (e.g., "gpt-4*" matches "gpt-4o")
         foreach ($limits as $pattern => $allowed) {
             if (str_ends_with($pattern, '*')) {
@@ -133,7 +135,7 @@ class Token extends Model
                 }
             }
         }
-        
+
         return false;
     }
 

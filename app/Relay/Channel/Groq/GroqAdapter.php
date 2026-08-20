@@ -7,7 +7,6 @@ namespace App\Relay\Channel\Groq;
 use App\Enums\ApiType;
 use App\Relay\Channel\BaseAdapter;
 use App\Relay\Channel\OpenAICompatibleTrait;
-use App\Relay\Common\RelayInfo;
 use App\Relay\Constant\RelayMode;
 
 /**
@@ -21,6 +20,7 @@ class GroqAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'groq';
+
     protected int $apiType = ApiType::GROQ->value;
 
     /** @var array<int, string> */

@@ -15,6 +15,7 @@ use Illuminate\Console\Command;
 class CleanAvatarData extends Command
 {
     protected $signature = 'pease:clean-avatar {--dry-run : 仅输出将被清理的记录，不实际修改}';
+
     protected $description = '清理用户头像字段中的 data: URL 等历史脏数据';
 
     public function handle(): int
@@ -36,15 +37,15 @@ class CleanAvatarData extends Command
                     $reason = 'data-url';
                 }
                 // 2) 本地相对路径但文件不存在（排除 http 外链）
-                elseif (!preg_match('#^https?://#i', $avatar) && strpos($avatar, '//') !== 0) {
+                elseif (! preg_match('#^https?://#i', $avatar) && strpos($avatar, '//') !== 0) {
                     $path = public_path(ltrim($avatar, '/'));
-                    if (!is_file($path)) {
+                    if (! is_file($path)) {
                         $bad = true;
                         $reason = 'missing-file';
                     }
                 }
 
-                if (!$bad) {
+                if (! $bad) {
                     continue;
                 }
 
@@ -54,10 +55,10 @@ class CleanAvatarData extends Command
                     $user->id,
                     $user->username,
                     $reason,
-                    mb_substr($avatar, 0, 60) . (mb_strlen($avatar) > 60 ? '…' : '')
+                    mb_substr($avatar, 0, 60).(mb_strlen($avatar) > 60 ? '…' : '')
                 ));
 
-                if (!$dryRun) {
+                if (! $dryRun) {
                     $user->avatar = '';
                     $user->save();
                 }
@@ -66,6 +67,7 @@ class CleanAvatarData extends Command
         });
 
         $this->info(sprintf('已检查 %d 条记录，%s %d 条脏数据。', $checked, $dryRun ? '发现' : '已清理', $cleaned));
+
         return self::SUCCESS;
     }
 }

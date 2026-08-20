@@ -28,8 +28,6 @@ class CodingPlanPoolService
      *  2) 各周期配额未耗尽
      *  3) 优先使用“月使用率未超阈值”的账号；若全部超阈值但仍可用，则按月使用率升序取最低
      *  4) 按优先级升序、id 升序兜底
-     *
-     * @return CodingPlanAccount|null
      */
     public function pickAccount(string $vendor): ?CodingPlanAccount
     {
@@ -53,7 +51,7 @@ class CodingPlanPoolService
 
         // 第一轮：可用且未超月使用率阈值
         $candidates = $accounts->filter(function (CodingPlanAccount $a) {
-            return $a->hasAvailableQuota() && !$a->exceedsMonthlyThreshold();
+            return $a->hasAvailableQuota() && ! $a->exceedsMonthlyThreshold();
         });
 
         // 第二轮：可用但已超阈值（仍可继续用直到硬上限）
@@ -76,7 +74,7 @@ class CodingPlanPoolService
     /**
      * 记录一次提交消耗（原子递增 + 写流水）。
      *
-     * @param array $meta 额外信息：user_id/channel_id/model/request_id/tokens
+     * @param  array  $meta  额外信息：user_id/channel_id/model/request_id/tokens
      */
     public function recordUsage(CodingPlanAccount $account, int $count = 1, array $meta = [], bool $success = true, ?string $error = null): void
     {
@@ -86,9 +84,9 @@ class CodingPlanPoolService
             $affected = CodingPlanAccount::where('id', $account->id)
                 ->where('updated_at', $account->updated_at)
                 ->update([
-                    'used_5h' => DB::raw('used_5h + ' . $count),
-                    'used_weekly' => DB::raw('used_weekly + ' . $count),
-                    'used_monthly' => DB::raw('used_monthly + ' . $count),
+                    'used_5h' => DB::raw('used_5h + '.$count),
+                    'used_weekly' => DB::raw('used_weekly + '.$count),
+                    'used_monthly' => DB::raw('used_monthly + '.$count),
                     'last_used_at' => $now,
                     'updated_at' => $now,
                 ]);
@@ -96,9 +94,9 @@ class CodingPlanPoolService
             if ($affected === 0) {
                 // 并发冲突时退化为直接更新
                 CodingPlanAccount::where('id', $account->id)->update([
-                    'used_5h' => DB::raw('used_5h + ' . $count),
-                    'used_weekly' => DB::raw('used_weekly + ' . $count),
-                    'used_monthly' => DB::raw('used_monthly + ' . $count),
+                    'used_5h' => DB::raw('used_5h + '.$count),
+                    'used_weekly' => DB::raw('used_weekly + '.$count),
+                    'used_monthly' => DB::raw('used_monthly + '.$count),
                     'last_used_at' => $now,
                     'updated_at' => $now,
                 ]);
@@ -128,7 +126,7 @@ class CodingPlanPoolService
             ]);
 
             // 检查是否需要标记为耗尽
-            if (!$account->hasAvailableQuota()) {
+            if (! $account->hasAvailableQuota()) {
                 CodingPlanAccount::where('id', $account->id)->update([
                     'status' => CodingPlanAccount::STATUS_EXHAUSTED,
                     'updated_at' => $now,
@@ -150,6 +148,7 @@ class CodingPlanPoolService
     public function pickAndPrepare(string $vendor): array
     {
         $account = $this->pickAccount($vendor);
+
         return ['account' => $account, 'switched' => true];
     }
 
@@ -157,7 +156,7 @@ class CodingPlanPoolService
      * 重置已到期的滚动窗口计数器（5h / 周 / 月）。
      * 在选号前调用，保证计数器新鲜。
      */
-    public function resetExpiredWindows(string $vendor = null, int $now = null): int
+    public function resetExpiredWindows(?string $vendor = null, ?int $now = null): int
     {
         $now = $now ?? time();
         $reset = 0;
@@ -224,7 +223,7 @@ class CodingPlanPoolService
     /**
      * 将已过期账号标记为禁用（定时任务调用）。
      */
-    public function disableExpiredAccounts(int $now = null): int
+    public function disableExpiredAccounts(?int $now = null): int
     {
         $now = $now ?? time();
 

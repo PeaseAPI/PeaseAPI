@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * 渠道能力表
@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 class Ability extends Model
 {
     protected $table = 'abilities';
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -30,8 +31,8 @@ class Ability extends Model
 
     protected $casts = [
         'channel_id' => 'integer',
-        'enabled'    => 'integer',
-        'priority'   => 'integer',
+        'enabled' => 'integer',
+        'priority' => 'integer',
     ];
 
     // ===== Scopes =====

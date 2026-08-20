@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Option;
+use App\Models\PerfMetric;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use App\Models\PerfMetric;
-use App\Models\Option;
 
 /**
  * 性能指标统计中间件
- * 
+ *
  * 对标源项目: middleware/stats.go
  * 记录中转请求的性能指标数据
  */
@@ -25,12 +25,12 @@ class Stats
     {
         $startTime = microtime(true);
         $startMemory = memory_get_usage(true);
-        
+
         // 记录请求开始时间到请求属性
         $request->attributes->set('stats_start_time', $startTime);
         $request->attributes->set('stats_start_memory', $startMemory);
         $request->attributes->set('stats_start_ts', time());
-        
+
         // 添加请求开始时间戳
         $request->attributes->set('req_start_time', $startTime);
 
@@ -39,7 +39,7 @@ class Stats
         // 计算耗时和内存
         $endTime = microtime(true);
         $endMemory = memory_get_usage(true);
-        $latencyMs = (int)(($endTime - $startTime) * 1000);
+        $latencyMs = (int) (($endTime - $startTime) * 1000);
         $memoryUsed = $endMemory - $startMemory;
 
         // 存储响应时间供后续使用
@@ -60,13 +60,13 @@ class Stats
     {
         // 检查是否启用性能指标
         $enabled = Option::get('PerformanceMetricEnabled', false);
-        if (!$enabled) {
+        if (! $enabled) {
             return;
         }
 
         // 只统计中转相关请求
         $path = $request->path();
-        if (!$this->shouldCollect($path)) {
+        if (! $this->shouldCollect($path)) {
             return;
         }
 
@@ -78,13 +78,13 @@ class Stats
 
         // 获取用户分组
         $group = $this->getUserGroup($request);
-        
+
         // 计算生成时间 (TTFT - Time To First Token)
         $ttftMs = $this->calculateTTFT($request, $endTime);
-        
+
         // 判断是否成功响应
         $isSuccess = $this->isSuccessResponse($request);
-        
+
         // 获取输出 token 数
         $outputTokens = $this->getOutputTokens($request);
 
@@ -143,13 +143,13 @@ class Stats
     {
         // 从路由参数获取模型
         $model = $request->route('model');
-        if (!empty($model)) {
+        if (! empty($model)) {
             return $model;
         }
 
         // 从请求体获取模型
         $requestData = $request->all();
-        
+
         if (isset($requestData['model'])) {
             return $requestData['model'];
         }
@@ -200,7 +200,7 @@ class Stats
 
         // 判断是否使用了流式响应
         $accept = $request->header('Accept', '');
-        if (!str_contains($accept, 'text/event-stream')) {
+        if (! str_contains($accept, 'text/event-stream')) {
             return 0;
         }
 
@@ -209,7 +209,7 @@ class Stats
         // 这里做一个简化处理：如果是流式请求，返回总延迟作为近似值
         $streamStartTime = $request->attributes->get('stream_start_time');
         if ($streamStartTime !== null) {
-            return (int)(($endTime - $streamStartTime) * 1000);
+            return (int) (($endTime - $streamStartTime) * 1000);
         }
 
         // 默认返回 0，实际应该由流式处理器设置
@@ -225,6 +225,7 @@ class Stats
         $response = $request->attributes->get('stats_response');
         if ($response !== null && $response instanceof Response) {
             $statusCode = $response->getStatusCode();
+
             return $statusCode >= 200 && $statusCode < 400;
         }
 
@@ -257,7 +258,8 @@ class Stats
     protected function getBucketTs(): int
     {
         $now = time();
+
         // 向下取整到小时
-        return (int)(floor($now / 3600) * 3600);
+        return (int) (floor($now / 3600) * 3600);
     }
 }

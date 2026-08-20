@@ -16,12 +16,12 @@ class VertexTaskAdapter extends TaskAdapter
 
     protected function buildSubmitUrl(string $baseUrl, RelayInfo $info): string
     {
-        return $baseUrl . '/v1beta/video/generations';
+        return $baseUrl.'/v1beta/video/generations';
     }
 
     protected function buildFetchUrl(string $baseUrl, string $taskId, RelayInfo $info): string
     {
-        return $baseUrl . '/v1beta/video/generations/' . $taskId;
+        return $baseUrl.'/v1beta/video/generations/'.$taskId;
     }
 
     protected function buildRequestBody(RelayInfo $info): array
@@ -36,7 +36,7 @@ class VertexTaskAdapter extends TaskAdapter
 
         return [
             'Content-Type' => 'application/json',
-            'Authorization' => 'Bearer ' . $apiKey,
+            'Authorization' => 'Bearer '.$apiKey,
         ];
     }
 }

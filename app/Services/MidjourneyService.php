@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Midjourney;
-use App\Models\Channel;
 use App\Enums\ChannelType;
+use App\Models\Channel;
+use App\Models\Midjourney;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Midjourney 服务 - 对标 new-api service/midjourney.go
- * 
+ *
  * 处理 Midjourney 任务提交、查询、图片代理等功能
  */
 class MidjourneyService
@@ -26,8 +26,8 @@ class MidjourneyService
         $prompt = $request->input('prompt', '');
         $channel = $this->selectChannel($request);
 
-        if (!$channel) {
-            return ['success' => false, 'message' => '没有可用的 Midjourney 渠道'];
+        if (! $channel) {
+            return ['success' => false, 'message' => __('No available Midjourney channel')];
         }
 
         $mj = Midjourney::create([
@@ -55,8 +55,8 @@ class MidjourneyService
     {
         $channel = $this->selectChannel($request);
 
-        if (!$channel) {
-            return ['success' => false, 'message' => '没有可用的 Midjourney 渠道'];
+        if (! $channel) {
+            return ['success' => false, 'message' => __('No available Midjourney channel')];
         }
 
         $mj = Midjourney::create([
@@ -84,8 +84,8 @@ class MidjourneyService
     {
         $channel = $this->selectChannel($request);
 
-        if (!$channel) {
-            return ['success' => false, 'message' => '没有可用的 Midjourney 渠道'];
+        if (! $channel) {
+            return ['success' => false, 'message' => __('No available Midjourney channel')];
         }
 
         $mj = Midjourney::create([
@@ -113,8 +113,8 @@ class MidjourneyService
     {
         $channel = $this->selectChannel($request);
 
-        if (!$channel) {
-            return ['success' => false, 'message' => '没有可用的 Midjourney 渠道'];
+        if (! $channel) {
+            return ['success' => false, 'message' => __('No available Midjourney channel')];
         }
 
         $mj = Midjourney::create([
@@ -142,8 +142,8 @@ class MidjourneyService
     {
         $mj = Midjourney::find($id);
 
-        if (!$mj) {
-            return ['success' => false, 'message' => '任务不存在'];
+        if (! $mj) {
+            return ['success' => false, 'message' => __('Task does not exist')];
         }
 
         return [
@@ -170,8 +170,8 @@ class MidjourneyService
     {
         $mj = Midjourney::find($id);
 
-        if (!$mj) {
-            return ['success' => false, 'message' => '任务不存在'];
+        if (! $mj) {
+            return ['success' => false, 'message' => __('Task does not exist')];
         }
 
         return [
@@ -243,15 +243,17 @@ class MidjourneyService
     {
         $mj = Midjourney::where('image_id', $imageId)->first();
 
-        if (!$mj || empty($mj->image_url)) {
+        if (! $mj || empty($mj->image_url)) {
             return null;
         }
 
         try {
             $response = Http::get($mj->image_url);
+
             return $response->body();
         } catch (\Exception $e) {
-            Log::error('MJ image proxy failed: ' . $e->getMessage());
+            Log::error('MJ image proxy failed: '.$e->getMessage());
+
             return null;
         }
     }
@@ -263,7 +265,7 @@ class MidjourneyService
     {
         $channel = $this->selectChannel($request);
 
-        if (!$channel) {
+        if (! $channel) {
             return ['success' => false, 'message' => '没有可用的渠道'];
         }
 
@@ -292,7 +294,7 @@ class MidjourneyService
     {
         $channel = $this->selectChannel($request);
 
-        if (!$channel) {
+        if (! $channel) {
             return ['success' => false, 'message' => '没有可用的渠道'];
         }
 

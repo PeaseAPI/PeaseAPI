@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Option;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -406,6 +405,7 @@ class OptionService
         if ($value === null) {
             return $default;
         }
+
         return self::cast($key, $value);
     }
 
@@ -418,6 +418,7 @@ class OptionService
         foreach ($keys as $key) {
             $result[$key] = self::get($key);
         }
+
         return $result;
     }
 
@@ -436,7 +437,9 @@ class OptionService
     public static function setMany(array $options): void
     {
         foreach ($options as $key => $value) {
-            if (!is_string($key)) continue;
+            if (! is_string($key)) {
+                continue;
+            }
             self::set($key, $value);
         }
     }
@@ -451,6 +454,7 @@ class OptionService
         foreach ($stored as $key => $value) {
             $merged[$key] = self::cast($key, $value);
         }
+
         return $merged;
     }
 
@@ -465,6 +469,7 @@ class OptionService
         foreach ($hidden as $key) {
             unset($all[$key]);
         }
+
         return $all;
     }
 
@@ -474,10 +479,13 @@ class OptionService
     public static function cast(string $key, mixed $value): mixed
     {
         if (in_array($key, self::BOOL_KEYS, true)) {
-            if (is_bool($value)) return $value;
+            if (is_bool($value)) {
+                return $value;
+            }
             if (is_string($value)) {
                 return in_array(strtolower($value), ['1', 'true', 'yes', 'on'], true);
             }
+
             return (bool) $value;
         }
         if (in_array($key, self::INT_KEYS, true)) {
@@ -487,13 +495,19 @@ class OptionService
             return (float) $value;
         }
         if (in_array($key, self::JSON_KEYS, true)) {
-            if (is_array($value)) return $value;
+            if (is_array($value)) {
+                return $value;
+            }
             if (is_string($value) && $value !== '') {
                 $decoded = json_decode($value, true);
-                if (json_last_error() === JSON_ERROR_NONE) return $decoded;
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    return $decoded;
+                }
             }
+
             return self::DEFAULTS[$key] ?? [];
         }
+
         return $value;
     }
 

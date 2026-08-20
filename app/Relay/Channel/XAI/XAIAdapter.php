@@ -18,6 +18,7 @@ class XAIAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'xai';
+
     protected int $apiType = ApiType::XAI_GROK->value;
 
     /** @var array<int, string> */

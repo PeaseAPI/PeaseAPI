@@ -18,6 +18,7 @@ class SubModelAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'submodel';
+
     protected int $apiType = ApiType::SUBMODEL->value;
 
     /** @var array<int, string> */

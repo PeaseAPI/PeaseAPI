@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Enums\SystemTaskStatus;
 use App\Enums\SystemTaskType;
 use App\Jobs\CleanLogsJob;
 use App\Services\SystemTaskService;

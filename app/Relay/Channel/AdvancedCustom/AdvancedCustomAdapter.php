@@ -18,6 +18,7 @@ class AdvancedCustomAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'advancedcustom';
+
     protected int $apiType = ApiType::CUSTOM->value;
 
     /** @var array<int, string> */

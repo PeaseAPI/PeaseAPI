@@ -6,11 +6,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Channel;
-use App\Models\Ability;
-use App\Services\ChannelService;
 use App\Services\ChannelHealthService;
-use Illuminate\Http\Request;
+use App\Services\ChannelService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -30,9 +29,10 @@ class ChannelApiController extends Controller
     protected function requireAdmin(): ?JsonResponse
     {
         $user = Auth::user();
-        if (!$user || $user->role < 10) {
-            return response()->json(['success' => false, 'message' => '无管理员权限'], 403);
+        if (! $user || $user->role < 10) {
+            return response()->json(['success' => false, 'message' => __('No admin permission')], 403);
         }
+
         return null;
     }
 
@@ -42,21 +42,23 @@ class ChannelApiController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
-        $page = (int)$request->input('p', $request->input('page', 1));
-        $pageSize = (int)$request->input('page_size', 10);
+        $page = (int) $request->input('p', $request->input('page', 1));
+        $pageSize = (int) $request->input('page_size', 10);
 
         $query = Channel::query();
 
         if ($request->has('type')) {
-            $query->where('type', (int)$request->input('type'));
+            $query->where('type', (int) $request->input('type'));
         }
         if ($request->has('status')) {
-            $query->where('status', (int)$request->input('status'));
+            $query->where('status', (int) $request->input('status'));
         }
         if ($request->has('group') && $request->filled('group')) {
-            $query->whereRaw("FIND_IN_SET(?, `group`)", [$request->input('group')]);
+            $query->whereRaw('FIND_IN_SET(?, `group`)', [$request->input('group')]);
         }
         if ($request->has('tag') && $request->filled('tag')) {
             $query->where('tag', $request->input('tag'));
@@ -65,9 +67,9 @@ class ChannelApiController extends Controller
             $kw = $request->input('search');
             $query->where(function ($q) use ($kw) {
                 $q->where('id', $kw)
-                  ->orWhere('name', 'like', "%{$kw}%")
-                  ->orWhere('tag', 'like', "%{$kw}%")
-                  ->orWhere('models', 'like', "%{$kw}%");
+                    ->orWhere('name', 'like', "%{$kw}%")
+                    ->orWhere('tag', 'like', "%{$kw}%")
+                    ->orWhere('models', 'like', "%{$kw}%");
             });
         }
 
@@ -76,7 +78,7 @@ class ChannelApiController extends Controller
         $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
         $sortField = ltrim($sort, '-');
         $allowedSort = ['id', 'name', 'status', 'response_time', 'priority', 'balance', 'used_quota', 'test_time'];
-        if (!in_array($sortField, $allowedSort, true)) {
+        if (! in_array($sortField, $allowedSort, true)) {
             $sortField = 'id';
         }
         $query->orderBy($sortField, $direction);
@@ -96,9 +98,11 @@ class ChannelApiController extends Controller
      */
     public function search(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
-        $keyword = (string)$request->input('keyword', '');
+        $keyword = (string) $request->input('keyword', '');
         $channels = $this->channelService->search($keyword, 20);
 
         return response()->json([
@@ -114,9 +118,12 @@ class ChannelApiController extends Controller
      */
     public function models(): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $models = $this->channelService->getAllModels();
+
         return response()->json([
             'success' => true,
             'message' => '',
@@ -129,9 +136,12 @@ class ChannelApiController extends Controller
      */
     public function modelsEnabled(): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $models = $this->channelService->getEnabledModels();
+
         return response()->json([
             'success' => true,
             'message' => '',
@@ -144,7 +154,9 @@ class ChannelApiController extends Controller
      */
     public function ops(): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         return response()->json([
             'success' => true,
@@ -164,9 +176,12 @@ class ChannelApiController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $channel = Channel::findOrFail($id);
+
         return response()->json([
             'success' => true,
             'message' => '',
@@ -179,31 +194,33 @@ class ChannelApiController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $validated = $request->validate([
-            'name'                => 'required|string|max:100',
-            'type'                => 'required|integer',
-            'key'                 => 'required|string',
-            'base_url'            => 'nullable|string|max:511',
-            'models'              => 'nullable|array',
-            'model_mapping'       => 'nullable|array',
-            'group'               => 'nullable|string',
-            'priority'            => 'nullable|integer|min:0',
-            'weight'              => 'nullable|integer|min:0',
-            'status'              => 'nullable|integer|in:1,2,3',
-            'test_model'          => 'nullable|string',
-            'tag'                 => 'nullable|string',
-            'other'               => 'nullable|string',
-            'other_info'          => 'nullable|array',
-            'setting'             => 'nullable|array',
-            'param_override'      => 'nullable|array',
-            'header_override'     => 'nullable|array',
+            'name' => 'required|string|max:100',
+            'type' => 'required|integer',
+            'key' => 'required|string',
+            'base_url' => 'nullable|string|max:511',
+            'models' => 'nullable|array',
+            'model_mapping' => 'nullable|array',
+            'group' => 'nullable|string',
+            'priority' => 'nullable|integer|min:0',
+            'weight' => 'nullable|integer|min:0',
+            'status' => 'nullable|integer|in:1,2,3',
+            'test_model' => 'nullable|string',
+            'tag' => 'nullable|string',
+            'other' => 'nullable|string',
+            'other_info' => 'nullable|array',
+            'setting' => 'nullable|array',
+            'param_override' => 'nullable|array',
+            'header_override' => 'nullable|array',
             'status_code_mapping' => 'nullable|array',
-            'auto_ban'            => 'nullable|integer|in:0,1',
-            'remark'              => 'nullable|string',
-            'channel_info'        => 'nullable|array',
-            'settings'            => 'nullable|array',
+            'auto_ban' => 'nullable|integer|in:0,1',
+            'remark' => 'nullable|string',
+            'channel_info' => 'nullable|array',
+            'settings' => 'nullable|array',
             'openai_organization' => 'nullable|string',
         ]);
 
@@ -211,7 +228,7 @@ class ChannelApiController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => '渠道创建成功',
+            'message' => __('Channel created successfully'),
             'data' => $channel,
         ], 201);
     }
@@ -222,41 +239,43 @@ class ChannelApiController extends Controller
      */
     public function update(Request $request, int $id = 0): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         // 优先使用 URL 中的 id，回退到 body 中的 id
         if ($id <= 0) {
-            $id = (int)$request->input('id');
+            $id = (int) $request->input('id');
         }
         if ($id <= 0) {
-            return response()->json(['success' => false, 'message' => '缺少渠道 id'], 400);
+            return response()->json(['success' => false, 'message' => __('Missing channel id')], 400);
         }
 
         $channel = Channel::findOrFail($id);
 
         $validated = $request->validate([
-            'name'                => 'sometimes|string|max:100',
-            'type'                => 'sometimes|integer',
-            'key'                 => 'sometimes|string',
-            'base_url'            => 'nullable|string|max:511',
-            'models'              => 'nullable|array',
-            'model_mapping'       => 'nullable|array',
-            'group'               => 'nullable|string',
-            'priority'            => 'nullable|integer|min:0',
-            'weight'              => 'nullable|integer|min:0',
-            'status'              => 'nullable|integer|in:1,2,3',
-            'test_model'          => 'nullable|string',
-            'tag'                 => 'nullable|string',
-            'other'               => 'nullable|string',
-            'other_info'          => 'nullable|array',
-            'setting'             => 'nullable|array',
-            'param_override'      => 'nullable|array',
-            'header_override'     => 'nullable|array',
+            'name' => 'sometimes|string|max:100',
+            'type' => 'sometimes|integer',
+            'key' => 'sometimes|string',
+            'base_url' => 'nullable|string|max:511',
+            'models' => 'nullable|array',
+            'model_mapping' => 'nullable|array',
+            'group' => 'nullable|string',
+            'priority' => 'nullable|integer|min:0',
+            'weight' => 'nullable|integer|min:0',
+            'status' => 'nullable|integer|in:1,2,3',
+            'test_model' => 'nullable|string',
+            'tag' => 'nullable|string',
+            'other' => 'nullable|string',
+            'other_info' => 'nullable|array',
+            'setting' => 'nullable|array',
+            'param_override' => 'nullable|array',
+            'header_override' => 'nullable|array',
             'status_code_mapping' => 'nullable|array',
-            'auto_ban'            => 'nullable|integer|in:0,1',
-            'remark'              => 'nullable|string',
-            'channel_info'        => 'nullable|array',
-            'settings'            => 'nullable|array',
+            'auto_ban' => 'nullable|integer|in:0,1',
+            'remark' => 'nullable|string',
+            'channel_info' => 'nullable|array',
+            'settings' => 'nullable|array',
             'openai_organization' => 'nullable|string',
         ]);
 
@@ -264,7 +283,7 @@ class ChannelApiController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => '渠道更新成功',
+            'message' => __('Channel updated successfully'),
             'data' => $channel->fresh(),
         ]);
     }
@@ -274,14 +293,16 @@ class ChannelApiController extends Controller
      */
     public function destroy(int $id): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $channel = Channel::findOrFail($id);
         $this->channelService->delete($channel);
 
         return response()->json([
             'success' => true,
-            'message' => '渠道已删除',
+            'message' => __('Channel deleted'),
         ]);
     }
 
@@ -291,18 +312,20 @@ class ChannelApiController extends Controller
      */
     public function batchDelete(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $ids = $request->input('ids', []);
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json(['success' => false, 'message' => '缺少 ids'], 400);
+        if (! is_array($ids) || empty($ids)) {
+            return response()->json(['success' => false, 'message' => __('Missing ids')], 400);
         }
 
         $count = $this->channelService->batchDelete(array_map('intval', $ids));
 
         return response()->json([
             'success' => true,
-            'message' => "已删除 {$count} 个渠道",
+            'message' => __('Deleted :count channels', ['count' => $count]),
         ]);
     }
 
@@ -312,19 +335,21 @@ class ChannelApiController extends Controller
      */
     public function batchStatus(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $ids = $request->input('ids', []);
-        $status = (int)$request->input('status', 1);
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json(['success' => false, 'message' => '缺少 ids'], 400);
+        $status = (int) $request->input('status', 1);
+        if (! is_array($ids) || empty($ids)) {
+            return response()->json(['success' => false, 'message' => __('Missing ids')], 400);
         }
 
         $count = $this->channelService->batchUpdateStatus(array_map('intval', $ids), $status);
 
         return response()->json([
             'success' => true,
-            'message' => "已更新 {$count} 个渠道状态",
+            'message' => __('Updated status for :count channels', ['count' => $count]),
         ]);
     }
 
@@ -333,15 +358,17 @@ class ChannelApiController extends Controller
      */
     public function updateStatus(Request $request, int $id): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
-        $status = (int)$request->input('status', 1);
+        $status = (int) $request->input('status', 1);
         $channel = Channel::findOrFail($id);
         $this->channelService->updateStatus($channel, $status);
 
         return response()->json([
             'success' => true,
-            'message' => '状态已更新',
+            'message' => __('Status updated'),
         ]);
     }
 
@@ -350,13 +377,15 @@ class ChannelApiController extends Controller
      */
     public function deleteDisabled(): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $count = $this->channelService->deleteDisabled();
 
         return response()->json([
             'success' => true,
-            'message' => "已删除 {$count} 个禁用渠道",
+            'message' => __('Deleted :count disabled channels', ['count' => $count]),
         ]);
     }
 
@@ -365,7 +394,9 @@ class ChannelApiController extends Controller
      */
     public function testAll(): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $result = $this->healthService->checkAllChannels();
 
@@ -381,7 +412,9 @@ class ChannelApiController extends Controller
      */
     public function test(int $id): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $channel = Channel::findOrFail($id);
         $result = $this->channelService->testChannel($channel);
@@ -398,7 +431,9 @@ class ChannelApiController extends Controller
      */
     public function updateBalanceAll(): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $result = $this->channelService->updateAllBalance();
 
@@ -414,7 +449,9 @@ class ChannelApiController extends Controller
      */
     public function updateBalance(int $id): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $channel = Channel::findOrFail($id);
         $balance = $this->channelService->updateBalance($channel);
@@ -431,13 +468,15 @@ class ChannelApiController extends Controller
      */
     public function fixAbilities(): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $count = $this->channelService->fixAllAbilities();
 
         return response()->json([
             'success' => true,
-            'message' => "已重建 {$count} 个渠道的能力表",
+            'message' => __('Rebuilt ability tables for :count channels', ['count' => $count]),
         ]);
     }
 
@@ -446,15 +485,19 @@ class ChannelApiController extends Controller
      */
     public function fetchModels(int $id): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $channel = Channel::findOrFail($id);
         $models = $this->channelService->fetchUpstreamModels($channel);
+        $metadata = $this->channelService->syncModelMetadata($models);
 
         return response()->json([
-            'success' => true,
+            'success' => $models !== [],
             'message' => '',
             'data' => $models,
+            'metadata' => $metadata,
         ]);
     }
 
@@ -464,18 +507,51 @@ class ChannelApiController extends Controller
      */
     public function batchFetchModels(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
+
+        // 新增渠道尚未入库时，直接使用表单中的地址和 Key 探测模型。
+        if ($request->filled('base_url')) {
+            $validated = $request->validate([
+                'base_url' => 'required|string|max:511',
+                'key' => 'nullable|string',
+                'type' => 'nullable|integer',
+                'header_override' => 'nullable',
+            ]);
+            $headers = $validated['header_override'] ?? [];
+            if (is_string($headers)) {
+                $headers = json_decode($headers, true) ?: [];
+            }
+            $result = $this->channelService->discoverModels(
+                $validated['base_url'],
+                $validated['key'] ?? '',
+                (int) ($validated['type'] ?? 1),
+                is_array($headers) ? $headers : []
+            );
+
+            return response()->json([
+                'success' => $result['models'] !== [],
+                'message' => $result['message'],
+                'data' => $result['models'],
+                'metadata' => $result['metadata'],
+            ], $result['models'] === [] ? 422 : 200);
+        }
 
         $ids = $request->input('ids', []);
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json(['success' => false, 'message' => '缺少 ids'], 400);
+        if (! is_array($ids) || empty($ids)) {
+            return response()->json(['success' => false, 'message' => __('Missing ids')], 400);
         }
 
         $result = [];
         foreach (array_map('intval', $ids) as $id) {
             $channel = Channel::find($id);
             if ($channel) {
-                $result[$id] = $this->channelService->fetchUpstreamModels($channel);
+                $models = $this->channelService->fetchUpstreamModels($channel);
+                $result[$id] = [
+                    'models' => $models,
+                    'metadata' => $this->channelService->syncModelMetadata($models),
+                ];
             }
         }
 
@@ -492,18 +568,20 @@ class ChannelApiController extends Controller
      */
     public function disableByTag(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
-        $tag = (string)$request->input('tag', '');
+        $tag = (string) $request->input('tag', '');
         if ($tag === '') {
-            return response()->json(['success' => false, 'message' => '缺少 tag'], 400);
+            return response()->json(['success' => false, 'message' => __('Missing tag')], 400);
         }
 
         $count = $this->channelService->disableByTag($tag);
 
         return response()->json([
             'success' => true,
-            'message' => "已禁用 {$count} 个渠道",
+            'message' => __('Disabled :count channels', ['count' => $count]),
         ]);
     }
 
@@ -513,18 +591,20 @@ class ChannelApiController extends Controller
      */
     public function enableByTag(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
-        $tag = (string)$request->input('tag', '');
+        $tag = (string) $request->input('tag', '');
         if ($tag === '') {
-            return response()->json(['success' => false, 'message' => '缺少 tag'], 400);
+            return response()->json(['success' => false, 'message' => __('Missing tag')], 400);
         }
 
         $count = $this->channelService->enableByTag($tag);
 
         return response()->json([
             'success' => true,
-            'message' => "已启用 {$count} 个渠道",
+            'message' => __('Enabled :count channels', ['count' => $count]),
         ]);
     }
 
@@ -534,12 +614,14 @@ class ChannelApiController extends Controller
      */
     public function updateTag(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
-        $id = (int)$request->input('id');
-        $tag = (string)$request->input('tag', '');
+        $id = (int) $request->input('id');
+        $tag = (string) $request->input('tag', '');
         if ($id <= 0) {
-            return response()->json(['success' => false, 'message' => '缺少 id'], 400);
+            return response()->json(['success' => false, 'message' => __('Missing id')], 400);
         }
 
         $channel = Channel::findOrFail($id);
@@ -547,7 +629,7 @@ class ChannelApiController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => '标签已更新',
+            'message' => __('Tags updated'),
         ]);
     }
 
@@ -556,14 +638,16 @@ class ChannelApiController extends Controller
      */
     public function tagModels(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
-        $tag = (string)$request->input('tag', '');
+        $tag = (string) $request->input('tag', '');
         $models = Channel::where('tag', $tag)
             ->where('status', 1)
             ->pluck('models')
-            ->flatMap(fn($m) => explode(',', (string)$m))
-            ->map(fn($m) => trim($m))
+            ->flatMap(fn ($m) => explode(',', (string) $m))
+            ->map(fn ($m) => trim($m))
             ->filter()
             ->unique()
             ->values()
@@ -582,19 +666,21 @@ class ChannelApiController extends Controller
      */
     public function batchTag(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $ids = $request->input('ids', []);
-        $tag = (string)$request->input('tag', '');
-        if (!is_array($ids) || empty($ids)) {
-            return response()->json(['success' => false, 'message' => '缺少 ids'], 400);
+        $tag = (string) $request->input('tag', '');
+        if (! is_array($ids) || empty($ids)) {
+            return response()->json(['success' => false, 'message' => __('Missing ids')], 400);
         }
 
         $count = Channel::whereIn('id', array_map('intval', $ids))->update(['tag' => $tag]);
 
         return response()->json([
             'success' => true,
-            'message' => "已更新 {$count} 个渠道标签",
+            'message' => __('Updated tags for :count channels', ['count' => $count]),
         ]);
     }
 
@@ -603,14 +689,16 @@ class ChannelApiController extends Controller
      */
     public function copy(int $id): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $channel = Channel::findOrFail($id);
         $newChannel = $this->channelService->copyChannel($channel);
 
         return response()->json([
             'success' => true,
-            'message' => '渠道已复制',
+            'message' => __('Channel copied'),
             'data' => $newChannel,
         ], 201);
     }
@@ -621,10 +709,12 @@ class ChannelApiController extends Controller
      */
     public function multiKeyManage(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
-        $id = (int)$request->input('id');
-        $action = (string)$request->input('action', 'list');
+        $id = (int) $request->input('id');
+        $action = (string) $request->input('action', 'list');
         $keys = $request->input('keys', []);
 
         $channel = Channel::findOrFail($id);
@@ -642,9 +732,11 @@ class ChannelApiController extends Controller
      */
     public function applyUpstreamUpdates(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
-        $id = (int)$request->input('id');
+        $id = (int) $request->input('id');
         $channel = Channel::findOrFail($id);
         $result = $this->channelService->applyUpstreamUpdates($channel);
 
@@ -660,7 +752,9 @@ class ChannelApiController extends Controller
      */
     public function applyAllUpstreamUpdates(): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $result = $this->channelService->applyAllUpstreamUpdates();
 
@@ -676,9 +770,11 @@ class ChannelApiController extends Controller
      */
     public function detectUpstreamUpdates(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
-        $id = (int)$request->input('id');
+        $id = (int) $request->input('id');
         $channel = Channel::findOrFail($id);
         $result = $this->channelService->detectUpstreamUpdates($channel);
 
@@ -694,7 +790,9 @@ class ChannelApiController extends Controller
      */
     public function detectAllUpstreamUpdates(): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $result = $this->channelService->detectAllUpstreamUpdates();
 
@@ -711,11 +809,12 @@ class ChannelApiController extends Controller
     public function getKey(int $id): JsonResponse
     {
         $user = Auth::user();
-        if (!$user || $user->role < 100) {
-            return response()->json(['success' => false, 'message' => '需要 Root 权限'], 403);
+        if (! $user || $user->role < 100) {
+            return response()->json(['success' => false, 'message' => __('Root permission required')], 403);
         }
 
         $channel = Channel::findOrFail($id);
+
         return response()->json([
             'success' => true,
             'message' => '',
@@ -728,7 +827,9 @@ class ChannelApiController extends Controller
      */
     public function health(int $id): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $channel = Channel::findOrFail($id);
         $result = $this->channelService->testChannel($channel);
@@ -745,7 +846,9 @@ class ChannelApiController extends Controller
      */
     public function healthAll(): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         $result = $this->healthService->checkAllChannels();
 
@@ -761,11 +864,13 @@ class ChannelApiController extends Controller
      */
     public function codexRefresh(int $id): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         return response()->json([
             'success' => false,
-            'message' => 'Codex 渠道暂未实现',
+            'message' => __('Codex channel is not implemented yet'),
         ], 501);
     }
 
@@ -774,11 +879,13 @@ class ChannelApiController extends Controller
      */
     public function codexUsage(int $id): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         return response()->json([
             'success' => false,
-            'message' => 'Codex 渠道暂未实现',
+            'message' => __('Codex channel is not implemented yet'),
         ], 501);
     }
 
@@ -787,11 +894,13 @@ class ChannelApiController extends Controller
      */
     public function codexUsageReset(int $id): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         return response()->json([
             'success' => false,
-            'message' => 'Codex 渠道暂未实现',
+            'message' => __('Codex channel is not implemented yet'),
         ], 501);
     }
 
@@ -800,11 +909,13 @@ class ChannelApiController extends Controller
      */
     public function ollamaPull(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         return response()->json([
             'success' => false,
-            'message' => 'Ollama 拉取暂未实现',
+            'message' => __('Ollama pull is not implemented yet'),
         ], 501);
     }
 
@@ -813,11 +924,13 @@ class ChannelApiController extends Controller
      */
     public function ollamaPullStream(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         return response()->json([
             'success' => false,
-            'message' => 'Ollama 流式拉取暂未实现',
+            'message' => __('Ollama streaming pull is not implemented yet'),
         ], 501);
     }
 
@@ -826,11 +939,13 @@ class ChannelApiController extends Controller
      */
     public function ollamaDelete(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         return response()->json([
             'success' => false,
-            'message' => 'Ollama 删除暂未实现',
+            'message' => __('Ollama delete is not implemented yet'),
         ], 501);
     }
 
@@ -839,11 +954,13 @@ class ChannelApiController extends Controller
      */
     public function ollamaVersion(int $id): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         return response()->json([
             'success' => false,
-            'message' => 'Ollama 版本查询暂未实现',
+            'message' => __('Ollama version query is not implemented yet'),
         ], 501);
     }
 }

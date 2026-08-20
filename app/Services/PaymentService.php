@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use App\Models\TopUp;
-use App\Models\Pricing;
-use App\Models\User;
 use App\Enums\PaymentStatus;
-use Stripe\Stripe;
+use App\Models\Pricing;
+use App\Models\TopUp;
+use App\Models\User;
 use Stripe\Checkout\Session as StripeSession;
+use Stripe\Stripe;
 
 class PaymentService
 {
@@ -25,8 +25,8 @@ class PaymentService
                 'quantity' => 1,
             ]],
             'mode' => 'payment',
-            'success_url' => config('app.url') . '/payment/success?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url' => config('app.url') . '/payment/cancel',
+            'success_url' => config('app.url').'/payment/success?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url' => config('app.url').'/payment/cancel',
             'client_reference_id' => $user->id,
             'metadata' => ['pricing_id' => $pricing->id, 'user_id' => $user->id],
         ]);
@@ -54,6 +54,7 @@ class PaymentService
         $topUp->update(['status' => PaymentStatus::PAID->value, 'paid_at' => time()]);
         $user = User::find($topUp->user_id);
         $user->increment('balance', $topUp->quota_amount);
+
         return $topUp;
     }
 }

@@ -6,7 +6,6 @@ use App\Models\TopUp;
 use App\Models\User;
 use App\Services\AlipayService;
 use App\Services\OptionService;
-use App\Services\QuotaService;
 use App\Services\WechatPayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +29,7 @@ class TopUpController extends Controller
         // 易支付模式：从 PayMethods 配置读取（微信/支付宝/QQ/网银等）
         if ($epayEnabled) {
             $payMethods = json_decode(OptionService::get('PayMethods', '[]'), true) ?: [];
-            if (!empty($payMethods)) {
+            if (! empty($payMethods)) {
                 foreach ($payMethods as $method) {
                     $paymentMethods[] = [
                         'name' => $method['name'] ?? '',
@@ -151,7 +150,7 @@ class TopUpController extends Controller
     /**
      * 易支付下单
      * POST /api/user/pay
-     * 
+     *
      * 支持的支付方式（通过 payment_type 参数选择）：
      * - alipay: 支付宝支付
      * - wxpay:  微信支付
@@ -169,13 +168,13 @@ class TopUpController extends Controller
         // 支付方式：从前端传入，默认支付宝
         $paymentType = $request->input('payment_type', 'alipay');
         $allowedTypes = ['alipay', 'wxpay', 'qqpay', 'bank'];
-        if (!in_array($paymentType, $allowedTypes)) {
+        if (! in_array($paymentType, $allowedTypes)) {
             return $this->error('不支持的支付方式，可选: alipay(支付宝), wxpay(微信), qqpay(QQ), bank(网银)');
         }
 
         $price = (float) OptionService::get('Price', 0.01);
         $money = round($amount * $price, 2);
-        $tradeNo = 'TU' . date('YmdHis') . Str::random(8);
+        $tradeNo = 'TU'.date('YmdHis').Str::random(8);
 
         $topUp = TopUp::create([
             'user_id' => $user->id,
@@ -184,7 +183,7 @@ class TopUpController extends Controller
             'trade_no' => $tradeNo,
             'trade_no_internal' => $tradeNo,
             'status' => 0,
-            'payment_method' => 'epay_' . $paymentType,
+            'payment_method' => 'epay_'.$paymentType,
             'created_at' => time(),
             'updated_at' => time(),
         ]);
@@ -206,7 +205,7 @@ class TopUpController extends Controller
             'out_trade_no' => $tradeNo,
             'notify_url' => url('/api/user/epay/notify'),
             'return_url' => url('/wallet'),
-            'name' => '充值 ' . $amount . ' 额度',
+            'name' => '充值 '.$amount.' 额度',
             'money' => sprintf('%.2f', $money),
             'sign_type' => 'MD5',
         ];
@@ -214,13 +213,13 @@ class TopUpController extends Controller
         $signStr = '';
         foreach ($params as $k => $v) {
             if ($v !== '') {
-                $signStr .= $k . '=' . $v . '&';
+                $signStr .= $k.'='.$v.'&';
             }
         }
-        $signStr = rtrim($signStr, '&') . $epayKey;
+        $signStr = rtrim($signStr, '&').$epayKey;
         $params['sign'] = md5($signStr);
 
-        $payUrl = rtrim($epayUrl, '/') . '/submit.php?' . http_build_query($params);
+        $payUrl = rtrim($epayUrl, '/').'/submit.php?'.http_build_query($params);
 
         return $this->success([
             'trade_no' => $tradeNo,
@@ -250,13 +249,14 @@ class TopUpController extends Controller
         $signStr = '';
         foreach ($params as $k => $v) {
             if ($v !== '') {
-                $signStr .= $k . '=' . $v . '&';
+                $signStr .= $k.'='.$v.'&';
             }
         }
-        $signStr = rtrim($signStr, '&') . $epayKey;
+        $signStr = rtrim($signStr, '&').$epayKey;
         $expectedSign = md5($signStr);
         if (! is_string($sign) || ! hash_equals($expectedSign, $sign)) {
             Log::warning('epay notify sign error', ['trade_no' => $tradeNo]);
+
             return response('fail');
         }
 
@@ -299,7 +299,7 @@ class TopUpController extends Controller
 
         $price = (float) OptionService::get('StripePrice', 0.01);
         $money = round($amount * $price, 2);
-        $tradeNo = 'ST' . date('YmdHis') . Str::random(8);
+        $tradeNo = 'ST'.date('YmdHis').Str::random(8);
 
         $topUp = TopUp::create([
             'user_id' => $user->id,
@@ -366,7 +366,7 @@ class TopUpController extends Controller
 
         $price = (float) OptionService::get('CreemPrice', 0.01);
         $money = round($amount * $price, 2);
-        $tradeNo = 'CR' . date('YmdHis') . Str::random(8);
+        $tradeNo = 'CR'.date('YmdHis').Str::random(8);
 
         TopUp::create([
             'user_id' => $user->id,
@@ -438,7 +438,7 @@ class TopUpController extends Controller
 
         $price = (float) OptionService::get('WaffoPrice', 0.01);
         $money = round($amount * $price, 2);
-        $tradeNo = 'WA' . date('YmdHis') . Str::random(8);
+        $tradeNo = 'WA'.date('YmdHis').Str::random(8);
 
         TopUp::create([
             'user_id' => $user->id,
@@ -506,7 +506,7 @@ class TopUpController extends Controller
             return;
         }
 
-        DB::transaction(function () use ($topUp, $money, $paymentId) {
+        DB::transaction(function () use ($topUp, $paymentId) {
             $topUp->status = 1;
             $topUp->payment_id = $paymentId;
             $topUp->updated_at = time();
@@ -526,7 +526,7 @@ class TopUpController extends Controller
     {
         $user = $request->user();
         if (! $user || $user->role < 10) {
-            abort(403, '需要管理员权限');
+            abort(403, __('Admin permission required'));
         }
     }
 
@@ -546,7 +546,7 @@ class TopUpController extends Controller
             return $this->error('微信支付未启用');
         }
 
-        $service = new WechatPayService();
+        $service = new WechatPayService;
         if (! $service->isConfigured()) {
             return $this->error('微信支付未配置完整，请在后台填写 AppId/商户号/密钥/证书');
         }
@@ -554,7 +554,7 @@ class TopUpController extends Controller
         $price = (float) OptionService::get('Price', 0.01);
         $money = round($amount * $price, 2);
         $amountFen = (int) round($money * 100);
-        $tradeNo = 'WX' . date('YmdHis') . Str::random(8);
+        $tradeNo = 'WX'.date('YmdHis').Str::random(8);
 
         TopUp::create([
             'user_id' => $user->id,
@@ -577,12 +577,13 @@ class TopUpController extends Controller
             $result = $service->createNativeOrder(
                 $tradeNo,
                 $amountFen,
-                '充值 ' . $amount . ' 额度',
+                '充值 '.$amount.' 额度',
                 $notifyUrl
             );
         } catch (\Throwable $e) {
             Log::error('wechatPay order failed', ['trade_no' => $tradeNo, 'err' => $e->getMessage()]);
-            return $this->error('微信下单失败: ' . $e->getMessage());
+
+            return $this->error('微信下单失败: '.$e->getMessage());
         }
 
         return $this->success([
@@ -606,10 +607,11 @@ class TopUpController extends Controller
             $flatHeaders[$k] = is_array($v) ? ($v[0] ?? '') : $v;
         }
 
-        $service = new WechatPayService();
+        $service = new WechatPayService;
         $data = $service->verifyNotify($flatHeaders, $body);
         if ($data === null) {
             Log::warning('wechat notify verify failed', ['body' => $body]);
+
             return response('fail', 400);
         }
 
@@ -624,6 +626,7 @@ class TopUpController extends Controller
         }
 
         $this->completeTopUp($tradeNo, (float) $money, $transactionId);
+
         return response('success');
     }
 
@@ -643,14 +646,14 @@ class TopUpController extends Controller
             return $this->error('支付宝支付未启用');
         }
 
-        $service = new AlipayService();
+        $service = new AlipayService;
         if (! $service->isConfigured()) {
             return $this->error('支付宝未配置完整，请在后台填写 AppId/私钥/支付宝公钥');
         }
 
         $price = (float) OptionService::get('Price', 0.01);
         $money = round($amount * $price, 2);
-        $tradeNo = 'AL' . date('YmdHis') . Str::random(8);
+        $tradeNo = 'AL'.date('YmdHis').Str::random(8);
 
         TopUp::create([
             'user_id' => $user->id,
@@ -673,14 +676,16 @@ class TopUpController extends Controller
         try {
             if ($payType === 'wap') {
                 $returnUrl = url('/wallet');
-                $payUrl = $service->createWapPayUrl($tradeNo, $money, '充值 ' . $amount . ' 额度', $notifyUrl, $returnUrl);
+                $payUrl = $service->createWapPayUrl($tradeNo, $money, '充值 '.$amount.' 额度', $notifyUrl, $returnUrl);
+
                 return $this->success([
                     'trade_no' => $tradeNo,
                     'pay_url' => $payUrl,
                     'pay_type' => 'wap',
                 ]);
             }
-            $result = $service->createPrecreateOrder($tradeNo, $money, '充值 ' . $amount . ' 额度', $notifyUrl);
+            $result = $service->createPrecreateOrder($tradeNo, $money, '充值 '.$amount.' 额度', $notifyUrl);
+
             return $this->success([
                 'trade_no' => $tradeNo,
                 'qr_code' => $result['qr_code'],
@@ -688,7 +693,8 @@ class TopUpController extends Controller
             ]);
         } catch (\Throwable $e) {
             Log::error('alipay order failed', ['trade_no' => $tradeNo, 'err' => $e->getMessage()]);
-            return $this->error('支付宝下单失败: ' . $e->getMessage());
+
+            return $this->error('支付宝下单失败: '.$e->getMessage());
         }
     }
 
@@ -699,9 +705,10 @@ class TopUpController extends Controller
     public function alipayNotify(Request $request)
     {
         $params = $request->all();
-        $service = new AlipayService();
+        $service = new AlipayService;
         if (! $service->verifyNotify($params)) {
             Log::warning('alipay notify sign error', ['params' => $params]);
+
             return response('fail');
         }
 
@@ -715,6 +722,7 @@ class TopUpController extends Controller
         }
 
         $this->completeTopUp($tradeNo, $money, $paymentId);
+
         return response('success');
     }
 }

@@ -4,23 +4,22 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Enums\UserRole;
 use App\Models\TwoFA;
+use App\Models\User;
 use App\Models\UserSession;
 use App\Services\AuthService;
 use App\Services\EmailService;
 use App\Services\OptionService;
-use App\Enums\UserRole;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use OTPHP\TOTP;
 use ParagonIE\ConstantTime\Base32;
 
@@ -30,8 +29,7 @@ class AuthController extends Controller
         private readonly AuthService $authService,
         private readonly OptionService $optionService,
         private readonly EmailService $emailService,
-    ) {
-    }
+    ) {}
 
     /**
      * 用户注册
@@ -39,8 +37,8 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         // 检查注册开关
-        if (!$this->optionService->get('RegisterEnabled', true)) {
-            return response()->json(['success' => false, 'message' => '注册功能已关闭'], 403);
+        if (! $this->optionService->get('RegisterEnabled', true)) {
+            return response()->json(['success' => false, 'message' => __('Registration is disabled')], 403);
         }
 
         $rules = [
@@ -52,8 +50,8 @@ class AuthController extends Controller
         $emailVerificationEnabled = $this->optionService->get('EmailVerificationEnabled', false);
         $passwordRegisterEnabled = $this->optionService->get('PasswordRegisterEnabled', true);
 
-        if (!$passwordRegisterEnabled) {
-            return response()->json(['success' => false, 'message' => '密码注册已关闭'], 403);
+        if (! $passwordRegisterEnabled) {
+            return response()->json(['success' => false, 'message' => __('Password registration is disabled')], 403);
         }
 
         if ($emailVerificationEnabled) {
@@ -70,8 +68,8 @@ class AuthController extends Controller
 
         // 校验邮箱验证码（统一走 EmailService）
         if ($emailVerificationEnabled) {
-            if (!$this->emailService->verifyCode($request->input('email'), (string) $request->input('verification_code'))) {
-                return response()->json(['success' => false, 'message' => '邮箱验证码错误或已过期'], 422);
+            if (! $this->emailService->verifyCode($request->input('email'), (string) $request->input('verification_code'))) {
+                return response()->json(['success' => false, 'message' => __('Email verification code is invalid or expired')], 422);
             }
         }
 
@@ -122,13 +120,14 @@ class AuthController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('注册失败: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => '注册失败'], 500);
+            Log::error('注册失败: '.$e->getMessage());
+
+            return response()->json(['success' => false, 'message' => __('Registration failed')], 500);
         }
 
         return response()->json([
             'success' => true,
-            'message' => '注册成功',
+            'message' => __('Registration successful'),
             'data' => [
                 'user' => $user,
                 'session_token' => $session->token,
@@ -153,25 +152,26 @@ class AuthController extends Controller
         $password = $request->input('password');
 
         // 登录限流 (基于 IP + 用户名)
-        $rateKey = 'login_attempts:' . $request->ip() . ':' . md5($username);
+        $rateKey = 'login_attempts:'.$request->ip().':'.md5($username);
         $attempts = (int) Cache::get($rateKey, 0);
         $maxAttempts = (int) $this->optionService->get('MaxLoginAttempts', 5);
         if ($attempts >= $maxAttempts) {
-            return response()->json(['success' => false, 'message' => '登录尝试次数过多，请稍后再试'], 429);
+            return response()->json(['success' => false, 'message' => __('Too many login attempts, please try again later')], 429);
         }
 
         $user = User::where('username', $username)->first();
-        if (!$user) {
+        if (! $user) {
             $user = User::where('email', $username)->first();
         }
 
-        if (!$user || !Hash::check($password, $user->password)) {
+        if (! $user || ! Hash::check($password, $user->password)) {
             Cache::put($rateKey, $attempts + 1, Carbon::now()->addMinutes(15));
-            return response()->json(['success' => false, 'message' => '用户名或密码错误'], 401);
+
+            return response()->json(['success' => false, 'message' => __('Invalid username or password')], 401);
         }
 
         if ($user->status !== 1) {
-            return response()->json(['success' => false, 'message' => '账号已被禁用'], 403);
+            return response()->json(['success' => false, 'message' => __('Account is disabled')], 403);
         }
 
         Cache::forget($rateKey);
@@ -181,10 +181,11 @@ class AuthController extends Controller
         if ($twoFA) {
             // 生成临时登录令牌，用于 2FA 验证
             $pendingToken = Str::random(32);
-            Cache::put('2fa_pending:' . $pendingToken, $user->id, Carbon::now()->addMinutes(10));
+            Cache::put('2fa_pending:'.$pendingToken, $user->id, Carbon::now()->addMinutes(10));
+
             return response()->json([
                 'success' => true,
-                'message' => '需要二次验证',
+                'message' => __('Two-factor authentication required'),
                 'data' => ['require_2fa' => true, 'pending_token' => $pendingToken],
             ]);
         }
@@ -194,7 +195,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => '登录成功',
+            'message' => __('Login successful'),
             'data' => [
                 'user' => $user,
                 'session_token' => $session->token,
@@ -215,30 +216,30 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
         }
 
-        $userId = Cache::get('2fa_pending:' . $request->input('pending_token'));
-        if (!$userId) {
-            return response()->json(['success' => false, 'message' => '登录令牌已过期，请重新登录'], 401);
+        $userId = Cache::get('2fa_pending:'.$request->input('pending_token'));
+        if (! $userId) {
+            return response()->json(['success' => false, 'message' => __('Login token has expired, please log in again')], 401);
         }
 
         $twoFA = TwoFA::where('user_id', $userId)->where('enabled', 1)->first();
-        if (!$twoFA) {
-            return response()->json(['success' => false, 'message' => '未启用 2FA'], 400);
+        if (! $twoFA) {
+            return response()->json(['success' => false, 'message' => __('2FA is not enabled')], 400);
         }
 
         $totp = TOTP::createFromSecret($twoFA->secret);
         $valid = $totp->verify($request->input('code'));
-        if (!$valid) {
+        if (! $valid) {
             // 检查备份码
             $backupCodes = json_decode($twoFA->backup_codes ?? '[]', true);
             $codeIndex = array_search($request->input('code'), $backupCodes, true);
             if ($codeIndex === false) {
-                return response()->json(['success' => false, 'message' => '验证码错误'], 401);
+                return response()->json(['success' => false, 'message' => __('Invalid verification code')], 401);
             }
             array_splice($backupCodes, $codeIndex, 1);
             $twoFA->update(['backup_codes' => json_encode($backupCodes)]);
         }
 
-        Cache::forget('2fa_pending:' . $request->input('pending_token'));
+        Cache::forget('2fa_pending:'.$request->input('pending_token'));
 
         $user = User::findOrFail($userId);
         $session = $this->authService->createSession($user, $request->ip(), $request->userAgent());
@@ -246,7 +247,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => '登录成功',
+            'message' => __('Login successful'),
             'data' => [
                 'user' => $user,
                 'session_token' => $session->token,
@@ -263,7 +264,8 @@ class AuthController extends Controller
         if ($sessionToken) {
             $this->authService->deleteSession($sessionToken);
         }
-        return response()->json(['success' => true, 'message' => '已退出登录'])
+
+        return response()->json(['success' => true, 'message' => __('Logged out')])
             ->cookie('session', '', -1, '/', '', false, true);
     }
 
@@ -273,15 +275,16 @@ class AuthController extends Controller
     public function refresh(Request $request): JsonResponse
     {
         $sessionToken = $request->cookie('session');
-        if (!$sessionToken) {
-            return response()->json(['success' => false, 'message' => '未登录'], 401);
+        if (! $sessionToken) {
+            return response()->json(['success' => false, 'message' => __('Not logged in')], 401);
         }
         $session = $this->authService->validateSession($sessionToken);
-        if (!$session) {
-            return response()->json(['success' => false, 'message' => '会话已过期'], 401);
+        if (! $session) {
+            return response()->json(['success' => false, 'message' => __('Session has expired')], 401);
         }
         $this->authService->refreshSession($session);
-        return response()->json(['success' => true, 'message' => '会话已刷新']);
+
+        return response()->json(['success' => true, 'message' => __('Session refreshed')]);
     }
 
     /**
@@ -306,9 +309,9 @@ class AuthController extends Controller
 
         $email = $request->input('email');
         // 限流
-        $rateKey = 'reset_email:' . $email;
+        $rateKey = 'reset_email:'.$email;
         if (Cache::has($rateKey)) {
-            return response()->json(['success' => false, 'message' => '请求过于频繁，请稍后再试'], 429);
+            return response()->json(['success' => false, 'message' => __('Too many requests, please try again later.')], 429);
         }
         Cache::put($rateKey, 1, Carbon::now()->addMinutes(1));
 
@@ -318,10 +321,11 @@ class AuthController extends Controller
             try {
                 $this->emailService->sendPasswordReset($email);
             } catch (\Throwable $e) {
-                Log::error('发送重置邮件失败: ' . $e->getMessage());
+                Log::error('发送重置邮件失败: '.$e->getMessage());
             }
         }
-        return response()->json(['success' => true, 'message' => '若邮箱存在，重置邮件已发送']);
+
+        return response()->json(['success' => true, 'message' => __('If the email exists, a reset email has been sent')]);
     }
 
     /**
@@ -338,16 +342,17 @@ class AuthController extends Controller
         }
 
         $email = $this->emailService->consumePasswordResetToken($request->input('token'));
-        if (!$email) {
-            return response()->json(['success' => false, 'message' => '重置令牌无效'], 400);
+        if (! $email) {
+            return response()->json(['success' => false, 'message' => __('Invalid reset token')], 400);
         }
         $user = User::where('email', $email)->first();
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => '用户不存在'], 404);
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => __('User does not exist')], 404);
         }
         $user->update(['password' => Hash::make($request->input('password'))]);
         // 撤销该用户所有会话，强制重新登录
         $this->authService->deleteOtherSessions($user->id, '');
+
         return response()->json(['success' => true, 'message' => '密码已重置']);
     }
 
@@ -365,22 +370,24 @@ class AuthController extends Controller
 
         $email = $request->input('email');
         if (User::where('email', $email)->exists()) {
-            return response()->json(['success' => false, 'message' => '邮箱已被注册'], 422);
+            return response()->json(['success' => false, 'message' => __('Email is already registered')], 422);
         }
 
-        $rateKey = 'verify_email:' . $email;
+        $rateKey = 'verify_email:'.$email;
         if (Cache::has($rateKey)) {
-            return response()->json(['success' => false, 'message' => '请求过于频繁，请稍后再试'], 429);
+            return response()->json(['success' => false, 'message' => __('Too many requests, please try again later.')], 429);
         }
         Cache::put($rateKey, 1, Carbon::now()->addMinutes(1));
 
         try {
             $this->emailService->sendVerificationCode($email);
         } catch (\Throwable $e) {
-            Log::error('发送验证邮件失败: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => '邮件发送失败'], 500);
+            Log::error('发送验证邮件失败: '.$e->getMessage());
+
+            return response()->json(['success' => false, 'message' => __('Failed to send email')], 500);
         }
-        return response()->json(['success' => true, 'message' => '验证码已发送']);
+
+        return response()->json(['success' => true, 'message' => __('Verification code sent')]);
     }
 
     /**
@@ -390,7 +397,7 @@ class AuthController extends Controller
     {
         $allowedTypes = ['email', 'sms', 'totp', 'passkey', 'password'];
         $validator = Validator::make($request->all(), [
-            'type' => 'required|string|in:' . implode(',', $allowedTypes),
+            'type' => 'required|string|in:'.implode(',', $allowedTypes),
             'target' => 'nullable|string',
             'code' => 'required|string',
         ]);
@@ -399,27 +406,28 @@ class AuthController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => '未登录'], 401);
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => __('Not logged in')], 401);
         }
 
         $type = $request->input('type');
         $code = $request->input('code');
         $target = $request->input('target');
 
-        $verifiedKey = 'secure_verified:' . $user->id . ':' . $type;
-        $codeKey = 'secure_code:' . $user->id . ':' . $type;
+        $verifiedKey = 'secure_verified:'.$user->id.':'.$type;
+        $codeKey = 'secure_code:'.$user->id.':'.$type;
 
         // 验证码校验
         $cachedCode = Cache::get($codeKey);
-        if (!$cachedCode || !hash_equals((string) $cachedCode, (string) $code)) {
-            return response()->json(['success' => false, 'message' => '验证码错误或已过期'], 401);
+        if (! $cachedCode || ! hash_equals((string) $cachedCode, (string) $code)) {
+            return response()->json(['success' => false, 'message' => __('Verification code is invalid or expired')], 401);
         }
         Cache::forget($codeKey);
 
         // 标记已验证，5分钟有效
         Cache::put($verifiedKey, true, Carbon::now()->addMinutes(5));
-        return response()->json(['success' => true, 'message' => '验证通过']);
+
+        return response()->json(['success' => true, 'message' => __('Verification passed')]);
     }
 
     /**
@@ -432,8 +440,10 @@ class AuthController extends Controller
             ->get(['id', 'ip', 'user_agent', 'created_at', 'updated_at', 'expires_at'])
             ->map(function ($s) use ($request) {
                 $s->is_current = $s->token === $request->cookie('session');
+
                 return $s;
             });
+
         return response()->json(['success' => true, 'data' => $sessions]);
     }
 
@@ -445,11 +455,12 @@ class AuthController extends Controller
         $session = UserSession::where('id', $sid)
             ->where('user_id', $request->user()->id)
             ->first();
-        if (!$session) {
-            return response()->json(['success' => false, 'message' => '会话不存在'], 404);
+        if (! $session) {
+            return response()->json(['success' => false, 'message' => __('Session does not exist')], 404);
         }
         $session->delete();
-        return response()->json(['success' => true, 'message' => '已删除']);
+
+        return response()->json(['success' => true, 'message' => __('Deleted')]);
     }
 
     /**
@@ -459,7 +470,8 @@ class AuthController extends Controller
     {
         $current = $request->cookie('session');
         $count = $this->authService->deleteOtherSessions($request->user()->id, $current ?? '');
-        return response()->json(['success' => true, 'message' => "已撤销 {$count} 个会话"]);
+
+        return response()->json(['success' => true, 'message' => __('Revoked :count sessions', ['count' => $count])]);
     }
 
     /**
@@ -468,6 +480,7 @@ class AuthController extends Controller
     public function twoFactorStatus(Request $request): JsonResponse
     {
         $twoFA = TwoFA::where('user_id', $request->user()->id)->first();
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -492,7 +505,7 @@ class AuthController extends Controller
         $qrUrl = $totp->getProvisioningUri();
 
         // 暂存 secret 待启用
-        Cache::put('2fa_setup:' . $user->id, $secret, Carbon::now()->addMinutes(10));
+        Cache::put('2fa_setup:'.$user->id, $secret, Carbon::now()->addMinutes(10));
 
         return response()->json([
             'success' => true,
@@ -513,14 +526,14 @@ class AuthController extends Controller
         }
 
         $user = $request->user();
-        $secret = Cache::get('2fa_setup:' . $user->id);
-        if (!$secret) {
-            return response()->json(['success' => false, 'message' => '请先调用设置接口'], 400);
+        $secret = Cache::get('2fa_setup:'.$user->id);
+        if (! $secret) {
+            return response()->json(['success' => false, 'message' => __('Please call the settings API first')], 400);
         }
 
         $totp = TOTP::createFromSecret($secret);
-        if (!$totp->verify($request->input('code'))) {
-            return response()->json(['success' => false, 'message' => '验证码错误'], 401);
+        if (! $totp->verify($request->input('code'))) {
+            return response()->json(['success' => false, 'message' => __('Invalid verification code')], 401);
         }
 
         // 生成备份码
@@ -533,11 +546,11 @@ class AuthController extends Controller
             ['user_id' => $user->id],
             ['secret' => $secret, 'enabled' => 1, 'backup_codes' => json_encode($backupCodes)]
         );
-        Cache::forget('2fa_setup:' . $user->id);
+        Cache::forget('2fa_setup:'.$user->id);
 
         return response()->json([
             'success' => true,
-            'message' => '2FA 已启用',
+            'message' => __('2FA has been enabled'),
             'data' => ['backup_codes' => $backupCodes],
         ]);
     }
@@ -555,11 +568,12 @@ class AuthController extends Controller
         }
 
         $user = $request->user();
-        if (!Hash::check($request->input('password'), $user->password)) {
-            return response()->json(['success' => false, 'message' => '密码错误'], 401);
+        if (! Hash::check($request->input('password'), $user->password)) {
+            return response()->json(['success' => false, 'message' => __('Incorrect password')], 401);
         }
         TwoFA::where('user_id', $user->id)->delete();
-        return response()->json(['success' => true, 'message' => '2FA 已禁用']);
+
+        return response()->json(['success' => true, 'message' => __('2FA has been disabled')]);
     }
 
     /**
@@ -569,14 +583,15 @@ class AuthController extends Controller
     {
         $user = $request->user();
         $twoFA = TwoFA::where('user_id', $user->id)->where('enabled', 1)->first();
-        if (!$twoFA) {
-            return response()->json(['success' => false, 'message' => '未启用 2FA'], 400);
+        if (! $twoFA) {
+            return response()->json(['success' => false, 'message' => __('2FA is not enabled')], 400);
         }
         $backupCodes = [];
         for ($i = 0; $i < 10; $i++) {
             $backupCodes[] = strtoupper(Str::random(8));
         }
         $twoFA->update(['backup_codes' => json_encode($backupCodes)]);
+
         return response()->json(['success' => true, 'data' => ['backup_codes' => $backupCodes]]);
     }
 
@@ -588,13 +603,14 @@ class AuthController extends Controller
         $user = $request->user();
         $validator = Validator::make($request->all(), [
             'display_name' => 'nullable|string|max:32',
-            'email' => 'nullable|email|unique:users,email,' . $user->id,
+            'email' => 'nullable|email|unique:users,email,'.$user->id,
         ]);
         if ($validator->fails()) {
             return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
         }
         $user->update($request->only(['display_name', 'email']));
-        return response()->json(['success' => true, 'message' => '设置已更新']);
+
+        return response()->json(['success' => true, 'message' => __('Settings updated')]);
     }
 
     /**
@@ -611,6 +627,7 @@ class AuthController extends Controller
                 $groups = array_merge($groups, $parsed);
             }
         }
+
         return response()->json(['success' => true, 'data' => $groups]);
     }
 }

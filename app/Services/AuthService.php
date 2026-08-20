@@ -6,10 +6,9 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\UserSession;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 /**
  * 认证服务 - 登录、注册、会话管理
@@ -33,7 +32,7 @@ class AuthService
             'created_time' => time(),
             'accessed_time' => time(),
         ]);
-        
+
         return $user;
     }
 
@@ -45,21 +44,21 @@ class AuthService
         $user = User::where('username', $username)
             ->orWhere('email', $username)
             ->first();
-            
-        if (!$user || !Hash::check($password, $user->password)) {
+
+        if (! $user || ! Hash::check($password, $user->password)) {
             return null;
         }
-        
+
         if ($user->status !== 1) {
             return null;
         }
-        
+
         // 更新最后登录时间
         $user->update([
             'last_login_at' => time(),
             'accessed_time' => time(),
         ]);
-        
+
         return $user;
     }
 
@@ -75,7 +74,7 @@ class AuthService
             'user_agent' => $userAgent,
             'expires_at' => Carbon::now()->addHours(config('pease-api.auth.session_lifetime', 168)),
         ]);
-        
+
         return $session;
     }
 
@@ -87,7 +86,7 @@ class AuthService
         $session = UserSession::where('token', $token)
             ->where('expires_at', '>', Carbon::now())
             ->first();
-            
+
         return $session;
     }
 
@@ -99,7 +98,7 @@ class AuthService
         $session->update([
             'expires_at' => Carbon::now()->addHours(config('pease-api.auth.session_lifetime', 168)),
         ]);
-        
+
         return true;
     }
 
@@ -143,6 +142,7 @@ class AuthService
     public function updatePassword(User $user, string $newPassword): bool
     {
         $user->update(['password' => Hash::make($newPassword)]);
+
         return true;
     }
 
@@ -152,13 +152,13 @@ class AuthService
     public function generateResetToken(string $email): ?string
     {
         $user = User::where('email', $email)->first();
-        if (!$user) {
+        if (! $user) {
             return null;
         }
-        
+
         $token = Str::random(64);
         $user->update(['access_token' => $token]);
-        
+
         return $token;
     }
 
@@ -168,15 +168,15 @@ class AuthService
     public function resetPassword(string $token, string $newPassword): bool
     {
         $user = User::where('access_token', $token)->first();
-        if (!$user) {
+        if (! $user) {
             return false;
         }
-        
+
         $user->update([
             'password' => Hash::make($newPassword),
             'access_token' => '',
         ]);
-        
+
         return true;
     }
 
@@ -186,6 +186,7 @@ class AuthService
     public function verifyEmail(User $user): bool
     {
         $user->update(['email_verified_at' => Carbon::now()]);
+
         return true;
     }
 

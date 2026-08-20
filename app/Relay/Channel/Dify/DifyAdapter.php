@@ -18,6 +18,7 @@ class DifyAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'dify';
+
     protected int $apiType = ApiType::DIFY->value;
 
     /** @var array<int, string> */

@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\Option;
 
 /**
  * Get system option value
@@ -8,12 +9,12 @@ declare(strict_types=1);
 function getOption(string $key, mixed $default = null): mixed
 {
     static $cache = [];
-    
-    if (!isset($cache[$key])) {
-        $option = \App\Models\Option::where('key', $key)->first();
+
+    if (! isset($cache[$key])) {
+        $option = Option::where('key', $key)->first();
         $cache[$key] = $option?->value ?? $default;
     }
-    
+
     return $cache[$key];
 }
 
@@ -22,7 +23,7 @@ function getOption(string $key, mixed $default = null): mixed
  */
 function setOption(string $key, mixed $value): void
 {
-    \App\Models\Option::updateOrCreate(
+    Option::updateOrCreate(
         ['key' => $key],
         ['value' => $value]
     );
@@ -39,7 +40,8 @@ function formatBytes(int $bytes): string
         $bytes /= 1024;
         $i++;
     }
-    return round($bytes, 2) . ' ' . $units[$i];
+
+    return round($bytes, 2).' '.$units[$i];
 }
 
 /**
@@ -47,7 +49,7 @@ function formatBytes(int $bytes): string
  */
 function generateApiKey(): string
 {
-    return 'sk-' . bin2hex(random_bytes(24));
+    return 'sk-'.bin2hex(random_bytes(24));
 }
 
 /**
@@ -60,11 +62,11 @@ function getClientIp(): string
         'HTTP_X_FORWARDED_FOR',
         'HTTP_X_REAL_IP',
         'HTTP_CLIENT_IP',
-        'REMOTE_ADDR'
+        'REMOTE_ADDR',
     ];
-    
+
     foreach ($headers as $header) {
-        if (!empty($_SERVER[$header])) {
+        if (! empty($_SERVER[$header])) {
             $ip = $_SERVER[$header];
             if (strpos($ip, ',') !== false) {
                 $ip = trim(explode(',', $ip)[0]);
@@ -74,6 +76,6 @@ function getClientIp(): string
             }
         }
     }
-    
+
     return '127.0.0.1';
 }

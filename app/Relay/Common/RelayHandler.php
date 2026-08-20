@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Relay\Common;
 
 use App\Enums\ChannelType;
+use App\Relay\Channel\AWS\AWSAdapter;
 use App\Relay\Channel\ChannelAdapterInterface;
+use App\Relay\Channel\Claude\ClaudeAdapter;
+use App\Relay\Channel\Gemini\GeminiAdapter;
 use App\Relay\Channel\OpenAI\OpenAIAdapter;
+use App\Relay\Channel\Vertex\VertexAdapter;
 use App\Relay\Constant\RelayMode;
 use Exception;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +22,7 @@ use Illuminate\Support\Facades\Log;
 class RelayHandler
 {
     protected ?RelayInfo $info = null;
+
     protected ?ChannelAdapterInterface $adapter = null;
 
     public function __construct(?RelayInfo $info = null)
@@ -33,7 +38,7 @@ class RelayHandler
     public function handle(RelayInfo $info): array|string
     {
         $this->info = $info;
-        
+
         try {
             $this->selectAdapter();
             $this->parseRequestBody();
@@ -52,7 +57,7 @@ class RelayHandler
                     $isQuotaError = $this->info->isCodingPlanQuotaError();
                     $this->info->recordCodingPlanUsage(
                         false,
-                        $isQuotaError ? 'quota_exceeded' : 'upstream_error_' . $this->info->responseStatus
+                        $isQuotaError ? 'quota_exceeded' : 'upstream_error_'.$this->info->responseStatus
                     );
                 }
 
@@ -64,7 +69,7 @@ class RelayHandler
 
             // 记录 Coding Plan 使用（成功）
             $this->info->recordCodingPlanUsage(true);
-            
+
             return $this->info->responseBody;
         } catch (Exception $e) {
             Log::error('Relay 处理失败', [
@@ -74,13 +79,14 @@ class RelayHandler
 
             // 记录 Coding Plan 使用（异常）
             if ($this->info && $this->info->codingPlanAccount !== null) {
-                $this->info->recordCodingPlanUsage(false, 'exception: ' . $e->getMessage());
+                $this->info->recordCodingPlanUsage(false, 'exception: '.$e->getMessage());
             }
 
             $this->info->responseStatus = 500;
+
             return json_encode([
                 'error' => [
-                    'message' => 'Internal server error: ' . $e->getMessage(),
+                    'message' => 'Internal server error: '.$e->getMessage(),
                     'type' => 'server_error',
                     'code' => 'internal_error',
                 ],
@@ -91,7 +97,7 @@ class RelayHandler
     public function handleStream(RelayInfo $info, callable $callback): void
     {
         $this->info = $info;
-        
+
         try {
             $this->selectAdapter();
             $this->parseRequestBody();
@@ -104,7 +110,7 @@ class RelayHandler
 
             // 流式完成后记录 Coding Plan 使用（成功）
             $this->info->recordCodingPlanUsage(true);
-            
+
         } catch (Exception $e) {
             Log::error('流式 Relay 处理失败', [
                 'error' => $e->getMessage(),
@@ -113,15 +119,15 @@ class RelayHandler
 
             // 记录 Coding Plan 使用（异常）
             if ($this->info && $this->info->codingPlanAccount !== null) {
-                $this->info->recordCodingPlanUsage(false, 'stream_exception: ' . $e->getMessage());
+                $this->info->recordCodingPlanUsage(false, 'stream_exception: '.$e->getMessage());
             }
-            
-            $callback("data: " . json_encode([
+
+            $callback('data: '.json_encode([
                 'error' => [
                     'message' => $e->getMessage(),
                     'type' => 'server_error',
-                ]
-            ]) . "\n\n");
+                ],
+            ])."\n\n");
         }
     }
 
@@ -199,11 +205,11 @@ class RelayHandler
         ];
 
         $this->adapter = match (true) {
-            in_array($channelType, $claudeTypes, true) => new \App\Relay\Channel\Claude\ClaudeAdapter(),
-            in_array($channelType, $geminiTypes, true) => new \App\Relay\Channel\Gemini\GeminiAdapter(),
-            in_array($channelType, $awsTypes, true) => new \App\Relay\Channel\AWS\AWSAdapter(),
-            in_array($channelType, $vertexTypes, true) => new \App\Relay\Channel\Vertex\VertexAdapter(),
-            default => new \App\Relay\Channel\OpenAI\OpenAIAdapter(),
+            in_array($channelType, $claudeTypes, true) => new ClaudeAdapter,
+            in_array($channelType, $geminiTypes, true) => new GeminiAdapter,
+            in_array($channelType, $awsTypes, true) => new AWSAdapter,
+            in_array($channelType, $vertexTypes, true) => new VertexAdapter,
+            default => new OpenAIAdapter,
         };
     }
 

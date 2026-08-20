@@ -7,7 +7,6 @@ namespace App\Relay\Channel\Step;
 use App\Enums\ApiType;
 use App\Relay\Channel\BaseAdapter;
 use App\Relay\Channel\OpenAICompatibleTrait;
-use App\Relay\Common\RelayInfo;
 use App\Relay\Constant\RelayMode;
 
 /**
@@ -21,6 +20,7 @@ class StepAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'step';
+
     protected int $apiType = ApiType::STEP->value;
 
     /** @var array<int, string> */

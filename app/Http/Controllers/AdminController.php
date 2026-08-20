@@ -2,16 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\Channel;
-use App\Models\Token;
 use App\Models\Log;
-use App\Models\Ability;
-use App\Models\Redemption;
-use App\Models\Option;
+use App\Models\Token;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {

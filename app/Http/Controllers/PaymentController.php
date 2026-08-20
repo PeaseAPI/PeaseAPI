@@ -19,6 +19,7 @@ class PaymentController extends Controller
         $request->validate(['pricing_id' => 'required|exists:pricings,id']);
         $pricing = Pricing::findOrFail($request->pricing_id);
         $result = $paymentService->createStripeCheckout($request->user(), $pricing);
+
         return response()->json($result);
     }
 
@@ -27,6 +28,7 @@ class PaymentController extends Controller
         $payload = $request->all();
         try {
             $topUp = $paymentService->handleStripeWebhook($payload);
+
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);
@@ -36,6 +38,7 @@ class PaymentController extends Controller
     public function topUpHistory(Request $request)
     {
         $query = TopUp::where('user_id', $request->user()->id);
+
         return response()->json($query->orderBy('created_time', 'desc')->paginate(20));
     }
 }

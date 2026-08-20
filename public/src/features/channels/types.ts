@@ -201,6 +201,10 @@ export interface FetchModelsResponse {
   success: boolean
   message?: string
   data?: string[]
+  metadata?: Record<string, {
+    description: string
+    tags: string
+  }>
 }
 
 export interface CopyChannelResponse {

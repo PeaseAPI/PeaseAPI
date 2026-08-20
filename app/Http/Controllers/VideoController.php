@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\ChannelType;
 use App\Models\Channel;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Video Controller - 对标 new-api controller/video.go
- * 
+ *
  * 处理视频生成相关 API:
  * - /v1/video/generations - 通用视频生成
  * - /kling/v1/videos/* - Kling
@@ -26,33 +27,33 @@ class VideoController extends Controller
     public function generate(Request $request): JsonResponse
     {
         $user = $request->attributes->get('user');
-        
+
         $data = $request->all();
         $data['user_id'] = $user->id;
-        
+
         // 选择合适的视频渠道
         $channel = $this->selectVideoChannel($data['model'] ?? 'kling');
-        
-        if (!$channel) {
+
+        if (! $channel) {
             return response()->json([
                 'code' => 1,
-                'message' => 'No available video channel',
+                'message' => __('No available video channel'),
             ]);
         }
-        
+
         // 创建任务
         $task = $this->createTask($user->id, $channel->id, 'video', $data);
-        
+
         // 提交到上游
         $result = $this->submitToUpstream($channel, $data);
-        
+
         if ($result['success']) {
             $task->update([
                 'status' => 'pending',
                 'external_id' => $result['task_id'] ?? null,
             ]);
         }
-        
+
         return response()->json([
             'code' => $result['success'] ? 0 : 1,
             'message' => $result['message'] ?? '',
@@ -68,19 +69,19 @@ class VideoController extends Controller
     public function getVideo(Request $request, string $taskId): JsonResponse
     {
         $task = Task::find($taskId);
-        
-        if (!$task) {
+
+        if (! $task) {
             return response()->json([
                 'code' => 1,
-                'message' => 'Task not found',
+                'message' => __('Task not found'),
             ], 404);
         }
-        
+
         // 如果还在处理中，轮询状态
         if ($task->status === 'pending') {
             $this->pollTaskStatus($task);
         }
-        
+
         return response()->json([
             'code' => 0,
             'data' => $this->formatTask($task),
@@ -93,30 +94,30 @@ class VideoController extends Controller
     public function klingText2Video(Request $request): JsonResponse
     {
         $user = $request->attributes->get('user');
-        
+
         $data = $request->all();
         $data['user_id'] = $user->id;
-        
-        $channel = $this->selectChannel(\App\Enums\ChannelType::KLING);
-        
-        if (!$channel) {
+
+        $channel = $this->selectChannel(ChannelType::KLING);
+
+        if (! $channel) {
             return response()->json([
                 'code' => 1,
-                'message' => 'No available Kling channel',
+                'message' => __('No available Kling channel'),
             ]);
         }
-        
+
         $task = $this->createTask($user->id, $channel->id, 'kling_text2video', $data);
-        
+
         $result = $this->submitKling($channel, 'text2video', $data);
-        
+
         if ($result['success']) {
             $task->update([
                 'status' => 'pending',
                 'external_id' => $result['task_id'] ?? null,
             ]);
         }
-        
+
         return response()->json([
             'code' => $result['success'] ? 0 : 1,
             'message' => $result['message'] ?? '',
@@ -132,30 +133,30 @@ class VideoController extends Controller
     public function klingImage2Video(Request $request): JsonResponse
     {
         $user = $request->attributes->get('user');
-        
+
         $data = $request->all();
         $data['user_id'] = $user->id;
-        
-        $channel = $this->selectChannel(\App\Enums\ChannelType::KLING);
-        
-        if (!$channel) {
+
+        $channel = $this->selectChannel(ChannelType::KLING);
+
+        if (! $channel) {
             return response()->json([
                 'code' => 1,
-                'message' => 'No available Kling channel',
+                'message' => __('No available Kling channel'),
             ]);
         }
-        
+
         $task = $this->createTask($user->id, $channel->id, 'kling_image2video', $data);
-        
+
         $result = $this->submitKling($channel, 'image2video', $data);
-        
+
         if ($result['success']) {
             $task->update([
                 'status' => 'pending',
                 'external_id' => $result['task_id'] ?? null,
             ]);
         }
-        
+
         return response()->json([
             'code' => $result['success'] ? 0 : 1,
             'message' => $result['message'] ?? '',
@@ -171,18 +172,18 @@ class VideoController extends Controller
     public function getKling(Request $request, string $taskId): JsonResponse
     {
         $task = Task::find($taskId);
-        
-        if (!$task) {
+
+        if (! $task) {
             return response()->json([
                 'code' => 1,
-                'message' => 'Task not found',
+                'message' => __('Task not found'),
             ], 404);
         }
-        
+
         if ($task->status === 'pending') {
             $this->pollTaskStatus($task);
         }
-        
+
         return response()->json([
             'code' => 0,
             'data' => $this->formatTask($task),
@@ -195,30 +196,30 @@ class VideoController extends Controller
     public function jimeng(Request $request): JsonResponse
     {
         $user = $request->attributes->get('user');
-        
+
         $data = $request->all();
         $data['user_id'] = $user->id;
-        
-        $channel = $this->selectChannel(\App\Enums\ChannelType::JIMENG);
-        
-        if (!$channel) {
+
+        $channel = $this->selectChannel(ChannelType::JIMENG);
+
+        if (! $channel) {
             return response()->json([
                 'code' => 1,
-                'message' => 'No available Jimeng channel',
+                'message' => __('No available Jimeng channel'),
             ]);
         }
-        
+
         $task = $this->createTask($user->id, $channel->id, 'jimeng', $data);
-        
+
         $result = $this->submitJimeng($channel, $data);
-        
+
         if ($result['success']) {
             $task->update([
                 'status' => 'pending',
                 'external_id' => $result['task_id'] ?? null,
             ]);
         }
-        
+
         return response()->json([
             'code' => $result['success'] ? 0 : 1,
             'message' => $result['message'] ?? '',
@@ -236,7 +237,7 @@ class VideoController extends Controller
         // TODO: 实现视频混剪
         return response()->json([
             'code' => 0,
-            'message' => 'Not implemented yet',
+            'message' => __('Not implemented yet'),
         ]);
     }
 
@@ -246,25 +247,25 @@ class VideoController extends Controller
     protected function selectVideoChannel(string $model): ?Channel
     {
         $typeMap = [
-            'kling' => \App\Enums\ChannelType::KLING,
-            'kling-video' => \App\Enums\ChannelType::KLING,
-            'sora' => \App\Enums\ChannelType::SORA,
-            'vidu' => \App\Enums\ChannelType::VIDU,
-            'jimeng' => \App\Enums\ChannelType::JIMENG,
-            'jimeng-video' => \App\Enums\ChannelType::JIMENG,
-            'haiwoo' => \App\Enums\ChannelType::HAILUO,
-            'hailuo' => \App\Enums\ChannelType::HAILUO,
+            'kling' => ChannelType::KLING,
+            'kling-video' => ChannelType::KLING,
+            'sora' => ChannelType::SORA,
+            'vidu' => ChannelType::VIDU,
+            'jimeng' => ChannelType::JIMENG,
+            'jimeng-video' => ChannelType::JIMENG,
+            'haiwoo' => ChannelType::HAILUO,
+            'hailuo' => ChannelType::HAILUO,
         ];
-        
-        $type = $typeMap[$model] ?? \App\Enums\ChannelType::KLING;
-        
+
+        $type = $typeMap[$model] ?? ChannelType::KLING;
+
         return $this->selectChannel($type);
     }
 
     /**
      * 选择渠道
      */
-    protected function selectChannel(\App\Enums\ChannelType $type): ?Channel
+    protected function selectChannel(ChannelType $type): ?Channel
     {
         return Channel::where('type', $type->value)
             ->where('status', 1)
@@ -336,14 +337,14 @@ class VideoController extends Controller
     public function create(Request $request): JsonResponse
     {
         $user = $request->attributes->get('user');
-        
+
         $data = $request->all();
         $data['user_id'] = $user->id;
-        
+
         // TODO: 实现
         return response()->json([
             'code' => 0,
-            'message' => 'Not implemented yet',
+            'message' => __('Not implemented yet'),
         ]);
     }
 
@@ -353,14 +354,14 @@ class VideoController extends Controller
     public function getVideoContent(Request $request, string $taskId): JsonResponse
     {
         $task = Task::find($taskId);
-        
-        if (!$task || $task->status !== 'completed') {
+
+        if (! $task || $task->status !== 'completed') {
             return response()->json([
                 'code' => 1,
-                'message' => 'Video not ready',
+                'message' => __('Video not ready'),
             ], 404);
         }
-        
+
         // 返回视频内容或重定向到视频URL
         return response()->json([
             'code' => 0,
@@ -384,11 +385,11 @@ class VideoController extends Controller
     protected function pollTaskStatus(Task $task): void
     {
         $channel = Channel::find($task->channel_id);
-        
-        if (!$channel || !$task->external_id) {
+
+        if (! $channel || ! $task->external_id) {
             return;
         }
-        
+
         try {
             // TODO: 实现轮询逻辑
         } catch (\Exception $e) {

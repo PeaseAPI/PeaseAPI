@@ -5,15 +5,20 @@
  * 支持所有 OpenAI 兼容 API
  */
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\RelayController;
 use App\Http\Controllers\MidjourneyController;
+use App\Http\Controllers\ModelController;
+use App\Http\Controllers\RelayController;
 use App\Http\Controllers\SunoController;
 use App\Http\Controllers\VideoController;
-use App\Http\Controllers\ModelController;
-use App\Http\Middleware\TokenAuth;
 use App\Http\Middleware\ApiRateLimit;
+use App\Http\Middleware\Cors;
+use App\Http\Middleware\DecompressRequest;
 use App\Http\Middleware\Distributor;
+use App\Http\Middleware\ModelRateLimit;
+use App\Http\Middleware\Stats;
+use App\Http\Middleware\SystemPerformanceCheck;
+use App\Http\Middleware\TokenAuth;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,9 +32,9 @@ use App\Http\Middleware\Distributor;
 
 // 路由分组 - 带必要的中间件
 $relayMiddleware = [
-    \App\Http\Middleware\Stats::class,
-    \App\Http\Middleware\Cors::class,
-    \App\Http\Middleware\DecompressRequest::class,
+    Stats::class,
+    Cors::class,
+    DecompressRequest::class,
     TokenAuth::class,
     ApiRateLimit::class,
 ];
@@ -39,7 +44,7 @@ Route::middleware($relayMiddleware)->group(function () {
     // 模型列表
     Route::get('/v1/models', [ModelController::class, 'list']);
     Route::get('/v1/models/{model}', [ModelController::class, 'retrieve']);
-    
+
     // Gemini 模型
     Route::get('/v1beta/models', [ModelController::class, 'listGemini']);
     Route::get('/v1beta/openai/models', [ModelController::class, 'list']);
@@ -49,45 +54,45 @@ Route::middleware($relayMiddleware)->group(function () {
 // 路由组包含 Distributor 中间件，用于选择合适的渠道
 $relayWithDistributor = array_merge($relayMiddleware, [
     Distributor::class,
-    \App\Http\Middleware\ModelRateLimit::class,
-    \App\Http\Middleware\SystemPerformanceCheck::class,
+    ModelRateLimit::class,
+    SystemPerformanceCheck::class,
 ]);
 
 Route::middleware($relayWithDistributor)->prefix('v1')->group(function () {
     // Chat Completions (主要 API)
     Route::post('/chat/completions', [RelayController::class, 'chatCompletions']);
     Route::post('/completions', [RelayController::class, 'completions']);
-    
+
     // Responses API
     Route::post('/responses', [RelayController::class, 'responses']);
     Route::post('/responses/compact', [RelayController::class, 'responsesCompact']);
-    
+
     // Embeddings
     Route::post('/embeddings', [RelayController::class, 'embeddings']);
-    
+
     // Image Generation
     Route::post('/images/generations', [RelayController::class, 'imageGenerations']);
     Route::post('/images/edits', [RelayController::class, 'imageEdits']);
     Route::post('/edits', [RelayController::class, 'edits']);
-    
+
     // Audio
     Route::post('/audio/transcriptions', [RelayController::class, 'audioTranscriptions']);
     Route::post('/audio/translations', [RelayController::class, 'audioTranslations']);
     Route::post('/audio/speech', [RelayController::class, 'audioSpeech']);
-    
+
     // Rerank
     Route::post('/rerank', [RelayController::class, 'rerank']);
-    
+
     // Moderations
     Route::post('/moderations', [RelayController::class, 'moderations']);
-    
+
     // Claude Messages API
     Route::post('/messages', [RelayController::class, 'claudeMessages']);
-    
+
     // Gemini relay routes
     Route::post('/engines/{model}/embeddings', [RelayController::class, 'geminiEmbeddings']);
     Route::post('/models/{path}', [RelayController::class, 'geminiRelay'])->where(['path' => '.*']);
-    
+
     // Not implemented
     Route::post('/images/variations', [RelayController::class, 'notImplemented']);
     Route::get('/files', [RelayController::class, 'notImplemented']);
@@ -110,8 +115,8 @@ Route::middleware($relayWithDistributor)->prefix('v1beta')->group(function () {
 
 // ==================== WebSocket Realtime ====================
 $wsMiddleware = [
-    \App\Http\Middleware\Stats::class,
-    \App\Http\Middleware\Cors::class,
+    Stats::class,
+    Cors::class,
     TokenAuth::class,
     Distributor::class,
 ];
@@ -119,11 +124,11 @@ $wsMiddleware = [
 Route::middleware($wsMiddleware)->get('/v1/realtime', [RelayController::class, 'realtime']);
 
 // ==================== Playground ====================
-Route::middleware([\App\Http\Middleware\Stats::class, \App\Http\Middleware\Cors::class, TokenAuth::class, Distributor::class])
+Route::middleware([Stats::class, Cors::class, TokenAuth::class, Distributor::class])
     ->post('/pg/chat/completions', [RelayController::class, 'playground']);
 
 // ==================== Midjourney ====================
-$mjMiddleware = [\App\Http\Middleware\Stats::class, TokenAuth::class, \App\Http\Middleware\SystemPerformanceCheck::class];
+$mjMiddleware = [Stats::class, TokenAuth::class, SystemPerformanceCheck::class];
 
 Route::middleware($mjMiddleware)->prefix('mj')->group(function () {
     Route::get('/image/{id}', [MidjourneyController::class, 'getImage']);
@@ -154,7 +159,7 @@ Route::middleware($mjMiddleware)->prefix('{mode}/mj')->where(['mode' => '(?:fast
 });
 
 // ==================== Suno ====================
-$sunoMiddleware = [\App\Http\Middleware\Stats::class, TokenAuth::class, Distributor::class, \App\Http\Middleware\SystemPerformanceCheck::class];
+$sunoMiddleware = [Stats::class, TokenAuth::class, Distributor::class, SystemPerformanceCheck::class];
 
 Route::middleware($sunoMiddleware)->prefix('suno')->group(function () {
     Route::post('/submit/{action}', [SunoController::class, 'submit']);
@@ -163,7 +168,7 @@ Route::middleware($sunoMiddleware)->prefix('suno')->group(function () {
 });
 
 // ==================== Video ====================
-$videoMiddleware = [\App\Http\Middleware\Stats::class, TokenAuth::class, Distributor::class, \App\Http\Middleware\SystemPerformanceCheck::class];
+$videoMiddleware = [Stats::class, TokenAuth::class, Distributor::class, SystemPerformanceCheck::class];
 
 Route::middleware($videoMiddleware)->prefix('v1')->group(function () {
     Route::post('/video/generations', [VideoController::class, 'generate']);
@@ -188,7 +193,7 @@ Route::middleware($videoMiddleware)->prefix('jimeng')->group(function () {
 });
 
 // ==================== Dashboard ====================
-$dashboardMiddleware = [\App\Http\Middleware\Stats::class, \App\Http\Middleware\Cors::class, TokenAuth::class];
+$dashboardMiddleware = [Stats::class, Cors::class, TokenAuth::class];
 
 Route::middleware($dashboardMiddleware)->group(function () {
     Route::get('/dashboard/billing/subscription', [RelayController::class, 'dashboardSubscription']);

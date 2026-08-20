@@ -9,14 +9,16 @@ use Illuminate\Support\Facades\Cache;
 
 class RefreshPricing extends Command
 {
-    protected $signature = "pricing:refresh";
-    protected $description = "Refresh model pricing cache";
+    protected $signature = 'pricing:refresh';
+
+    protected $description = 'Refresh model pricing cache';
 
     public function handle(): int
     {
-        $this->info("Refreshing pricing cache...");
-        Cache::forget("model_pricing");
-        $this->info("Pricing cache cleared.");
+        $this->info('Refreshing pricing cache...');
+        Cache::forget('model_pricing');
+        $this->info('Pricing cache cleared.');
+
         return 0;
     }
 }

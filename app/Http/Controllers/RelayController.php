@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Relay\Common\RelayHandler;
 use App\Relay\Common\RelayInfo;
 use App\Relay\Constant\RelayFormat;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Relay Controller - 对标 new-api relay/main.go
- * 
+ *
  * 处理所有 relay 请求，包括:
  * - Chat Completions (流式/非流式)
  * - Embeddings
@@ -40,9 +39,9 @@ class RelayController extends Controller
     public function chatCompletions(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
-        
-        if (!$channel) {
-            return $this->relayError('No channel selected', Response::HTTP_SERVICE_UNAVAILABLE);
+
+        if (! $channel) {
+            return $this->relayError(__('No channel selected'), Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
         $body = json_decode($request->getContent(), true);
@@ -61,9 +60,9 @@ class RelayController extends Controller
     public function completions(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
-        
-        if (!$channel) {
-            return $this->relayError('No channel selected', Response::HTTP_SERVICE_UNAVAILABLE);
+
+        if (! $channel) {
+            return $this->relayError(__('No channel selected'), Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
         return $this->handleNormal($request, $channel, RelayFormat::OpenAICompletions);
@@ -75,9 +74,9 @@ class RelayController extends Controller
     public function responses(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
-        
-        if (!$channel) {
-            return $this->relayError('No channel selected', Response::HTTP_SERVICE_UNAVAILABLE);
+
+        if (! $channel) {
+            return $this->relayError(__('No channel selected'), Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
         $body = json_decode($request->getContent(), true);
@@ -104,9 +103,9 @@ class RelayController extends Controller
     public function embeddings(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
-        
-        if (!$channel) {
-            return $this->relayError('No channel selected', Response::HTTP_SERVICE_UNAVAILABLE);
+
+        if (! $channel) {
+            return $this->relayError(__('No channel selected'), Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
         return $this->handleNormal($request, $channel, RelayFormat::Embedding);
@@ -118,9 +117,9 @@ class RelayController extends Controller
     public function imageGenerations(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
-        
-        if (!$channel) {
-            return $this->relayError('No channel selected', Response::HTTP_SERVICE_UNAVAILABLE);
+
+        if (! $channel) {
+            return $this->relayError(__('No channel selected'), Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
         return $this->handleNormal($request, $channel, RelayFormat::OpenAIImage);
@@ -132,6 +131,7 @@ class RelayController extends Controller
     public function imageEdits(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
+
         return $this->handleNormal($request, $channel, RelayFormat::OpenAIImage);
     }
 
@@ -141,6 +141,7 @@ class RelayController extends Controller
     public function edits(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
+
         return $this->handleNormal($request, $channel, RelayFormat::OpenAI);
     }
 
@@ -150,6 +151,7 @@ class RelayController extends Controller
     public function audioTranscriptions(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
+
         return $this->handleNormal($request, $channel, RelayFormat::OpenAIAudio);
     }
 
@@ -159,6 +161,7 @@ class RelayController extends Controller
     public function audioTranslations(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
+
         return $this->handleNormal($request, $channel, RelayFormat::OpenAIAudio);
     }
 
@@ -168,6 +171,7 @@ class RelayController extends Controller
     public function audioSpeech(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
+
         return $this->handleNormal($request, $channel, RelayFormat::OpenAIAudio);
     }
 
@@ -177,6 +181,7 @@ class RelayController extends Controller
     public function rerank(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
+
         return $this->handleNormal($request, $channel, RelayFormat::Rerank);
     }
 
@@ -186,7 +191,7 @@ class RelayController extends Controller
     public function moderations(Request $request): Response
     {
         return response()->json([
-            'id' => 'mod-' . uniqid(),
+            'id' => 'mod-'.uniqid(),
             'model' => 'text-moderation-007',
             'results' => [],
         ]);
@@ -198,9 +203,9 @@ class RelayController extends Controller
     public function claudeMessages(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
-        
-        if (!$channel) {
-            return $this->relayError('No channel selected', Response::HTTP_SERVICE_UNAVAILABLE);
+
+        if (! $channel) {
+            return $this->relayError(__('No channel selected'), Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
         $body = json_decode($request->getContent(), true);
@@ -219,6 +224,7 @@ class RelayController extends Controller
     public function geminiEmbeddings(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
+
         return $this->handleNormal($request, $channel, RelayFormat::Embedding);
     }
 
@@ -228,9 +234,9 @@ class RelayController extends Controller
     public function geminiRelay(Request $request): Response
     {
         $channel = $request->attributes->get('selected_channel');
-        
-        if (!$channel) {
-            return $this->relayError('No channel selected', Response::HTTP_SERVICE_UNAVAILABLE);
+
+        if (! $channel) {
+            return $this->relayError(__('No channel selected'), Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
         $body = json_decode($request->getContent(), true);
@@ -248,7 +254,7 @@ class RelayController extends Controller
      */
     public function realtime(Request $request): JsonResponse
     {
-        return $this->relayError('WebSocket realtime not implemented yet', Response::HTTP_NOT_IMPLEMENTED);
+        return $this->relayError(__('WebSocket realtime not implemented yet'), Response::HTTP_NOT_IMPLEMENTED);
     }
 
     /**
@@ -265,7 +271,7 @@ class RelayController extends Controller
     public function dashboardSubscription(Request $request): JsonResponse
     {
         $user = $request->attributes->get('user');
-        
+
         return response()->json([
             'subscription' => [
                 'status' => 'inactive',
@@ -281,7 +287,7 @@ class RelayController extends Controller
     public function dashboardUsage(Request $request): JsonResponse
     {
         $user = $request->attributes->get('user');
-        
+
         return response()->json([
             'usage' => [
                 'total_usage' => 0,
@@ -295,7 +301,7 @@ class RelayController extends Controller
      */
     public function notImplemented(Request $request): JsonResponse
     {
-        return $this->relayError('This endpoint is not implemented yet', Response::HTTP_NOT_IMPLEMENTED);
+        return $this->relayError(__('This endpoint is not implemented yet'), Response::HTTP_NOT_IMPLEMENTED);
     }
 
     /**
@@ -303,21 +309,21 @@ class RelayController extends Controller
      */
     protected function handleNormal(Request $request, $channel, string $format): Response
     {
-        $relayInfo = new RelayInfo();
+        $relayInfo = new RelayInfo;
         $relayInfo->request = $request;
         $relayInfo->channel = $channel;
         $relayInfo->relayFormat = $format;
-        
+
         try {
             $result = $this->relayHandler->handle($relayInfo);
-            
+
             // 记录日志
             $this->logRequest($request, $relayInfo, $result);
-            
+
             if ($result instanceof Response) {
                 return $result;
             }
-            
+
             return response()->json($result);
         } catch (\Exception $e) {
             return $this->relayError($e->getMessage(), Response::HTTP_BAD_REQUEST);
@@ -330,31 +336,31 @@ class RelayController extends Controller
     protected function handleStream(Request $request, $channel, string $format): StreamedResponse
     {
         return new StreamedResponse(function () use ($request, $channel, $format) {
-        $relayInfo = new RelayInfo();
-        $relayInfo->request = $request;
-        $relayInfo->channel = $channel;
-        $relayInfo->relayFormat = $format;
-        $relayInfo->isStream = true;
-            
+            $relayInfo = new RelayInfo;
+            $relayInfo->request = $request;
+            $relayInfo->channel = $channel;
+            $relayInfo->relayFormat = $format;
+            $relayInfo->isStream = true;
+
             // 设置 SSE 头
             header('Content-Type: text/event-stream');
             header('Cache-Control: no-cache');
             header('Connection: keep-alive');
             header('X-Accel-Buffering: no');
-            
+
             try {
                 $this->relayHandler->handleStream($relayInfo, function ($chunk) {
                     echo $chunk;
                     ob_flush();
                     flush();
                 });
-                
+
                 // 记录日志
                 $this->logStreamRequest($request, $relayInfo);
             } catch (\Exception $e) {
-                echo "data: " . json_encode(['error' => ['message' => $e->getMessage()]]) . "\n\n";
+                echo 'data: '.json_encode(['error' => ['message' => $e->getMessage()]])."\n\n";
             }
-            
+
             echo "data: [DONE]\n\n";
         }, 200, [
             'Content-Type' => 'text/event-stream',

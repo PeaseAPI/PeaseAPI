@@ -66,11 +66,13 @@ class ChannelController extends ChannelApiController
      */
     public function ratioSyncChannels(): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         return response()->json([
             'success' => false,
-            'message' => '倍率同步暂未实现',
+            'message' => __('Ratio sync is not implemented yet'),
         ], 501);
     }
 
@@ -79,11 +81,13 @@ class ChannelController extends ChannelApiController
      */
     public function fetchRatios(Request $request): JsonResponse
     {
-        if ($err = $this->requireAdmin()) return $err;
+        if ($err = $this->requireAdmin()) {
+            return $err;
+        }
 
         return response()->json([
             'success' => false,
-            'message' => '倍率同步暂未实现',
+            'message' => __('Ratio sync is not implemented yet'),
         ], 501);
     }
 }

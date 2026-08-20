@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 // 订阅相关表已由 2024_01_01_000140_create_subscriptions_table
 // 与 2024_01_01_000150_create_subscription_task_tables 创建。

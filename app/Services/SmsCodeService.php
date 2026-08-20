@@ -20,43 +20,44 @@ class SmsCodeService
      * 发送验证码。
      *
      * @param  string  $phone  手机号
-     * @param  string  $ip     请求 IP
+     * @param  string  $ip  请求 IP
      * @return array 返回 success/message 两个键
      */
     public function send(string $phone, string $ip = ''): array
     {
         // 校验手机号格式
-        if (!preg_match('/^1[3-9]\d{9}$/', $phone)) {
-            return ['success' => false, 'message' => '手机号格式不正确'];
+        if (! preg_match('/^1[3-9]\d{9}$/', $phone)) {
+            return ['success' => false, 'message' => __('Invalid phone number format')];
         }
 
-        if (!OptionService::get('SmsEnabled', false)) {
-            return ['success' => false, 'message' => '短信服务未开启'];
+        if (! OptionService::get('SmsEnabled', false)) {
+            return ['success' => false, 'message' => __('SMS service is not enabled')];
         }
 
         // 限流：同一号码发送间隔
         $interval = (int) OptionService::get('SmsSendInterval', 60);
-        $sentKey = 'sms:sent:' . $phone;
+        $sentKey = 'sms:sent:'.$phone;
         if (Cache::has($sentKey)) {
             $remain = Cache::get($sentKey, 0) + $interval - time();
-            return ['success' => false, 'message' => '发送过于频繁，请 ' . max(1, $remain) . ' 秒后重试'];
+
+            return ['success' => false, 'message' => '发送过于频繁，请 '.max(1, $remain).' 秒后重试'];
         }
 
         // 限流：同一号码当日上限
         $dailyLimit = (int) OptionService::get('SmsDailyLimit', 10);
-        $dayKey = 'sms:day:' . $phone . ':' . date('Ymd');
+        $dayKey = 'sms:day:'.$phone.':'.date('Ymd');
         $dayCount = (int) Cache::get($dayKey, 0);
         if ($dayCount >= $dailyLimit) {
-            return ['success' => false, 'message' => '当日发送次数已达上限'];
+            return ['success' => false, 'message' => __('Daily send limit reached')];
         }
 
         // 限流：同一 IP 每小时上限
         if ($ip !== '') {
             $ipHourLimit = (int) OptionService::get('SmsIpHourLimit', 5);
-            $ipKey = 'sms:ip:' . $ip . ':' . date('YmdH');
+            $ipKey = 'sms:ip:'.$ip.':'.date('YmdH');
             $ipCount = (int) Cache::get($ipKey, 0);
             if ($ipCount >= $ipHourLimit) {
-                return ['success' => false, 'message' => '请求过于频繁，请稍后再试'];
+                return ['success' => false, 'message' => __('Too many requests, please try again later.')];
             }
         }
 
@@ -70,29 +71,30 @@ class SmsCodeService
 
         if ($provider === 'log') {
             Log::info('SMS code (dev/log mode)', ['phone' => $phone, 'code' => $code, 'ip' => $ip]);
-            Cache::put('sms:code:' . $phone, $code, $ttl);
+            Cache::put('sms:code:'.$phone, $code, $ttl);
             Cache::put($sentKey, time(), $interval);
             Cache::put($dayKey, $dayCount + 1, now()->endOfDay()->diffInSeconds(now()) + 60);
             if ($ip !== '') {
                 Cache::put($ipKey, $ipCount + 1, 3600);
             }
+
             // 本地开发直接返回验证码，便于联调测试
-            return ['success' => true, 'message' => '验证码已发送（开发模式：' . $code . '）'];
+            return ['success' => true, 'message' => '验证码已发送（开发模式：'.$code.'）'];
         }
 
         if ($provider === 'aliyun') {
             $service = app(AliyunSmsService::class);
         } else {
-            return ['success' => false, 'message' => '不支持的短信服务商'];
+            return ['success' => false, 'message' => __('Unsupported SMS provider')];
         }
 
         $result = $service->sendCode($phone, $code);
-        if (!$result['success']) {
+        if (! $result['success']) {
             return $result;
         }
 
         // 写入缓存
-        Cache::put('sms:code:' . $phone, $code, $ttl);
+        Cache::put('sms:code:'.$phone, $code, $ttl);
         Cache::put($sentKey, time(), $interval);
         Cache::put($dayKey, $dayCount + 1, now()->endOfDay()->diffInSeconds(now()) + 60);
         if ($ip !== '') {
@@ -100,7 +102,8 @@ class SmsCodeService
         }
 
         Log::info('SMS code sent', ['phone' => $phone, 'ip' => $ip]);
-        return ['success' => true, 'message' => '验证码已发送'];
+
+        return ['success' => true, 'message' => __('Verification code sent')];
     }
 
     /**
@@ -111,12 +114,13 @@ class SmsCodeService
         if ($code === '' || $phone === '') {
             return false;
         }
-        $key = 'sms:code:' . $phone;
+        $key = 'sms:code:'.$phone;
         $stored = Cache::get($key, '');
-        if ($stored === '' || !hash_equals((string) $stored, (string) $code)) {
+        if ($stored === '' || ! hash_equals((string) $stored, (string) $code)) {
             return false;
         }
         Cache::forget($key);
+
         return true;
     }
 
@@ -130,6 +134,7 @@ class SmsCodeService
         for ($i = 0; $i < $length; $i++) {
             $code .= random_int(0, 9);
         }
+
         return $code;
     }
 }

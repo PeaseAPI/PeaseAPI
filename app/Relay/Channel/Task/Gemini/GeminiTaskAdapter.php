@@ -16,12 +16,12 @@ class GeminiTaskAdapter extends TaskAdapter
 
     protected function buildSubmitUrl(string $baseUrl, RelayInfo $info): string
     {
-        return $baseUrl . '/v1beta/models/imagen-3-generate:predict';
+        return $baseUrl.'/v1beta/models/imagen-3-generate:predict';
     }
 
     protected function buildFetchUrl(string $baseUrl, string $taskId, RelayInfo $info): string
     {
-        return $baseUrl . '/v1beta/models/imagen-3-generate:predict/' . $taskId;
+        return $baseUrl.'/v1beta/models/imagen-3-generate:predict/'.$taskId;
     }
 
     protected function buildRequestBody(RelayInfo $info): array

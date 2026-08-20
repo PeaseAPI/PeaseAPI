@@ -9,10 +9,10 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * 性能指标模型
- * 
+ *
  * 对标源项目: model/perf_metric.go
  * 存储聚合的中转性能指标，用于模型分析
- * 
+ *
  * @property int $id
  * @property string $model_name
  * @property string $group
@@ -76,13 +76,13 @@ class PerfMetric extends Model
                     'bucket_ts' => $metric->bucket_ts,
                 ],
                 [
-                    'request_count' => DB::raw('perf_metrics.request_count + ' . (int) $metric->request_count),
-                    'success_count' => DB::raw('perf_metrics.success_count + ' . (int) $metric->success_count),
-                    'total_latency_ms' => DB::raw('perf_metrics.total_latency_ms + ' . (int) $metric->total_latency_ms),
-                    'ttft_sum_ms' => DB::raw('perf_metrics.ttft_sum_ms + ' . (int) $metric->ttft_sum_ms),
-                    'ttft_count' => DB::raw('perf_metrics.ttft_count + ' . (int) $metric->ttft_count),
-                    'output_tokens' => DB::raw('perf_metrics.output_tokens + ' . (int) $metric->output_tokens),
-                    'generation_ms' => DB::raw('perf_metrics.generation_ms + ' . (int) $metric->generation_ms),
+                    'request_count' => DB::raw('perf_metrics.request_count + '.(int) $metric->request_count),
+                    'success_count' => DB::raw('perf_metrics.success_count + '.(int) $metric->success_count),
+                    'total_latency_ms' => DB::raw('perf_metrics.total_latency_ms + '.(int) $metric->total_latency_ms),
+                    'ttft_sum_ms' => DB::raw('perf_metrics.ttft_sum_ms + '.(int) $metric->ttft_sum_ms),
+                    'ttft_count' => DB::raw('perf_metrics.ttft_count + '.(int) $metric->ttft_count),
+                    'output_tokens' => DB::raw('perf_metrics.output_tokens + '.(int) $metric->output_tokens),
+                    'generation_ms' => DB::raw('perf_metrics.generation_ms + '.(int) $metric->generation_ms),
                 ]
             );
     }
@@ -204,7 +204,7 @@ class PerfMetric extends Model
      */
     public static function make(array $attributes = []): static
     {
-        $metric = new static();
+        $metric = new static;
         $metric->model_name = $attributes['model_name'] ?? '';
         $metric->group = $attributes['group'] ?? '';
         $metric->bucket_ts = $attributes['bucket_ts'] ?? time();
@@ -226,10 +226,15 @@ class PerfMetric extends Model
 class PerfMetricSummary
 {
     public string $model_name;
+
     public int $request_count;
+
     public int $success_count;
+
     public int $total_latency_ms;
+
     public int $output_tokens;
+
     public int $generation_ms;
 
     public function __construct(array $data = [])
@@ -249,11 +254,17 @@ class PerfMetricSummary
 class PerfMetricSummaryBucket
 {
     public string $model_name;
+
     public int $bucket_ts;
+
     public int $request_count;
+
     public int $success_count;
+
     public int $total_latency_ms;
+
     public int $output_tokens;
+
     public int $generation_ms;
 
     public function __construct(array $data = [])

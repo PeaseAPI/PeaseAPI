@@ -15,7 +15,7 @@ enum LogType: int
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::UNKNOWN => '未知',
             self::TOPUP => '充值',
             self::CONSUME => '消费',

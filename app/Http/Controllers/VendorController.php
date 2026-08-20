@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Models\VendorMeta;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * 厂商元数据控制器 - 对标 new-api controller/vendor.go

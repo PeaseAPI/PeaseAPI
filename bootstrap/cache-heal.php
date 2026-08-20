@@ -30,7 +30,6 @@
  *   - 确保 storage/framework 下的关键运行时目录存在，
  *     避免 ViewServiceProvider、Session 等服务启动失败。
  */
-
 $cacheDir = __DIR__.'/cache';
 $stale = false;
 $staleReason = '';
@@ -43,15 +42,15 @@ function peaseEnsureAppKey(string $projectRoot): void
     $envPath = $projectRoot.'/.env';
     $exampleEnvPath = $projectRoot.'/.env.example';
 
-    if (!is_file($envPath) && is_file($exampleEnvPath)) {
+    if (! is_file($envPath) && is_file($exampleEnvPath)) {
         @copy($exampleEnvPath, $envPath);
     }
 
-    if (!is_file($envPath)) {
+    if (! is_file($envPath)) {
         @file_put_contents($envPath, "APP_KEY=\n");
     }
 
-    if (!is_file($envPath)) {
+    if (! is_file($envPath)) {
         return;
     }
 
@@ -65,17 +64,18 @@ function peaseEnsureAppKey(string $projectRoot): void
         $currentKey = trim($matches[1]);
     }
 
-    if (!empty($currentKey) && $currentKey !== 'SomeRandomStringSomeRandomString' && $currentKey !== '') {
+    if (! empty($currentKey) && $currentKey !== 'SomeRandomStringSomeRandomString' && $currentKey !== '') {
         $_ENV['APP_KEY'] = $currentKey;
         $_SERVER['APP_KEY'] = $currentKey;
+
         return;
     }
 
-    $newKey = 'base64:' . base64_encode(random_bytes(32));
-    $newEnvContent = preg_replace('/^APP_KEY=.*$/m', 'APP_KEY=' . $newKey, $envContent);
+    $newKey = 'base64:'.base64_encode(random_bytes(32));
+    $newEnvContent = preg_replace('/^APP_KEY=.*$/m', 'APP_KEY='.$newKey, $envContent);
 
     if ($newEnvContent === null || $newEnvContent === $envContent) {
-        $newEnvContent = rtrim($envContent) . PHP_EOL . 'APP_KEY=' . $newKey . PHP_EOL;
+        $newEnvContent = rtrim($envContent).PHP_EOL.'APP_KEY='.$newKey.PHP_EOL;
     }
 
     @file_put_contents($envPath, $newEnvContent);
@@ -93,7 +93,7 @@ function peaseEnsureInstallSessionDriver(string $projectRoot): void
     }
 
     $envPath = $projectRoot.'/.env';
-    if (!is_file($envPath)) {
+    if (! is_file($envPath)) {
         return;
     }
 
@@ -103,8 +103,9 @@ function peaseEnsureInstallSessionDriver(string $projectRoot): void
     }
 
     if (strpos($envContent, 'SESSION_DRIVER=') === false) {
-        $envContent .= PHP_EOL . 'SESSION_DRIVER=file' . PHP_EOL;
+        $envContent .= PHP_EOL.'SESSION_DRIVER=file'.PHP_EOL;
         @file_put_contents($envPath, $envContent);
+
         return;
     }
 
@@ -119,7 +120,7 @@ function peaseEnsureInstallSessionDriver(string $projectRoot): void
 
 function peaseClearBootstrapCacheFiles(string $cacheDir): void
 {
-    if (!is_dir($cacheDir)) {
+    if (! is_dir($cacheDir)) {
         return;
     }
 
@@ -166,9 +167,9 @@ if (is_file($configCachePath)) {
         }
 
         // 检测 2：view.paths 中的路径指向不存在的目录
-        if (!$stale && preg_match_all("#['\"](/[^'\"]+/resources/views)['\"]#", $cacheContent, $matches)) {
+        if (! $stale && preg_match_all("#['\"](/[^'\"]+/resources/views)['\"]#", $cacheContent, $matches)) {
             foreach ($matches[1] as $viewPath) {
-                if (!is_dir($viewPath)) {
+                if (! is_dir($viewPath)) {
                     $stale = true;
                     $staleReason = "config.php 中 view.paths 指向不存在的目录: {$viewPath}";
                     break;
@@ -177,9 +178,9 @@ if (is_file($configCachePath)) {
         }
 
         // 检测 3：compiled 视图路径指向不存在的目录
-        if (!$stale && preg_match_all("#['\"](/[^'\"]+/storage/framework/views)['\"]#", $cacheContent, $matches)) {
+        if (! $stale && preg_match_all("#['\"](/[^'\"]+/storage/framework/views)['\"]#", $cacheContent, $matches)) {
             foreach ($matches[1] as $compiledPath) {
-                if (!is_dir($compiledPath)) {
+                if (! is_dir($compiledPath)) {
                     $stale = true;
                     $staleReason = "config.php 中 compiled 视图路径指向不存在的目录: {$compiledPath}";
                     break;
@@ -188,13 +189,13 @@ if (is_file($configCachePath)) {
         }
 
         // 检测 4：compiled 视图路径为 false（realpath() 失败时生成）
-        if (!$stale && preg_match("#['\"]compiled['\"]\\s*=>\\s*false#", $cacheContent)) {
+        if (! $stale && preg_match("#['\"]compiled['\"]\\s*=>\\s*false#", $cacheContent)) {
             $stale = true;
             $staleReason = 'config.php 中 compiled 视图路径为 false';
         }
 
         // 兜底：如果缓存内容里仍然包含本机开发路径，直接判定为陈旧缓存
-        if (!$stale && preg_match('#/(Users|home)/[^\'\"]+(resources/views|storage/framework/views)#', $cacheContent)) {
+        if (! $stale && preg_match('#/(Users|home)/[^\'\"]+(resources/views|storage/framework/views)#', $cacheContent)) {
             $stale = true;
             $staleReason = 'config.php 包含本机开发路径';
         }
@@ -206,7 +207,7 @@ if (is_file($configCachePath)) {
 // ============================================================
 $servicesCachePath = $cacheDir.'/services.php';
 
-if (!$stale && is_file($servicesCachePath)) {
+if (! $stale && is_file($servicesCachePath)) {
     $servicesContent = @file_get_contents($servicesCachePath);
 
     if ($servicesContent !== false) {
@@ -221,11 +222,11 @@ if (!$stale && is_file($servicesCachePath)) {
 
         // 检测 6：services.php 中包含本地开发机路径
         // （从其他环境复制而来的缓存文件可能包含无效路径）
-        if (!$stale && preg_match_all("#['\"](/[^'\"]+/PeaseAPI[^'\"]*)['\"]#", $servicesContent, $matches)) {
+        if (! $stale && preg_match_all("#['\"](/[^'\"]+/PeaseAPI[^'\"]*)['\"]#", $servicesContent, $matches)) {
             foreach ($matches[1] as $path) {
                 // 检查路径是否指向当前项目目录之外
                 $projectRoot = dirname(__DIR__);
-                if (strpos($path, $projectRoot) !== 0 && !file_exists($path)) {
+                if (strpos($path, $projectRoot) !== 0 && ! file_exists($path)) {
                     $stale = true;
                     $staleReason = "services.php 包含不存在的路径: {$path}";
                     break;
@@ -234,7 +235,7 @@ if (!$stale && is_file($servicesCachePath)) {
         }
 
         // 兜底：如果 services.php 里仍然是旧环境的供应商列表或缺少 view 关联，直接清除
-        if (!$stale && preg_match('#/(Users|home)/#', $servicesContent)) {
+        if (! $stale && preg_match('#/(Users|home)/#', $servicesContent)) {
             $stale = true;
             $staleReason = 'services.php 包含本机开发路径';
         }
@@ -268,7 +269,7 @@ $storageDirs = [
 ];
 
 foreach ($storageDirs as $dir) {
-    if (!is_dir($dir)) {
+    if (! is_dir($dir)) {
         @mkdir($dir, 0755, true);
     }
 }

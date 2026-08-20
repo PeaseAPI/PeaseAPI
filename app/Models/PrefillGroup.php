@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class PrefillGroup extends Model
 {
-    protected $fillable = ["name", "description", "prefills"];
+    protected $fillable = ['name', 'description', 'prefills'];
 
     protected function casts(): array
     {
-        return ["prefills" => "array"];
+        return ['prefills' => 'array'];
     }
 }

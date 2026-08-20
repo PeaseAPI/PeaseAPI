@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Services\CodingPlanPoolService;
+use Illuminate\Console\Command;
 
 class ResetCodingPlanUsage extends Command
 {
     protected $signature = 'coding-plan:reset';
+
     protected $description = 'Reset expired Coding Plan usage windows and disable expired accounts';
 
     public function handle(CodingPlanPoolService $pool): int

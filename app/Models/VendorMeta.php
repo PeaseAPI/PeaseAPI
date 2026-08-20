@@ -8,5 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class VendorMeta extends Model
 {
-    protected $fillable = ["name", "description", "icon", "website"];
+    protected $fillable = ['name', 'description', 'icon', 'website'];
 }

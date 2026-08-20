@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Artisan;
 
 class SyncChannelCacheJob implements ShouldQueue
 {
@@ -16,6 +17,6 @@ class SyncChannelCacheJob implements ShouldQueue
 
     public function handle(): void
     {
-        \Illuminate\Support\Facades\Artisan::call("channel:sync-cache");
+        Artisan::call('channel:sync-cache');
     }
 }

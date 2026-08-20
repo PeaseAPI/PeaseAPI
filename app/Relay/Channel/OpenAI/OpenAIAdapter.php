@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Http;
 class OpenAIAdapter extends BaseAdapter
 {
     protected string $name = 'openai';
+
     protected int $apiType = ApiType::OpenAI;
 
     /** @var array<int, string> */
@@ -42,7 +43,7 @@ class OpenAIAdapter extends BaseAdapter
     public function formatRequest(RelayInfo $info): void
     {
         // 应用参数覆盖
-        if (!empty($info->paramOverride)) {
+        if (! empty($info->paramOverride)) {
             $body = $info->requestBody;
             foreach ($info->paramOverride as $key => $value) {
                 $body[$key] = $value;
@@ -64,7 +65,7 @@ class OpenAIAdapter extends BaseAdapter
         $info->isRerank = $info->relayMode === RelayMode::Rerank;
 
         // 流式选项支持
-        if ($info->isStream && $info->supportStreamOptions && !isset($info->requestBody['stream_options'])) {
+        if ($info->isStream && $info->supportStreamOptions && ! isset($info->requestBody['stream_options'])) {
             $info->requestBody['stream_options'] = ['include_usage' => true];
         }
 
@@ -104,7 +105,7 @@ class OpenAIAdapter extends BaseAdapter
     public function formatResponse(RelayInfo $info): void
     {
         // 非流式响应处理 Token 计数
-        if (!$info->isStream) {
+        if (! $info->isStream) {
             $body = json_decode($info->responseBody, true);
             if (is_array($body) && isset($body['usage'])) {
                 $info->promptTokens = (int) ($body['usage']['prompt_tokens'] ?? 0);
@@ -120,13 +121,14 @@ class OpenAIAdapter extends BaseAdapter
     {
         if ($info->isStream) {
             $this->streamHandler($info);
+
             return;
         }
 
         // 非流式：直接输出响应
         $isJson = str_starts_with($info->responseBody, '{') || str_starts_with($info->responseBody, '[');
 
-        header('Content-Type: ' . ($isJson ? 'application/json' : 'text/plain'));
+        header('Content-Type: '.($isJson ? 'application/json' : 'text/plain'));
         http_response_code($info->responseStatus);
 
         echo $info->responseBody;
@@ -160,6 +162,7 @@ class OpenAIAdapter extends BaseAdapter
                 $info->recordFirstResponse();
                 echo $data;
                 flush();
+
                 return strlen($data);
             },
             CURLOPT_TIMEOUT => 300,
@@ -229,7 +232,7 @@ class OpenAIAdapter extends BaseAdapter
     private function buildRequestHeaders(RelayInfo $info): array
     {
         $headers = [
-            'Authorization' => 'Bearer ' . $info->apiKey,
+            'Authorization' => 'Bearer '.$info->apiKey,
             'Content-Type' => 'application/json',
         ];
 
@@ -248,15 +251,16 @@ class OpenAIAdapter extends BaseAdapter
     /**
      * 格式化 cURL 头
      *
-     * @param array<string, string> $headers
+     * @param  array<string, string>  $headers
      * @return array<int, string>
      */
     private function formatCurlHeaders(array $headers): array
     {
         $result = [];
         foreach ($headers as $key => $value) {
-            $result[] = $key . ': ' . $value;
+            $result[] = $key.': '.$value;
         }
+
         return $result;
     }
 }

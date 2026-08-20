@@ -8,7 +8,7 @@ define('LARAVEL_START', microtime(true));
  * 前置检查：依赖未安装时给出友好提示，避免 PHP fatal error 导致 Nginx 502。
  * 服务器拉取代码后必须先执行 `composer install`。
  */
-if (!file_exists(__DIR__.'/../vendor/autoload.php')) {
+if (! file_exists(__DIR__.'/../vendor/autoload.php')) {
     http_response_code(503);
     header('Content-Type: text/html; charset=utf-8');
     $composerInstall = htmlspecialchars('composer install', ENT_QUOTES);

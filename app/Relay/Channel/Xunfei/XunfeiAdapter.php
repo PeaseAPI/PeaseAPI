@@ -18,6 +18,7 @@ class XunfeiAdapter extends BaseAdapter
     use OpenAICompatibleTrait;
 
     protected string $name = 'xunfei';
+
     protected int $apiType = ApiType::XUNFEI_SPARK->value;
 
     /** @var array<int, string> */

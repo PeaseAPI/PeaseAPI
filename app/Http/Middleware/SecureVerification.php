@@ -18,8 +18,8 @@ class SecureVerification
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user) {
-            return $this->deny('未登录');
+        if (! $user) {
+            return $this->deny(__('Not logged in'));
         }
 
         $verifiedAt = session('secure_verified_at', 0);
@@ -36,7 +36,7 @@ class SecureVerification
     {
         return response()->json([
             'success' => false,
-            'message' => '需要安全验证',
+            'message' => __('Secure verification required'),
             'data' => [
                 'require_verification' => true,
                 'methods' => $this->availableMethods(),
@@ -53,6 +53,7 @@ class SecureVerification
         if (session('passkey_enabled', false)) {
             $methods[] = 'passkey';
         }
+
         return $methods;
     }
 

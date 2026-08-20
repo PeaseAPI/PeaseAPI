@@ -16,12 +16,12 @@ class SoraTaskAdapter extends TaskAdapter
 
     protected function buildSubmitUrl(string $baseUrl, RelayInfo $info): string
     {
-        return $baseUrl . '/v1/video/generations';
+        return $baseUrl.'/v1/video/generations';
     }
 
     protected function buildFetchUrl(string $baseUrl, string $taskId, RelayInfo $info): string
     {
-        return $baseUrl . '/v1/video/generations/' . $taskId;
+        return $baseUrl.'/v1/video/generations/'.$taskId;
     }
 
     protected function buildRequestBody(RelayInfo $info): array

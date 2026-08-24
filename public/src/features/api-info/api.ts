@@ -27,7 +27,7 @@ export async function getNewsKeys(): Promise<{
   success: boolean
   news_keys_masked: NewsKeysMasked
 }> {
-  const res = await api.get('/api/user/me')
+  const res = await api.get('/api/user/self')
   return {
     success: true,
     news_keys_masked: res.data?.news_keys_masked ?? {

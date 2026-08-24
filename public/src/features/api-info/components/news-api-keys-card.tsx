@@ -70,7 +70,7 @@ function useNewsKeyFields(): NewsKeyFieldDef[] {
       label: t('Exa Key'),
       description: t('API key for Exa search provider'),
       placeholder: 'exa-...',
-        },
+    },
   ]
 }
 

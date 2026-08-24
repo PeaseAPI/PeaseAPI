@@ -352,7 +352,7 @@
     "No available channel for model :model in group :group": "分组 :group 下没有找到模型 :model 的可用渠道",
     "No available channels": "没有可用的渠道",
     "Available news providers": "可用的新闻搜索源",
-        "News search completed": "新闻搜索完成",
+    "News search completed": "新闻搜索完成",
     "News search failed": "新闻搜索失败",
     "News API keys updated": "新闻搜索 API 密钥已更新",
     "No available video channel": "没有可用的视频渠道",

@@ -81,7 +81,7 @@ export function useSidebarData(): SidebarData {
             url: '/dashboard/models',
             icon: LayoutDashboard,
           },
-                    {
+          {
             title: t('API Keys'),
             url: '/keys',
             icon: Key,

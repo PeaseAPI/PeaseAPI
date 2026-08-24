@@ -116,6 +116,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/subscription/my', [SubscriptionController::class, 'mySubscriptions']);
         Route::post('/subscription/{id}/cancel', [SubscriptionController::class, 'cancel']);
 
+        // News API keys (user's own search provider keys)
+        Route::put('/news-keys', [UserApiController::class, 'updateNewsKeys']);
+
         // Admin routes
         Route::middleware(AdminAuth::class)->group(function () {
             // Users management

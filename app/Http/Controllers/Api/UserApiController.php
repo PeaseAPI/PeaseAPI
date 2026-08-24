@@ -17,6 +17,15 @@ class UserApiController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
+        // Parse user setting JSON to extract news keys
+        $setting = [];
+        if ($user->setting) {
+            $decoded = json_decode($user->setting, true);
+            if (is_array($decoded)) {
+                $setting = $decoded;
+            }
+        }
+
         return response()->json([
             'id' => $user->id,
             'username' => $user->username,
@@ -35,6 +44,12 @@ class UserApiController extends Controller
             'created_at' => $user->created_at,
             'last_login_at' => $user->last_login_at,
             'is_admin' => $user->role >= 100,
+            'news_keys' => [
+                'news_google_key' => $setting['news_google_key'] ?? '',
+                'news_newsapi_key' => $setting['news_newsapi_key'] ?? '',
+                'news_tavily_key' => $setting['news_tavily_key'] ?? '',
+                'news_exa_key' => $setting['news_exa_key'] ?? '',
+            ],
         ]);
     }
 
@@ -304,5 +319,48 @@ class UserApiController extends Controller
         $targetUser->save();
 
         return response()->json(['message' => __('Password reset'), 'new_password' => $newPassword]);
+    }
+
+    /**
+     * Update current user's news API keys (stored in user.setting JSON)
+     */
+    public function updateNewsKeys(Request $request)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'news_google_key' => 'nullable|string|max:200',
+            'news_newsapi_key' => 'nullable|string|max:200',
+            'news_tavily_key' => 'nullable|string|max:200',
+            'news_exa_key' => 'nullable|string|max:200',
+        ]);
+
+        // Merge into existing setting JSON
+        $setting = [];
+        if ($user->setting) {
+            $decoded = json_decode($user->setting, true);
+            if (is_array($decoded)) {
+                $setting = $decoded;
+            }
+        }
+
+        $setting['news_google_key'] = $validated['news_google_key'] ?? '';
+        $setting['news_newsapi_key'] = $validated['news_newsapi_key'] ?? '';
+        $setting['news_tavily_key'] = $validated['news_tavily_key'] ?? '';
+        $setting['news_exa_key'] = $validated['news_exa_key'] ?? '';
+
+        $user->setting = json_encode($setting, JSON_UNESCAPED_UNICODE);
+        $user->save();
+
+        return response()->json([
+            'message' => __('News API keys updated'),
+            'news_keys' => [
+                'news_google_key' => $setting['news_google_key'],
+                'news_newsapi_key' => $setting['news_newsapi_key'],
+                'news_tavily_key' => $setting['news_tavily_key'],
+                'news_exa_key' => $setting['news_exa_key'],
+            ],
+        ]);
     }
 }

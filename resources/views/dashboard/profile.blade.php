@@ -133,10 +133,49 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">API 信息</h3>
         <div class="space-y-3 text-sm">
-            <div class="flex items-center justify-between py-2 border-b border-gray-100">
-                <span class="text-gray-500">API 地址</span>
-                <code class="bg-gray-100 px-3 py-1 rounded text-xs">{{ $serverAddress }}/v1</code>
+            <!-- OpenAI 兼容 API -->
+            <div class="py-2 border-b border-gray-100">
+                <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">OpenAI</span>
+                        <span class="text-gray-700 font-medium">Chat / Embeddings API</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <code class="bg-gray-100 px-3 py-1 rounded text-xs select-all" id="apiUrlOpenai">{{ $serverAddress }}/v1</code>
+                        <button onclick="copyText('apiUrlOpenai')" class="text-gray-400 hover:text-primary-600 transition" title="复制"><i class="fas fa-copy text-xs"></i></button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 pl-[72px]">兼容 OpenAI、DeepSeek、Google Gemini 等协议</p>
             </div>
+            <!-- Anthropic 兼容 API -->
+            <div class="py-2 border-b border-gray-100">
+                <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">Anthropic</span>
+                        <span class="text-gray-700 font-medium">Claude API</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <code class="bg-gray-100 px-3 py-1 rounded text-xs select-all" id="apiUrlAnthropic">{{ $serverAddress }}/v1</code>
+                        <button onclick="copyText('apiUrlAnthropic')" class="text-gray-400 hover:text-primary-600 transition" title="复制"><i class="fas fa-copy text-xs"></i></button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 pl-[72px]">请求头需添加 <code class="bg-gray-100 px-1 rounded text-[11px]">anthropic-version: 2023-06-01</code></p>
+            </div>
+            <!-- News Search API -->
+            <div class="py-2 border-b border-gray-100">
+                <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">News</span>
+                        <span class="text-gray-700 font-medium">新闻搜索聚合 API</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <code class="bg-gray-100 px-3 py-1 rounded text-xs select-all" id="apiUrlNews">{{ $serverAddress }}/news</code>
+                        <button onclick="copyText('apiUrlNews')" class="text-gray-400 hover:text-primary-600 transition" title="复制"><i class="fas fa-copy text-xs"></i></button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 pl-[72px]">支持 Google CSE / NewsAPI / Tavily / Exa 搜索源</p>
+            </div>
+            <!-- 账户信息 -->
             <div class="flex items-center justify-between py-2 border-b border-gray-100">
                 <span class="text-gray-500">账户余额</span>
                 <span class="font-medium" id="userBalance">-</span>
@@ -145,7 +184,66 @@
                 <span class="text-gray-500">已用配额</span>
                 <span class="font-medium" id="userUsed">-</span>
             </div>
-        </div>
+            </div>
+    </div>
+
+    <!-- News API Keys -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">新闻搜索 API 密钥</h3>
+        <p class="text-sm text-gray-500 mb-4">添加您自己的搜索服务商密钥，系统将优先使用您的密钥进行新闻搜索。</p>
+        <form id="newsKeysForm" class="space-y-4">
+            @csrf
+            <!-- Google Custom Search -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 mr-1">Google</span>
+                    Google CSE API Key
+                </label>
+                <input type="text" name="news_google_key" id="newsGoogleKey"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm font-mono"
+                    placeholder="AIza..." autocomplete="off">
+                <p class="text-xs text-gray-400 mt-1">在 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-primary-600 hover:underline">Google Cloud Console</a> 创建，并在渠道设置中配置 cx</p>
+            </div>
+            <!-- NewsAPI -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700 mr-1">NewsAPI</span>
+                    NewsAPI Key
+                </label>
+                <input type="text" name="news_newsapi_key" id="newsNewsapiKey"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm font-mono"
+                    placeholder="abc123..." autocomplete="off">
+                <p class="text-xs text-gray-400 mt-1">在 <a href="https://newsapi.org/register" target="_blank" class="text-primary-600 hover:underline">newsapi.org</a> 注册获取</p>
+            </div>
+            <!-- Tavily -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 mr-1">Tavily</span>
+                    Tavily API Key
+                </label>
+                <input type="text" name="news_tavily_key" id="newsTavilyKey"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm font-mono"
+                    placeholder="tvly-..." autocomplete="off">
+                <p class="text-xs text-gray-400 mt-1">在 <a href="https://tavily.com/#api" target="_blank" class="text-primary-600 hover:underline">tavily.com</a> 注册获取</p>
+            </div>
+            <!-- Exa -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700 mr-1">Exa</span>
+                    Exa API Key
+                </label>
+                <input type="text" name="news_exa_key" id="newsExaKey"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm font-mono"
+                    placeholder="exa-..." autocomplete="off">
+                <p class="text-xs text-gray-400 mt-1">在 <a href="https://dashboard.exa.ai" target="_blank" class="text-primary-600 hover:underline">exa.ai</a> 注册获取</p>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
+                <p id="newsKeysMsg" class="text-xs"></p>
+                <button type="submit" class="px-6 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition">
+                    保存密钥
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 @endsection
@@ -363,6 +461,58 @@ document.getElementById('passwordForm').onsubmit = function(e) {
         alert(d.message || '修改成功');
         this.reset();
     }).catch(d => alert((d && (d.error || d.message)) || '修改失败'));
+};
+
+// 复制 API 地址
+function copyText(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const text = el.textContent.trim();
+    navigator.clipboard.writeText(text).then(() => {
+        el.classList.add('ring-2', 'ring-green-400');
+        setTimeout(() => el.classList.remove('ring-2', 'ring-green-400'), 1000);
+    }).catch(() => {
+        // fallback
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+    });
+}
+
+// 加载新闻搜索 API 密钥
+function loadNewsKeys() {
+    fetch('/web-api/me', { headers: { 'Accept': 'application/json' } })
+        .then(r => r.json())
+        .then(data => {
+            const keys = data.news_keys || {};
+            document.getElementById('newsGoogleKey').value = keys.news_google_key || '';
+            document.getElementById('newsNewsapiKey').value = keys.news_newsapi_key || '';
+            document.getElementById('newsTavilyKey').value = keys.news_tavily_key || '';
+            document.getElementById('newsExaKey').value = keys.news_exa_key || '';
+        })
+        .catch(() => {});
+}
+loadNewsKeys();
+
+// 保存新闻搜索 API 密钥
+document.getElementById('newsKeysForm').onsubmit = function(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(this));
+    delete data._token; // remove CSRF from payload
+    setMsg('newsKeysMsg', '保存中...', true);
+    fetch('/web-api/news-keys', {
+        method: 'PUT',
+        headers: { 'X-CSRF-TOKEN': csrfToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }).then(r => {
+        if (!r.ok) return r.json().then(d => Promise.reject(d));
+        return r.json();
+    }).then(d => {
+        setMsg('newsKeysMsg', d.message || '保存成功', true);
+    }).catch(d => setMsg('newsKeysMsg', (d && (d.error || d.message)) || '保存失败', false));
 };
 </script>
 @endpush

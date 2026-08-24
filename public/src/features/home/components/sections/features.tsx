@@ -25,6 +25,7 @@ import {
   DollarSign,
   Users,
   HeartHandshake,
+  Newspaper,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -151,6 +152,28 @@ export function Features(_props: FeaturesProps) {
             <Code className='size-3.5 text-blue-500' />
             {t('Multi-protocol Compatible')}
           </div>
+        </div>
+      ),
+    },
+    {
+      id: 'news',
+      num: '04',
+      title: t('News & Search Aggregation'),
+      desc: t(
+        'Unified search API aggregating Google CSE, NewsAPI, Tavily and Exa with channel-based routing'
+      ),
+      span: 'md:col-span-2',
+      icon: <Newspaper className='size-4 text-amber-400' />,
+      visual: (
+        <div className='mt-4 grid grid-cols-2 gap-2'>
+          {['Google CSE', 'NewsAPI', 'Tavily', 'Exa'].map((name) => (
+            <div
+              key={name}
+              className='border-border/30 bg-muted/20 text-muted-foreground flex items-center justify-center rounded-lg border px-3 py-2 text-xs transition-colors duration-300 hover:border-amber-500/30 hover:bg-amber-500/5'
+            >
+              {name}
+            </div>
+          ))}
         </div>
       ),
     },

@@ -6,12 +6,14 @@ namespace App\Relay\Common;
 
 use App\Enums\ChannelType;
 use App\Relay\Channel\AWS\AWSAdapter;
+use App\Relay\Channel\AnthropicNative\AnthropicNativeAdapter;
 use App\Relay\Channel\ChannelAdapterInterface;
 use App\Relay\Channel\Claude\ClaudeAdapter;
 use App\Relay\Channel\Gemini\GeminiAdapter;
 use App\Relay\Channel\OpenAI\OpenAIAdapter;
 use App\Relay\Channel\Vertex\VertexAdapter;
 use App\Relay\Constant\RelayMode;
+use App\Relay\Constant\RelayProtocol;
 use Exception;
 use Illuminate\Support\Facades\Log;
 
@@ -205,6 +207,8 @@ class RelayHandler
         ];
 
         $this->adapter = match (true) {
+            // Anthropic 原生协议（入站为 Anthropic 格式，透传不做转换）
+            $this->info->relayProtocol === RelayProtocol::Anthropic => new AnthropicNativeAdapter,
             in_array($channelType, $claudeTypes, true) => new ClaudeAdapter,
             in_array($channelType, $geminiTypes, true) => new GeminiAdapter,
             in_array($channelType, $awsTypes, true) => new AWSAdapter,

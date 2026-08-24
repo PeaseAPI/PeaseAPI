@@ -144,6 +144,51 @@ export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
       models: 'Models exposed by this channel',
     },
   },
+  // News / Search API
+  80: {
+    id: 80,
+    name: CHANNEL_TYPES[80],
+    icon: 'google',
+    defaultBaseUrl: 'https://www.googleapis.com',
+    hints: {
+      baseUrl: 'Default: https://www.googleapis.com',
+      key: 'Google API Key (set cx in channel setting JSON)',
+      models: 'Leave empty',
+    },
+  },
+  81: {
+    id: 81,
+    name: CHANNEL_TYPES[81],
+    icon: 'openai',
+    defaultBaseUrl: 'https://newsapi.org',
+    hints: {
+      baseUrl: 'Default: https://newsapi.org',
+      key: 'NewsAPI API Key',
+      models: 'Leave empty',
+    },
+  },
+  82: {
+    id: 82,
+    name: CHANNEL_TYPES[82],
+    icon: 'openai',
+    defaultBaseUrl: 'https://api.tavily.com',
+    hints: {
+      baseUrl: 'Default: https://api.tavily.com',
+      key: 'Tavily API Key',
+      models: 'Leave empty',
+    },
+  },
+  83: {
+    id: 83,
+    name: CHANNEL_TYPES[83],
+    icon: 'openai',
+    defaultBaseUrl: 'https://api.exa.ai',
+    hints: {
+      baseUrl: 'Default: https://api.exa.ai',
+      key: 'Exa API Key',
+      models: 'Leave empty',
+    },
+  },
 }
 
 /**

@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Relay\Common\RelayHandler;
 use App\Relay\Common\RelayInfo;
 use App\Relay\Constant\RelayFormat;
+use App\Relay\Constant\RelayProtocol;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -199,6 +200,10 @@ class RelayController extends Controller
 
     /**
      * Claude Messages API - 对标 POST /v1/messages
+     *
+     * 支持两种入站格式：
+     * 1. Anthropic 原生格式（检测到 anthropic-version 请求头）→ 透传，不做格式转换
+     * 2. OpenAI 格式（默认）→ 使用 ClaudeAdapter 做格式转换
      */
     public function claudeMessages(Request $request): Response
     {
@@ -208,14 +213,52 @@ class RelayController extends Controller
             return $this->relayError(__('No channel selected'), Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
+        // 检测入站请求是否为 Anthropic 原生格式
+        $isAnthropicNative = $this->isAnthropicNativeRequest($request);
+
         $body = json_decode($request->getContent(), true);
         $isStream = ($body['stream'] ?? false) === true;
 
         if ($isStream) {
-            return $this->handleStream($request, $channel, RelayFormat::Claude);
+            return $this->handleStream($request, $channel, RelayFormat::Claude, $isAnthropicNative);
         }
 
-        return $this->handleNormal($request, $channel, RelayFormat::Claude);
+        return $this->handleNormal($request, $channel, RelayFormat::Claude, $isAnthropicNative);
+    }
+
+    /**
+     * 检测入站请求是否为 Anthropic 原生格式
+     *
+     * 判断依据：
+     * - 存在 `anthropic-version` 请求头（Anthropic SDK 必发）
+     * - 或存在 `x-api-key` 请求头且不存在 `Authorization: Bearer` 头
+     * - 或请求体包含 Anthropic 特有字段（如 max_tokens 而非 max_completion_tokens）
+     */
+    protected function isAnthropicNativeRequest(Request $request): bool
+    {
+        // 1. anthropic-version 请求头 — 最可靠的判断
+        if ($request->header('anthropic-version')) {
+            return true;
+        }
+
+        // 2. x-api-key 请求头且无 Authorization: Bearer — Anthropic SDK 使用 x-api-key
+        if ($request->header('x-api-key') && ! str_starts_with($request->header('authorization', ''), 'Bearer ')) {
+            return true;
+        }
+
+        // 3. 请求体结构判断：Anthropic 格式有 messages 数组但没有 OpenAI 特有的 n / frequency_penalty 等字段
+        $body = json_decode($request->getContent(), true);
+        if (is_array($body)) {
+            $hasAnthropicFields = isset($body['max_tokens']) || isset($body['system']);
+            $hasOpenAIFields = isset($body['n']) || isset($body['frequency_penalty'])
+                || isset($body['presence_penalty']) || isset($body['logprobs']);
+
+            if ($hasAnthropicFields && ! $hasOpenAIFields) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -307,12 +350,17 @@ class RelayController extends Controller
     /**
      * 处理普通请求 (非流式)
      */
-    protected function handleNormal(Request $request, $channel, string $format): Response
+    protected function handleNormal(Request $request, $channel, string $format, bool $isAnthropicNative = false): Response
     {
         $relayInfo = new RelayInfo;
         $relayInfo->request = $request;
         $relayInfo->channel = $channel;
         $relayInfo->relayFormat = $format;
+
+        // 设置入站协议类型
+        if ($isAnthropicNative) {
+            $relayInfo->relayProtocol = RelayProtocol::Anthropic;
+        }
 
         try {
             $result = $this->relayHandler->handle($relayInfo);
@@ -333,14 +381,19 @@ class RelayController extends Controller
     /**
      * 处理流式请求 (SSE)
      */
-    protected function handleStream(Request $request, $channel, string $format): StreamedResponse
+    protected function handleStream(Request $request, $channel, string $format, bool $isAnthropicNative = false): StreamedResponse
     {
-        return new StreamedResponse(function () use ($request, $channel, $format) {
+        return new StreamedResponse(function () use ($request, $channel, $format, $isAnthropicNative) {
             $relayInfo = new RelayInfo;
             $relayInfo->request = $request;
             $relayInfo->channel = $channel;
             $relayInfo->relayFormat = $format;
             $relayInfo->isStream = true;
+
+            // 设置入站协议类型
+            if ($isAnthropicNative) {
+                $relayInfo->relayProtocol = RelayProtocol::Anthropic;
+            }
 
             // 设置 SSE 头
             header('Content-Type: text/event-stream');
@@ -355,13 +408,22 @@ class RelayController extends Controller
                     flush();
                 });
 
-                // 记录日志
+                            // 记录日志
                 $this->logStreamRequest($request, $relayInfo);
             } catch (\Exception $e) {
-                echo 'data: '.json_encode(['error' => ['message' => $e->getMessage()]])."\n\n";
+                if ($isAnthropicNative) {
+                    // Anthropic 原生 SSE 错误事件
+                    echo 'event: error'."\n";
+                    echo 'data: '.json_encode(['type' => 'error', 'error' => ['type' => 'api_error', 'message' => $e->getMessage()]])."\n\n";
+                } else {
+                    echo 'data: '.json_encode(['error' => ['message' => $e->getMessage()]])."\n\n";
+                }
             }
 
-            echo "data: [DONE]\n\n";
+            // OpenAI 协议以 [DONE] 结束，Anthropic 协议以 message_stop 事件结束（由上游发送）
+            if (! $isAnthropicNative) {
+                echo "data: [DONE]\n\n";
+            }
         }, 200, [
             'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',

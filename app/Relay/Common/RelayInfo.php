@@ -76,10 +76,17 @@ class RelayInfo
 
     public bool $supportStreamOptions = false;
 
-    // 请求信息
+        // 请求信息
     public string $relayMode = '';
 
     public int $relayFormat = 0;
+
+    /**
+     * 入站请求协议类型
+     *
+     * @see \App\Relay\Constant\RelayProtocol
+     */
+    public string $relayProtocol = 'openai';
 
     public string $requestModel = '';
 

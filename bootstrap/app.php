@@ -46,6 +46,12 @@ return Application::configure(basePath: dirname(__DIR__))
             // Load relay routes without /api prefix (for /v1, /mj, /suno etc.)
             Route::middleware('api')
                 ->group(base_path('routes/relay.php'));
+
+            // Load news / search aggregation routes (independent from
+            // OpenAI-compatible relay - uses /news prefix with its own
+            // middleware stack to avoid request-format conflicts)
+            Route::middleware('api')
+                ->group(base_path('routes/news.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware) {

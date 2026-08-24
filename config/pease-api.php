@@ -41,4 +41,25 @@ return [
         'google' => ['enabled' => false, 'measurement_id' => ''],
     ],
     'turnstile' => ['enabled' => false, 'site_key' => '', 'secret_key' => ''],
+
+    // 新闻 / 搜索 API 聚合转发
+    'news' => [
+        // 单次搜索默认消耗配额（用户配额单位，按次计费）
+        'default_quota_per_search' => (int) env('PEASE_API_NEWS_QUOTA_PER_SEARCH', 1),
+        // 各 Provider 单次搜索消耗配额（覆盖默认值，键为 provider 标识）
+        'quota_per_search' => [
+            'google_custom_search' => 1,
+            'news_api' => 1,
+            'tavily' => 2,
+            'exa' => 2,
+        ],
+        // 上游请求超时（秒）
+        'timeout' => (int) env('PEASE_API_NEWS_TIMEOUT', 30),
+        // 默认返回结果数量上限
+        'default_max_results' => 10,
+        // 允许的最大结果数量
+        'max_results_limit' => 50,
+        // 是否在响应中返回原始上游数据（调试用）
+        'include_raw' => (bool) env('PEASE_API_NEWS_INCLUDE_RAW', false),
+    ],
 ];

@@ -2764,6 +2764,8 @@
     "Multi-key: Random rotation": "マルチキー：ランダムローテーション",
     "Multi-protocol Compatible": "マルチプロトコル互換",
     "Multi-region deployment for stable global access": "安定したグローバルアクセスを実現するマルチリージョンデプロイメント",
+    "News & Search Aggregation": "ニュース・検索統合",
+    "Unified search API aggregating Google CSE, NewsAPI, Tavily and Exa with channel-based routing": "Google CSE、NewsAPI、Tavily、Exa を統合した統一検索 API（チャネルルーティング対応）",
     "Multi-step thinking before final answer": "最終回答の前に複数ステップで思考",
     "Multi-user management with flexible permission allocation": "柔軟な権限割り当てが可能なマルチユーザー管理",
     "Multilingual translation and localisation": "多言語翻訳とローカライズ",

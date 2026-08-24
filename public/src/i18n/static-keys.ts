@@ -163,6 +163,8 @@ export const STATIC_I18N_KEYS = [
   'Enterprise-grade security with comprehensive permission management',
   'Global Coverage',
   'Multi-region deployment for stable global access',
+  'News & Search Aggregation',
+  'Unified search API aggregating Google CSE, NewsAPI, Tavily and Exa with channel-based routing',
   'Developer Friendly',
   'Complete API documentation with multi-language SDK support',
   'High Performance',

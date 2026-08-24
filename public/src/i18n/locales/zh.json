@@ -2764,6 +2764,8 @@
     "Multi-key: Random rotation": "多密钥：随机",
     "Multi-protocol Compatible": "兼容多协议",
     "Multi-region deployment for stable global access": "多区域部署，实现稳定的全球访问",
+    "News & Search Aggregation": "新闻与搜索聚合",
+    "Unified search API aggregating Google CSE, NewsAPI, Tavily and Exa with channel-based routing": "聚合 Google CSE、NewsAPI、Tavily、Exa 的统一搜索 API，支持渠道路由",
     "Multi-step thinking before final answer": "在给出最终答案前进行多步推理",
     "Multi-user management with flexible permission allocation": "多用户管理，灵活分配权限",
     "Multilingual translation and localisation": "多语种翻译与本地化",

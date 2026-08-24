@@ -77,12 +77,18 @@ export const CHANNEL_TYPES = {
   56: 'Replicate',
   57: 'ChatGPT Subscription (Codex)',
   58: 'Advanced Custom',
+  // News / Search API
+  80: 'Google Custom Search',
+  81: 'NewsAPI',
+  82: 'Tavily Search',
+  83: 'Exa Search',
 } as const
 
 const CHANNEL_TYPE_DISPLAY_ORDER: number[] = [
   1, 14, 33, 24, 43, 3, 41, 48, 58, 42, 34, 20, 4, 40, 27, 25, 17, 26, 15, 46,
   23, 18, 45, 31, 35, 49, 19, 47, 37, 38, 39, 11, 8, 57, 22, 21, 44, 2, 5, 36,
   50, 51, 52, 53, 54, 55, 56,
+  80, 81, 82, 83,
 ]
 
 export const CHANNEL_TYPE_OPTIONS: { value: number; label: string }[] = (() => {
@@ -391,6 +397,10 @@ export const TYPE_TO_KEY_PROMPT: Record<number, string> = {
   50: 'Format: AccessKey|SecretKey (or just ApiKey if upstream is New API)',
   51: 'Format: Access Key ID|Secret Access Key',
   57: 'Paste Codex OAuth JSON credential (access_token / refresh_token / account_id)',
+  80: 'Google API Key (set cx in channel setting)',
+  81: 'NewsAPI API Key',
+  82: 'Tavily API Key',
+  83: 'Exa API Key',
 }
 
 export const CHANNEL_TYPE_WARNINGS: Record<number, string> = {

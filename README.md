@@ -79,6 +79,7 @@ PeaseAPI 在完整复刻原版功能的基础上，新增了以下能力：
 | **🆕 系统信息面板** | 实时查看服务器 CPU、内存、磁盘、PHP 环境信息 | ⚠️ 原版无独立面板 |
 | **🆕 头像上传** | 用户可上传自定义头像，支持本地存储 | ⚠️ 原版依赖外部 |
 | **🆕 一键安装命令** | `php artisan pease:install` 完成全部初始化 | ❌ 原版无 |
+| **🆕 新闻 / 搜索聚合** | 聚合 Google CSE、NewsAPI、Tavily、Exa 四大搜索源为统一 API，支持渠道路由、配额计费与用量日志，独立 `/news` 路由不与 OpenAI 兼容 API 混用 | ❌ 原版无 |
 
 ### 完整复刻的功能
 
@@ -445,6 +446,8 @@ curl https://api.example.com/v1/chat/completions \
 | `POST /v1/messages` | Claude 原生格式 |
 | `POST /mj/submit/imagine` | Midjourney 任务 |
 | `POST /suno/submit/music` | Suno 音乐任务 |
+| `POST /news/search` | 新闻 / 网页搜索聚合（Google CSE / NewsAPI / Tavily / Exa） |
+| `GET /news/providers` | 获取可用新闻搜索 Provider 列表 |
 
 ### 管理后台 API
 

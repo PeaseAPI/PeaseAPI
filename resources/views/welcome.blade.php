@@ -208,7 +208,7 @@
                     <h3>多模型支持</h3>
                     <p>支持 GPT、Claude、Gemini、Midjourney、Suno 等 40+ 主流模型，统一接口，一个 Key 访问所有模型。</p>
                 </div>
-                <div class="feature-card">
+                                <div class="feature-card">
                     <div class="feature-icon icon-purple">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                     </div>
@@ -221,6 +221,20 @@
                     </div>
                     <h3>高性能</h3>
                     <p>智能渠道负载均衡与故障自动切换，毫秒级响应，99.9% 可用性保障，轻松应对高并发场景。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon icon-indigo">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
+                    </div>
+                    <h3>新闻搜索聚合</h3>
+                    <p>聚合 Google CSE、NewsAPI、Tavily、Exa 四大搜索源，统一 API 接口，支持渠道路由与配额计费，轻松构建新闻搜索应用。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon icon-green">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                    </div>
+                    <h3>Coding Plan 账号池</h3>
+                    <p>Claude Code / Cursor 等编程订阅账号池化管理，5h/周/月滚动窗口配额，自动切换与优先级调度。</p>
                 </div>
             </div>
         </div>
@@ -264,6 +278,41 @@ response = client.chat.completions.create(
 
 <span class="com"># 同样支持 Claude / Gemini / DeepSeek 等模型</span>
 <span class="kw">print</span>(response.choices[<span class="var">0</span>].message.content)</div>
+                        </div>
+        </div>
+    </section>
+
+    <section class="code-section">
+        <div class="container">
+            <div class="section-title">
+                <h2>新闻搜索 API</h2>
+                <p>聚合四大搜索源，一行代码获取全球新闻</p>
+            </div>
+            <div class="code-wrap">
+                <div class="code-header">
+                    <span class="code-dot red"></span>
+                    <span class="code-dot yellow"></span>
+                    <span class="code-dot green"></span>
+                    <span class="code-title">news-search.py</span>
+                </div>
+                <div class="code-body"><span class="kw">import</span> requests
+
+<span class="com"># 搜索新闻 — 自动路由到 Google CSE / NewsAPI / Tavily / Exa</span>
+response = requests.post(
+    <span class="str">"{{ $serverAddress }}/news/search"</span>,
+    headers={<span class="str">"Authorization"</span>: <span class="str">"Bearer sk-your-token"</span>},
+    json={<span class="str">"query"</span>: <span class="str">"AI 最新进展"</span>, <span class="str">"limit"</span>: <span class="var">5</span>}
+)
+
+<span class="kw">for</span> article <span class="kw">in</span> response.json()[<span class="str">"results"</span>]:
+    <span class="kw">print</span>(article[<span class="str">"title"</span>], article[<span class="str">"url"</span>])
+
+<span class="com"># 查看可用的搜索源</span>
+providers = requests.get(
+    <span class="str">"{{ $serverAddress }}/news/providers"</span>,
+    headers={<span class="str">"Authorization"</span>: <span class="str">"Bearer sk-your-token"</span>}
+)
+<span class="kw">print</span>(providers.json())</div>
             </div>
         </div>
     </section>

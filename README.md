@@ -19,6 +19,7 @@
 - [快速开始](#快速开始)
 - [环境要求](#环境要求)
 - [安装部署](#安装部署)
+- [伪静态配置](#️-伪静态配置必须)
 - [配置说明](#配置说明)
 - [使用指南](#使用指南)
 - [Coding Plan 账号池](#coding-plan-账号池)
@@ -335,16 +336,28 @@ php artisan serve
 
 ### PHP 扩展要求
 
-- `pdo_mysql` / `pdo_sqlite`
-- `redis`
+> ⚠️ **以下扩展缺失会直接导致网站白屏/500错误，必须全部安装！** `mbstring` 缺失会报 `Call to undefined function mb_split()`，`fileinfo` 缺失会导致文件上传失败，`openssl` 缺失会导致加密/支付功能不可用。
+
+- `mbstring` ← **必须**（Laravel 核心依赖，缺失直接白屏）
+- `openssl` ← **必须**（加密、Session、支付等核心功能依赖）
+- `pdo_mysql` / `pdo_sqlite` ← **必须**（数据库连接）
+- `fileinfo` ← **必须**（文件上传/头像功能依赖）
+- `bcmath` ← **必须**（精确数值计算，计费系统依赖）
+- `redis`（推荐，队列/缓存/Session 驱动）
 - `gmp`（WebAuthn/Passkey 需要）
-- `mbstring`
 - `xml`
 - `curl`
 - `zip`
-- `fileinfo`
-- `openssl`
-- `bcmath`
+
+**宝塔面板安装扩展**：软件商店 → PHP 8.2 → 安装扩展 → 逐个安装上述扩展 → 重启 PHP
+
+**Ubuntu/Debian 安装扩展**：
+```bash
+sudo apt install php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip \
+  php8.2-bcmath php8.2-gmp php8.2-redis php8.2-mysql php8.2-fileinfo \
+  php8.2-opcache php8.2-intl
+sudo systemctl restart php8.2-fpm
+```
 
 ---
 
@@ -355,6 +368,77 @@ PeaseAPI 提供三种部署方式，详见 **[部署文档](docs/deployment.md)*
 1. **[独立服务器部署](docs/deployment.md#独立服务器部署)** -- 手动配置 Nginx + PHP-FPM + MySQL + Redis
 2. **[宝塔面板部署](docs/deployment.md#宝塔面板部署)** -- 适合国内用户，图形化操作
 3. **[Docker 部署](docs/deployment.md#docker-部署)** -- 最快部署方式，适合容器化环境
+
+### ⚠️ 伪静态配置（必须）
+
+> **网站打开空白的最大原因就是没有正确配置伪静态！** PeaseAPI 基于 Laravel，所有请求需通过 `public/index.php` 入口文件路由，必须配置伪静态（URL 重写）才能正常工作。
+
+#### 前提：运行目录必须指向 `/public`
+
+无论是 Nginx 还是 Apache，**网站根目录（Document Root）必须指向项目的 `public` 目录**，而不是项目根目录。例如：
+
+- 正确：`/www/wwwroot/peaseapi/public`
+- ❌ 错误：`/www/wwwroot/peaseapi`
+
+#### Nginx 伪静态规则
+
+在 Nginx 的 `server` 块中添加以下 location 规则：
+
+```nginx
+# 主路由伪静态（Laravel 标准）
+location / {
+    try_files $uri $uri/ /index.php?$query_string;
+}
+
+# PHP-FPM 处理
+location ~ \.php$ {
+    fastcgi_pass unix:/run/php/php8.2-fpm.sock;  # 根据实际 PHP 版本调整
+    fastcgi_index index.php;
+    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    include fastcgi_params;
+    fastcgi_read_timeout 300;
+    fastcgi_buffering off;  # SSE 流式响应必须
+}
+
+# 禁止访问隐藏文件
+location ~ /\.(?!well-known).* {
+    deny all;
+}
+```
+
+> 💡 **关键说明**：`fastcgi_buffering off;` 是 AI 流式输出（如 GPT 逐字输出）的必要配置，否则流式效果会被缓冲破坏。
+
+#### 宝塔面板配置（最简方式）
+
+1. **运行目录**：进入 **网站 → 设置 → 网站目录**，运行目录选择 `/public`，保存
+2. **伪静态**：进入 **网站 → 设置 → 伪静态**，粘贴以下内容，保存：
+
+```nginx
+location / {
+    try_files $uri $uri/ /index.php?$query_string;
+}
+```
+
+#### Apache 伪静态规则
+
+项目 `public/.htaccess` 已内置 Laravel 标准规则，无需额外配置。确保 Apache 已启用 `mod_rewrite` 模块：
+
+```bash
+sudo a2enmod rewrite
+sudo systemctl restart apache2
+```
+
+#### Caddy 伪静态规则
+
+```caddyfile
+rewrite * /index.php?{query}
+```
+
+#### 1Panel / cPanel 等面板
+
+参照宝塔面板的配置方式：**运行目录设为 `/public`** + **伪静态规则添加 `try_files $uri $uri/ /index.php?$query_string;`**。
+
+完整的 Nginx 生产环境配置示例，请参考 [部署文档 - Nginx 配置参考](docs/deployment.md#nginx-配置参考)。
 
 ---
 
@@ -565,6 +649,62 @@ PHP-FPM 在常规 API 网关场景下性能完全够用。由于 AI API 的瓶�
 <summary><b>Q: 前端需要 Node.js 构建吗？</b></summary>
 
 不需要。PeaseAPI 使用 Laravel Blade + Tailwind（CDN）+ Alpine.js，是服务端渲染方案，部署时无需任何前端构建步骤。
+</details>
+
+<details>
+<summary><b>Q: 网站打开空白 / ReflectionException: Class "view" does not exist</b></summary>
+
+这是部署时最常见的问题，通常由以下原因导致：
+
+**1. 运行目录未指向 `/public`（最常见）**
+
+Nginx/Apache 的网站根目录（Document Root）必须指向项目的 `public` 目录，而不是项目根目录。详见上方 [伪静态配置](#️-伪静态配置必须) 章节。
+
+**2. `bootstrap/cache` 中残留了本地开发缓存**
+
+如果你从本地开发机上传了整个项目，`bootstrap/cache/` 目录下的 `config.php`、`services.php` 等缓存文件可能包含本地路径（如 `/Users/.../resources/views`），在服务器上不存在，导致 Laravel 无法解析 `view` 服务。
+
+**解决方法**：在服务器上执行：
+
+```bash
+cd /你的项目路径
+rm -f bootstrap/cache/config.php bootstrap/cache/services.php bootstrap/cache/packages.php bootstrap/cache/routes-v7.php
+php artisan config:clear
+php artisan cache:clear
+```
+
+> 💡 PeaseAPI 内置了 `bootstrap/cache-heal.php` 自愈机制，正常情况下会自动清理陈旧缓存。但如果 OPcache 缓存了旧文件内容，或文件权限不正确，自愈可能失效，需要手动清理。
+
+**3. OPcache 缓存了旧的缓存文件**
+
+如果执行了上述清理后仍然空白，可能是 OPcache 缓存了旧的文件内容：
+
+```bash
+# 方法一：重启 PHP-FPM（推荐）
+systemctl restart php8.2-fpm   # 根据实际 PHP 版本调整
+
+# 方法二：在宝塔面板中重启 PHP
+# 软件商店 → PHP 8.2 → 重启
+```
+
+**4. `storage/framework` 目录缺失**
+
+Laravel 运行需要以下目录存在且有写权限：
+
+```bash
+cd /你的项目路径
+mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+chmod -R 775 storage bootstrap/cache
+chown -R www:www storage bootstrap/cache
+```
+
+**5. `.env` 文件不存在或 `APP_KEY` 为空**
+
+```bash
+cd /你的项目路径
+cp .env.example .env
+php artisan key:generate
+```
 </details>
 
 ---

@@ -89,6 +89,11 @@ export function SidebarModulesCard() {
           description: t('API token management'),
         },
         {
+          key: 'api_info',
+          title: t('API Info'),
+          description: t('API endpoint shortcuts and news search keys'),
+        },
+        {
           key: 'log',
           title: t('Usage Logs'),
           description: t('API usage records'),

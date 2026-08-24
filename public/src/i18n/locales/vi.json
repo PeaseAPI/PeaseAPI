@@ -5216,6 +5216,20 @@
     "Zero retention": "Không lưu dữ liệu",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "News Search API Keys": "Khóa API tìm kiếm tin tức",
+    "Configure your own API keys for news search providers": "Cấu hình khóa API của bạn cho các nhà cung cấp tìm kiếm tin tức",
+    "Google News Key": "Khóa Google News",
+    "NewsAPI Key": "Khóa NewsAPI",
+    "Tavily Key": "Khóa Tavily",
+    "Exa Key": "Khóa Exa",
+    "API key for Google News search provider": "Khóa API cho nhà cung cấp tìm kiếm Google News",
+    "API key for NewsAPI.org search provider": "Khóa API cho nhà cung cấp tìm kiếm NewsAPI.org",
+    "API key for Tavily search provider": "Khóa API cho nhà cung cấp tìm kiếm Tavily",
+    "API key for Exa search provider": "Khóa API cho nhà cung cấp tìm kiếm Exa",
+    "News API keys updated": "Khóa API tìm kiếm tin tức đã được cập nhật",
+    "Failed to update news API keys": "Cập nhật khóa API tìm kiếm tin tức thất bại",
+    "API endpoint shortcuts configured by the administrator": "Phím tắt điểm cuối API được cấu hình bởi quản trị viên",
+    "No API info configured yet": "Chưa có thông tin API nào được cấu hình"
   }
 }

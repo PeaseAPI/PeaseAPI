@@ -194,14 +194,17 @@
         <form id="newsKeysForm" class="space-y-4">
             @csrf
             <!-- Google Custom Search -->
-            <div>
+                        <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 mr-1">Google</span>
                     Google CSE API Key
                 </label>
-                <input type="text" name="news_google_key" id="newsGoogleKey"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm font-mono"
-                    placeholder="AIza..." autocomplete="off">
+                <div class="relative">
+                    <input type="password" name="news_google_key" id="newsGoogleKey"
+                        class="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm font-mono"
+                        placeholder="AIza..." autocomplete="off">
+                    <button type="button" onclick="toggleKeyVis('newsGoogleKey')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><i class="fas fa-eye text-xs"></i></button>
+                </div>
                 <p class="text-xs text-gray-400 mt-1">在 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-primary-600 hover:underline">Google Cloud Console</a> 创建，并在渠道设置中配置 cx</p>
             </div>
             <!-- NewsAPI -->
@@ -210,9 +213,12 @@
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700 mr-1">NewsAPI</span>
                     NewsAPI Key
                 </label>
-                <input type="text" name="news_newsapi_key" id="newsNewsapiKey"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm font-mono"
-                    placeholder="abc123..." autocomplete="off">
+                <div class="relative">
+                    <input type="password" name="news_newsapi_key" id="newsNewsapiKey"
+                        class="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm font-mono"
+                        placeholder="abc123..." autocomplete="off">
+                    <button type="button" onclick="toggleKeyVis('newsNewsapiKey')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><i class="fas fa-eye text-xs"></i></button>
+                </div>
                 <p class="text-xs text-gray-400 mt-1">在 <a href="https://newsapi.org/register" target="_blank" class="text-primary-600 hover:underline">newsapi.org</a> 注册获取</p>
             </div>
             <!-- Tavily -->
@@ -221,9 +227,12 @@
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 mr-1">Tavily</span>
                     Tavily API Key
                 </label>
-                <input type="text" name="news_tavily_key" id="newsTavilyKey"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm font-mono"
-                    placeholder="tvly-..." autocomplete="off">
+                <div class="relative">
+                    <input type="password" name="news_tavily_key" id="newsTavilyKey"
+                        class="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm font-mono"
+                        placeholder="tvly-..." autocomplete="off">
+                    <button type="button" onclick="toggleKeyVis('newsTavilyKey')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><i class="fas fa-eye text-xs"></i></button>
+                </div>
                 <p class="text-xs text-gray-400 mt-1">在 <a href="https://tavily.com/#api" target="_blank" class="text-primary-600 hover:underline">tavily.com</a> 注册获取</p>
             </div>
             <!-- Exa -->
@@ -232,9 +241,12 @@
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700 mr-1">Exa</span>
                     Exa API Key
                 </label>
-                <input type="text" name="news_exa_key" id="newsExaKey"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm font-mono"
-                    placeholder="exa-..." autocomplete="off">
+                <div class="relative">
+                    <input type="password" name="news_exa_key" id="newsExaKey"
+                        class="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm font-mono"
+                        placeholder="exa-..." autocomplete="off">
+                    <button type="button" onclick="toggleKeyVis('newsExaKey')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><i class="fas fa-eye text-xs"></i></button>
+                </div>
                 <p class="text-xs text-gray-400 mt-1">在 <a href="https://dashboard.exa.ai" target="_blank" class="text-primary-600 hover:underline">exa.ai</a> 注册获取</p>
             </div>
             <div class="flex items-center justify-between pt-2 border-t border-gray-100">

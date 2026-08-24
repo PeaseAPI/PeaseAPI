@@ -5216,6 +5216,20 @@
     "Zero retention": "Без хранения данных",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "News Search API Keys": "Ключи API поиска новостей",
+    "Configure your own API keys for news search providers": "Настройте собственные ключи API для поставщиков поиска новостей",
+    "Google News Key": "Ключ Google News",
+    "NewsAPI Key": "Ключ NewsAPI",
+    "Tavily Key": "Ключ Tavily",
+    "Exa Key": "Ключ Exa",
+    "API key for Google News search provider": "Ключ API для поставщика поиска Google News",
+    "API key for NewsAPI.org search provider": "Ключ API для поставщика поиска NewsAPI.org",
+    "API key for Tavily search provider": "Ключ API для поставщика поиска Tavily",
+    "API key for Exa search provider": "Ключ API для поставщика поиска Exa",
+    "News API keys updated": "Ключи API поиска новостей обновлены",
+    "Failed to update news API keys": "Не удалось обновить ключи API поиска новостей",
+    "API endpoint shortcuts configured by the administrator": "Ярлыки конечных точек API, настроенные администратором",
+    "No API info configured yet": "Информация API ещё не настроена"
   }
 }

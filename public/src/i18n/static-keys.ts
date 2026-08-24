@@ -572,6 +572,22 @@ export const STATIC_I18N_KEYS = [
   'This Telegram account is already bound.',
   'This user account no longer exists.',
   'This user account is disabled.',
-  'Telegram binding failed. Please try again.',
+    'Telegram binding failed. Please try again.',
   'Verification scope is missing',
+
+  // API Info page
+  'News Search API Keys',
+  'Configure your own API keys for news search providers',
+  'Google News Key',
+  'NewsAPI Key',
+  'Tavily Key',
+  'Exa Key',
+  'API key for Google News search provider',
+  'API key for NewsAPI.org search provider',
+  'API key for Tavily search provider',
+  'API key for Exa search provider',
+  'News API keys updated',
+  'Failed to update news API keys',
+  'API endpoint shortcuts configured by the administrator',
+  'No API info configured yet',
 ] as const

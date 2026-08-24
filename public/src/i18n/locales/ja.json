@@ -5216,6 +5216,20 @@
     "Zero retention": "データ保持なし",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V 4",
-    "Zoom": "ズーム"
+    "Zoom": "ズーム",
+    "News Search API Keys": "ニュース検索 API キー",
+    "Configure your own API keys for news search providers": "ニュース検索プロバイダーのAPIキーを設定します",
+    "Google News Key": "Google News キー",
+    "NewsAPI Key": "NewsAPI キー",
+    "Tavily Key": "Tavily キー",
+    "Exa Key": "Exa キー",
+    "API key for Google News search provider": "Google News 検索プロバイダーのAPIキー",
+    "API key for NewsAPI.org search provider": "NewsAPI.org 検索プロバイダーのAPIキー",
+    "API key for Tavily search provider": "Tavily 検索プロバイダーのAPIキー",
+    "API key for Exa search provider": "Exa 検索プロバイダーのAPIキー",
+    "News API keys updated": "ニュース検索 API キーが更新されました",
+    "Failed to update news API keys": "ニュース検索 API キーの更新に失敗しました",
+    "API endpoint shortcuts configured by the administrator": "管理者によって設定されたAPIエンドポイントショートカット",
+    "No API info configured yet": "API情報がまだ設定されていません"
   }
 }

@@ -5216,6 +5216,20 @@
     "Zero retention": "零數據保留",
     "Zhipu": "智譜",
     "Zhipu V4": "智譜 V4",
-    "Zoom": "縮放"
+    "Zoom": "縮放",
+    "News Search API Keys": "新聞搜尋 API 金鑰",
+    "Configure your own API keys for news search providers": "設定您自己的新聞搜尋提供商 API 金鑰",
+    "Google News Key": "Google 新聞金鑰",
+    "NewsAPI Key": "NewsAPI 金鑰",
+    "Tavily Key": "Tavily 金鑰",
+    "Exa Key": "Exa 金鑰",
+    "API key for Google News search provider": "Google 新聞搜尋提供商 API 金鑰",
+    "API key for NewsAPI.org search provider": "NewsAPI.org 搜尋提供商 API 金鑰",
+    "API key for Tavily search provider": "Tavily 搜尋提供商 API 金鑰",
+    "API key for Exa search provider": "Exa 搜尋提供商 API 金鑰",
+    "News API keys updated": "新聞搜尋 API 金鑰已更新",
+    "Failed to update news API keys": "更新新聞搜尋 API 金鑰失敗",
+    "API endpoint shortcuts configured by the administrator": "管理員設定的 API 快捷資訊",
+    "No API info configured yet": "尚未設定 API 資訊"
   }
 }

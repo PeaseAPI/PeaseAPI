@@ -26,6 +26,14 @@ class UserApiController extends Controller
             }
         }
 
+        // Mask news keys for security (show first 4 and last 4 chars)
+        $maskKey = function ($key) {
+            if (empty($key)) return '';
+            $len = mb_strlen($key);
+            if ($len <= 8) return str_repeat('•', $len);
+            return mb_substr($key, 0, 4) . str_repeat('•', $len - 8) . mb_substr($key, -4);
+        };
+
         return response()->json([
             'id' => $user->id,
             'username' => $user->username,
@@ -44,11 +52,11 @@ class UserApiController extends Controller
             'created_at' => $user->created_at,
             'last_login_at' => $user->last_login_at,
             'is_admin' => $user->role >= 100,
-            'news_keys' => [
-                'news_google_key' => $setting['news_google_key'] ?? '',
-                'news_newsapi_key' => $setting['news_newsapi_key'] ?? '',
-                'news_tavily_key' => $setting['news_tavily_key'] ?? '',
-                'news_exa_key' => $setting['news_exa_key'] ?? '',
+            'news_keys_masked' => [
+                'news_google_key' => $maskKey($setting['news_google_key'] ?? ''),
+                'news_newsapi_key' => $maskKey($setting['news_newsapi_key'] ?? ''),
+                'news_tavily_key' => $maskKey($setting['news_tavily_key'] ?? ''),
+                'news_exa_key' => $maskKey($setting['news_exa_key'] ?? ''),
             ],
         ]);
     }
@@ -345,21 +353,39 @@ class UserApiController extends Controller
             }
         }
 
-        $setting['news_google_key'] = $validated['news_google_key'] ?? '';
-        $setting['news_newsapi_key'] = $validated['news_newsapi_key'] ?? '';
-        $setting['news_tavily_key'] = $validated['news_tavily_key'] ?? '';
-        $setting['news_exa_key'] = $validated['news_exa_key'] ?? '';
+        // Mask helper - same logic as me()
+        $maskKey = function ($key) {
+            if (empty($key)) return '';
+            $len = mb_strlen($key);
+            if ($len <= 8) return str_repeat('•', $len);
+            return mb_substr($key, 0, 4) . str_repeat('•', $len - 8) . mb_substr($key, -4);
+        };
+
+        // Smart update: only overwrite if the submitted value is a new plaintext key
+        // If submitted value is empty or matches the masked pattern, keep the original
+        $keyFields = ['news_google_key', 'news_newsapi_key', 'news_tavily_key', 'news_exa_key'];
+        foreach ($keyFields as $field) {
+            $submitted = $validated[$field] ?? '';
+            $existing = $setting[$field] ?? '';
+            if ($submitted === '' || $submitted === $maskKey($existing)) {
+                // User didn't change this key - keep existing value
+                // If submitted is empty and existing is also empty, that's fine
+            } else {
+                // New value provided - update it
+                $setting[$field] = $submitted;
+            }
+        }
 
         $user->setting = json_encode($setting, JSON_UNESCAPED_UNICODE);
         $user->save();
 
         return response()->json([
             'message' => __('News API keys updated'),
-            'news_keys' => [
-                'news_google_key' => $setting['news_google_key'],
-                'news_newsapi_key' => $setting['news_newsapi_key'],
-                'news_tavily_key' => $setting['news_tavily_key'],
-                'news_exa_key' => $setting['news_exa_key'],
+            'news_keys_masked' => [
+                'news_google_key' => $maskKey($setting['news_google_key'] ?? ''),
+                'news_newsapi_key' => $maskKey($setting['news_newsapi_key'] ?? ''),
+                'news_tavily_key' => $maskKey($setting['news_tavily_key'] ?? ''),
+                'news_exa_key' => $maskKey($setting['news_exa_key'] ?? ''),
             ],
         ]);
     }

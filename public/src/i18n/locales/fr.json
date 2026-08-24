@@ -5216,6 +5216,20 @@
     "Zero retention": "Aucune rétention",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "News Search API Keys": "Clés API de recherche d'actualités",
+    "Configure your own API keys for news search providers": "Configurez vos propres clés API pour les fournisseurs de recherche d'actualités",
+    "Google News Key": "Clé Google News",
+    "NewsAPI Key": "Clé NewsAPI",
+    "Tavily Key": "Clé Tavily",
+    "Exa Key": "Clé Exa",
+    "API key for Google News search provider": "Clé API pour le fournisseur de recherche Google News",
+    "API key for NewsAPI.org search provider": "Clé API pour le fournisseur de recherche NewsAPI.org",
+    "API key for Tavily search provider": "Clé API pour le fournisseur de recherche Tavily",
+    "API key for Exa search provider": "Clé API pour le fournisseur de recherche Exa",
+    "News API keys updated": "Clés API de recherche d'actualités mises à jour",
+    "Failed to update news API keys": "Échec de la mise à jour des clés API de recherche d'actualités",
+    "API endpoint shortcuts configured by the administrator": "Raccourcis de point de terminaison API configurés par l'administrateur",
+    "No API info configured yet": "Aucune information API configurée"
   }
 }

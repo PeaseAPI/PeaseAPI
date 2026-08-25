@@ -119,7 +119,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user/self', [UserController::class, 'self']);
     Route::put('/user/self', [UserController::class, 'updateSelf']);
     Route::delete('/user/self', [UserController::class, 'deleteSelf']);
-    Route::get('/user/self/groups', [UserController::class, 'groups']);
+        Route::get('/user/self/groups', [UserController::class, 'groups']);
+    Route::put('/user/news-keys', [UserController::class, 'updateNewsKeys']);
     Route::get('/user/models', [ModelController::class, 'userModels']);
     Route::get('/user/groups', [UserController::class, 'userGroups']);
 

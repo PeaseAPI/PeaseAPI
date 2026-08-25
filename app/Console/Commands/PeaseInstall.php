@@ -50,42 +50,47 @@ class PeaseInstall extends Command
         $this->newLine();
 
         // 1. 环境检测
-        $this->info('【1/6】检测运行环境...');
+        $this->info('【1/7】检测运行环境...');
         $this->checkEnvironment();
         $this->newLine();
 
         // 2. 创建 .env 文件（如果不存在）
-        $this->info('【2/6】检查 .env 配置文件...');
+        $this->info('【2/7】检查 .env 配置文件...');
         $this->ensureEnvFile();
         $this->newLine();
 
         // 3. 生成 APP_KEY
         if (! $this->option('skip-key')) {
-            $this->info('【3/6】生成应用密钥 (APP_KEY)...');
+            $this->info('【3/7】生成应用密钥 (APP_KEY)...');
             $this->generateAppKey();
         } else {
-            $this->info('【3/6】已跳过 APP_KEY 生成');
+            $this->info('【3/7】已跳过 APP_KEY 生成');
         }
         $this->newLine();
 
         // 4. 缓存清理与包发现（替代被移除的 composer post-autoload-dump 脚本）
-        $this->info('【4/6】执行包发现与缓存清理...');
+        $this->info('【4/7】执行包发现与缓存清理...');
         $this->clearAllCaches();
         $this->runPackageDiscover();
         $this->newLine();
 
         // 5. 发布 Laravel 资源（替代被移除的 composer post-update-cmd 脚本）
-        $this->info('【5/6】发布 Laravel 资源文件...');
+        $this->info('【5/7】发布 Laravel 资源文件...');
         $this->publishLaravelAssets();
         $this->newLine();
 
         // 6. 数据库迁移
         if (! $this->option('skip-migrate')) {
-            $this->info('【6/6】执行数据库迁移...');
+            $this->info('【6/7】执行数据库迁移...');
             $this->runMigration();
         } else {
-            $this->info('【6/6】已跳过数据库迁移');
+            $this->info('【6/7】已跳过数据库迁移');
         }
+                $this->newLine();
+
+        // 【7/7】写入默认系统配置
+        $this->info("【7/7】写入默认系统配置...");
+        $this->seedDefaultOptions();
         $this->newLine();
 
         // 清理头像历史脏数据（重装后 public/avatars 可能被清空，
@@ -314,6 +319,42 @@ class PeaseInstall extends Command
         } catch (\Exception $e) {
             $this->error('  数据库迁移失败：'.$e->getMessage());
             $this->line('  <fg=gray>请检查 .env 中的数据库配置后手动执行：php artisan migrate</>');
+        }
+    }
+
+        /**
+     * Seed default option values into the database so that the
+     * /api/status endpoint returns a complete response even on a
+     * fresh installation (no manual admin-panel toggling needed).
+     */
+    protected function seedDefaultOptions(): void
+    {
+        try {
+            $defaults = \App\Services\OptionService::DEFAULTS;
+            $seeded = 0;
+
+            foreach ($defaults as $key => $value) {
+                // Only insert if the key does not already exist
+                if (! \App\Models\Option::where('key', $key)->exists()) {
+                    $stored = is_array($value)
+                        ? json_encode($value, JSON_UNESCAPED_UNICODE)
+                        : (string) $value;
+                    \App\Models\Option::create(['key' => $key, 'value' => $stored]);
+                    $seeded++;
+                }
+            }
+
+            if ($seeded > 0) {
+                $this->line("  <fg=green>✓</> 已写入 {$seeded} 条默认配置");
+            } else {
+                $this->line('  <fg=gray>• 所有默认配置已存在，无需写入</>');
+            }
+
+            // Clear option cache so the new values are visible immediately
+            \App\Models\Option::clearCache();
+        } catch (\Exception $e) {
+            $this->warn('  默认配置写入失败：'.$e->getMessage());
+            $this->line('  <fg=gray>可稍后在管理面板中手动配置</>');
         }
     }
 

@@ -310,16 +310,47 @@ class OptionService
         'CrossGroupRetryEnabled' => true,
         'AutoGroupSetting' => '',
         'UserUsableGroupSetting' => '',
+
+        // ---------- Sidebar / Nav Modules ----------
+        'SidebarModulesAdmin' => '',
+        'HeaderNavModules' => '',
+
+        // ---------- Notice ----------
+        'Notice' => '',
+
+        // ---------- Console Content Settings (console_setting.*) ----------
+        'console_setting.api_info_enabled' => true,
+        'console_setting.api_info' => [],
+        'console_setting.announcements_enabled' => true,
+        'console_setting.announcements' => [],
+        'console_setting.faq_enabled' => true,
+        'console_setting.faq' => [],
+        'console_setting.uptime_kuma_enabled' => false,
+        'console_setting.uptime_kuma_groups' => [],
+
+        // ---------- Currency / Quota Display ----------
+        'QuotaPerUnit' => 500000,
+        'QuotaDisplayType' => 'USD',
+        'UsdExchangeRate' => 1,
+        'CustomCurrencySymbol' => '¤',
+        'CustomCurrencyExchangeRate' => 1,
+
+        // ---------- OAuth Register ----------
+        'OAuthRegisterEnabled' => true,
+        'UserAgreementEnabled' => false,
+        'PrivacyPolicyEnabled' => false,
     ];
 
     /**
      * Keys that should be stored as JSON arrays/objects.
      */
-    public const JSON_KEYS = [
+        public const JSON_KEYS = [
         'ModelRatio', 'GroupRatio', 'CompletionRatio', 'ModelPrice', 'CacheRatio',
         'EmailDomainWhitelist', 'EmailDomainRestriction', 'UserUsableGroups',
         'FriendLinks', 'AutoGroupRatio', 'CheckinStreakRules', 'PasskeyROrigins',
-        'TieredBillingRules',
+        'TieredBillingRules', 'SidebarModulesAdmin', 'HeaderNavModules',
+        'console_setting.api_info', 'console_setting.announcements',
+        'console_setting.faq', 'console_setting.uptime_kuma_groups',
     ];
 
     /**
@@ -351,6 +382,11 @@ class OptionService
         'PasskeyEnabled', 'TwoFAEnabled', 'TwoFARequired',
         'SecureVerificationEnabled', 'SessionCookieSecure', 'PaymentComplianceAcknowledged',
         'MJNotify', 'SunoNotify', 'TaskNotify', 'SunoAutoPlay',
+        // Console content toggles
+        'console_setting.api_info_enabled', 'console_setting.announcements_enabled',
+        'console_setting.faq_enabled', 'console_setting.uptime_kuma_enabled',
+        // OAuth / Agreement
+        'OAuthRegisterEnabled', 'UserAgreementEnabled', 'PrivacyPolicyEnabled',
     ];
 
     /**
@@ -373,13 +409,15 @@ class OptionService
         'LogCleanIntervalDays', 'CheckinStreakResetHour',
         'PaymentComplianceAcknowledgedAt',
         'SmsCodeTTL', 'SmsCodeLength', 'SmsSendInterval', 'SmsDailyLimit', 'SmsIpHourLimit',
+        'QuotaPerUnit',
     ];
 
     /**
      * Keys that should be floats.
      */
-    public const FLOAT_KEYS = [
+        public const FLOAT_KEYS = [
         'BillingPromptRatio', 'StripeUnitPrice', 'TopUpRatio',
+        'UsdExchangeRate', 'CustomCurrencyExchangeRate',
     ];
 
     /**

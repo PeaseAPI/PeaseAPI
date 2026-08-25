@@ -13,6 +13,7 @@ use App\Http\Controllers\LogController;
 use App\Http\Controllers\MidjourneyController;
 use App\Http\Controllers\ModelController;
 use App\Http\Controllers\OAuthController;
+use App\Http\Middleware\UserAuth;
 use App\Http\Controllers\OptionController;
 use App\Http\Controllers\RedemptionController;
 use App\Http\Controllers\RelayController;
@@ -107,14 +108,16 @@ Route::post('/alipay/notify', [TopUpController::class, 'alipayNotify']);
 Route::post('/verify', [AuthController::class, 'verify']);
 
 // ============================================
+// Auth endpoints that use cookie-based session validation (not Sanctum)
+Route::post('/user/auth/refresh', [AuthController::class, 'refresh']);
+Route::post('/user/auth/logout', [AuthController::class, 'logout']);
+// 2FA login verification (not behind auth:sanctum — user is not yet authenticated)
+Route::post('/user/login/2fa', [AuthController::class, 'verifyTwoFactor']);
+
 // AUTHENTICATED ROUTES (User Session or Token)
 // ============================================
 
-Route::middleware('auth:sanctum')->group(function () {
-    // Auth
-    Route::post('/user/auth/refresh', [AuthController::class, 'refresh']);
-    Route::post('/user/auth/logout', [AuthController::class, 'logout']);
-
+Route::middleware(UserAuth::class)->group(function () {
     // User Self Management
     Route::get('/user/self', [UserController::class, 'self']);
     Route::put('/user/self', [UserController::class, 'updateSelf']);
@@ -142,13 +145,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user/passkey/login/begin', [WebAuthController::class, 'loginBegin']);
     Route::post('/user/passkey/login/finish', [WebAuthController::class, 'loginFinish']);
 
-    // 2FA
+        // 2FA (management endpoints — 2fa login verify is outside this group)
     Route::get('/user/2fa/status', [AuthController::class, 'twoFactorStatus']);
     Route::post('/user/2fa/setup', [AuthController::class, 'setupTwoFactor']);
     Route::post('/user/2fa/enable', [AuthController::class, 'enableTwoFactor']);
     Route::post('/user/2fa/disable', [AuthController::class, 'disableTwoFactor']);
     Route::post('/user/2fa/backup_codes', [AuthController::class, 'generateBackupCodes']);
-    Route::post('/user/login/2fa', [AuthController::class, 'verifyTwoFactor']);
 
     // User Aff
     Route::get('/user/aff', [UserController::class, 'affiliate']);
@@ -225,7 +227,7 @@ Route::middleware('auth:sanctum')->group(function () {
 // ADMIN ROUTES (Admin or Above)
 // ============================================
 
-Route::middleware(['auth:sanctum', AdminAuth::class])->group(function () {
+Route::middleware([UserAuth::class, AdminAuth::class])->group(function () {
     // Users (Admin)
     Route::get('/user/', [UserController::class, 'index']);
     Route::get('/user/search', [UserController::class, 'search']);
@@ -407,7 +409,7 @@ Route::middleware(['auth:sanctum', AdminAuth::class])->group(function () {
 // ROOT ROUTES (Root Only)
 // ============================================
 
-Route::middleware(['auth:sanctum', RootAuth::class])->group(function () {
+Route::middleware([UserAuth::class, RootAuth::class])->group(function () {
     // Options (Root)
     Route::get('/option/', [OptionController::class, 'index']);
     Route::put('/option/', [OptionController::class, 'update']);
@@ -544,7 +546,7 @@ Route::middleware([TokenAuth::class])->prefix('pg')->group(function () {
 });
 
 // Dashboard
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(UserAuth::class)->group(function () {
     Route::get('dashboard/billing/subscription', [SubscriptionController::class, 'dashboard']);
     Route::get('v1/dashboard/billing/subscription', [SubscriptionController::class, 'dashboard']);
     Route::get('dashboard/billing/usage', [LogController::class, 'dashboardUsage']);

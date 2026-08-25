@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UserSession extends Model
 {
-    protected $fillable = ['user_id', 'token', 'ip', 'user_agent', 'expires_at'];
+    protected $fillable = ['user_id', 'login_method', 'token', 'ip', 'user_agent', 'expires_at'];
 
     protected function casts(): array
     {
@@ -21,3 +21,4 @@ class UserSession extends Model
         return $this->belongsTo(User::class);
     }
 }
+

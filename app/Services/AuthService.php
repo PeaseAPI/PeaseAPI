@@ -62,13 +62,14 @@ class AuthService
         return $user;
     }
 
-    /**
+        /**
      * 创建会话
      */
-    public function createSession(User $user, string $ip, string $userAgent): UserSession
+    public function createSession(User $user, string $ip, string $userAgent, string $loginMethod = 'password'): UserSession
     {
         $session = UserSession::create([
             'user_id' => $user->id,
+            'login_method' => $loginMethod,
             'token' => Str::random(64),
             'ip' => $ip,
             'user_agent' => $userAgent,

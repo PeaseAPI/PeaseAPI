@@ -32,6 +32,117 @@ class AuthController extends Controller
     ) {}
 
     /**
+     * Format a User model as the AuthUser object expected by the frontend.
+     *
+     * Matches the {@link AuthUser} TypeScript interface which includes
+     * `sidebar_modules` (extracted from the user's `setting` JSON) and
+     * `permissions` (role-derived capability flags used by the sidebar
+     * module overlay).
+     */
+    private function formatAuthUser(User $user): array
+    {
+        $setting = is_string($user->setting)
+            ? (json_decode($user->setting, true) ?? [])
+            : ($user->setting ?? []);
+
+        return [
+            'id' => $user->id,
+            'username' => $user->username,
+            'display_name' => $user->display_name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'status' => $user->status,
+            'group' => $user->group,
+            'quota' => $user->quota,
+            'used_quota' => $user->used_quota,
+            'request_count' => $user->request_count,
+            'aff_code' => $user->aff_code,
+            'aff_count' => $user->aff_count ?? 0,
+            'aff_quota' => $user->aff_quota ?? 0,
+            'aff_history_quota' => $user->aff_history ?? 0,
+            'inviter_id' => $user->inviter_id,
+            'github_id' => $user->github_id,
+            'discord_id' => $user->discord_id,
+            'oidc_id' => $user->oidc_id,
+            'wechat_id' => $user->wechat_id,
+            'telegram_id' => $user->telegram_id,
+            'linux_do_id' => $user->linux_do_id,
+            'language' => $setting['language'] ?? null,
+            'setting' => $user->setting,
+            'stripe_customer' => $user->stripe_customer ?? null,
+            'sidebar_modules' => $setting['sidebar_modules'] ?? null,
+            'permissions' => [
+                'sidebar_settings' => $user->role !== 100,
+            ],
+        ];
+    }
+
+    /**
+     * Format a UserSession model as the LoginSession object expected by the frontend.
+     *
+     * Matches the {@link LoginSession} TypeScript interface.
+     */
+    private function formatLoginSession(UserSession $session, bool $isCurrent = true): array
+    {
+        $expiresAt = $session->expires_at;
+        $createdAt = $session->created_at;
+        $updatedAt = $session->updated_at;
+
+        return [
+            'sid' => $session->token,
+            'current' => $isCurrent,
+            'login_method' => $session->login_method ?? 'password',
+            'ip' => $session->ip,
+            'user_agent' => $session->user_agent,
+            'created_at' => $createdAt instanceof \Carbon\Carbon
+                ? $createdAt->timestamp
+                : (int) $createdAt,
+            'last_active_at' => $updatedAt instanceof \Carbon\Carbon
+                ? $updatedAt->timestamp
+                : (int) ($updatedAt ?? time()),
+            'expires_at' => $expiresAt instanceof \Carbon\Carbon
+                ? $expiresAt->timestamp
+                : (int) $expiresAt,
+        ];
+    }
+
+    /**
+     * Build the full AuthBundle expected by the frontend.
+     *
+     * Matches the {@link AuthBundle} TypeScript interface:
+     *   access_token, token_type, access_expires_at, user, session
+     */
+    private function formatAuthBundle(User $user, UserSession $session): array
+    {
+        $expiresAt = $session->expires_at;
+        $expiresTimestamp = $expiresAt instanceof \Carbon\Carbon
+            ? $expiresAt->timestamp
+            : (int) $expiresAt;
+
+        return [
+            'access_token' => $session->token,
+            'token_type' => 'Bearer',
+            'access_expires_at' => $expiresTimestamp,
+            'user' => $this->formatAuthUser($user),
+            'session' => $this->formatLoginSession($session),
+        ];
+    }
+
+    /**
+     * Create a login response with AuthBundle and session cookie.
+     */
+    private function loginSuccessResponse(User $user, UserSession $session): JsonResponse
+    {
+        $lifetime = config('pease-api.auth.session_lifetime', 168) * 60;
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Login successful'),
+            'data' => $this->formatAuthBundle($user, $session),
+        ])->cookie('session', $session->token, $lifetime, '/', '', false, true);
+    }
+
+    /**
      * 用户注册
      */
     public function register(Request $request): JsonResponse
@@ -186,21 +297,14 @@ class AuthController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => __('Two-factor authentication required'),
-                'data' => ['require_2fa' => true, 'pending_token' => $pendingToken],
+                'data' => ['require_2fa' => true, 'flow_token' => $pendingToken],
             ]);
         }
 
         $session = $this->authService->createSession($user, $request->ip(), $request->userAgent());
         $user->update(['last_login_at' => time()]);
 
-        return response()->json([
-            'success' => true,
-            'message' => __('Login successful'),
-            'data' => [
-                'user' => $user,
-                'session_token' => $session->token,
-            ],
-        ])->cookie('session', $session->token, config('pease-api.auth.session_lifetime', 168) * 60, '/', '', false, true);
+        return $this->loginSuccessResponse($user, $session);
     }
 
     /**
@@ -209,14 +313,14 @@ class AuthController extends Controller
     public function verifyTwoFactor(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'pending_token' => 'required|string',
+            'flow_token' => 'required|string',
             'code' => 'required|string|size:6',
         ]);
         if ($validator->fails()) {
             return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
         }
 
-        $userId = Cache::get('2fa_pending:'.$request->input('pending_token'));
+        $userId = Cache::get('2fa_pending:'.$request->input('flow_token'));
         if (! $userId) {
             return response()->json(['success' => false, 'message' => __('Login token has expired, please log in again')], 401);
         }
@@ -239,20 +343,13 @@ class AuthController extends Controller
             $twoFA->update(['backup_codes' => json_encode($backupCodes)]);
         }
 
-        Cache::forget('2fa_pending:'.$request->input('pending_token'));
+            Cache::forget('2fa_pending:'.$request->input('flow_token'));
 
         $user = User::findOrFail($userId);
-        $session = $this->authService->createSession($user, $request->ip(), $request->userAgent());
+        $session = $this->authService->createSession($user, $request->ip(), $request->userAgent(), '2fa');
         $user->update(['last_login_at' => time()]);
 
-        return response()->json([
-            'success' => true,
-            'message' => __('Login successful'),
-            'data' => [
-                'user' => $user,
-                'session_token' => $session->token,
-            ],
-        ])->cookie('session', $session->token, config('pease-api.auth.session_lifetime', 168) * 60, '/', '', false, true);
+        return $this->loginSuccessResponse($user, $session);
     }
 
     /**
@@ -260,7 +357,8 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
-        $sessionToken = $request->cookie('session');
+        // Support both cookie and X-Auth-Session header
+        $sessionToken = $request->header('X-Auth-Session') ?: $request->cookie('session');
         if ($sessionToken) {
             $this->authService->deleteSession($sessionToken);
         }
@@ -274,7 +372,8 @@ class AuthController extends Controller
      */
     public function refresh(Request $request): JsonResponse
     {
-        $sessionToken = $request->cookie('session');
+        // Support both cookie and X-Auth-Session header
+        $sessionToken = $request->header('X-Auth-Session') ?: $request->cookie('session');
         if (! $sessionToken) {
             return response()->json(['success' => false, 'message' => __('Not logged in')], 401);
         }
@@ -284,7 +383,19 @@ class AuthController extends Controller
         }
         $this->authService->refreshSession($session);
 
-        return response()->json(['success' => true, 'message' => __('Session refreshed')]);
+        // Reload session to get updated expires_at
+        $session->refresh();
+
+        $user = User::find($session->user_id);
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => __('User not found')], 401);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Session refreshed'),
+            'data' => $this->formatAuthBundle($user, $session),
+        ]);
     }
 
     /**

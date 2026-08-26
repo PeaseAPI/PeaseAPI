@@ -94,6 +94,11 @@ export function SidebarModulesCard() {
           description: t('API endpoint shortcuts and news search keys'),
         },
         {
+          key: 'news_api_keys',
+          title: t('News API Keys'),
+          description: t('News search provider API key management'),
+        },
+        {
           key: 'log',
           title: t('Usage Logs'),
           description: t('API usage records'),

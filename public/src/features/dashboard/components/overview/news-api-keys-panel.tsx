@@ -75,7 +75,7 @@ export function NewsApiKeysPanel() {
       empty={false}
       headerActions={
         <Link
-          to='/api-info'
+          to='/api-info/news-keys'
           className='text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition-colors'
         >
           {t('Configure')}

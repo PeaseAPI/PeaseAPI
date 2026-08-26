@@ -63,7 +63,7 @@
             </div>
             <div class="min-w-0 flex-1">
                 <p class="text-xs font-semibold text-green-800 mb-0.5">OpenAI 兼容</p>
-                <code class="text-[11px] bg-white/70 border border-green-200 rounded px-1.5 py-0.5 select-all text-green-700 font-mono block truncate cursor-pointer" onclick="copyToClipboard(this, '{{ url('/v1') }}')">{{ url('/v1') }}</code>
+                <code class="text-[11px] bg-white/70 border border-green-200 rounded px-1.5 py-0.5 select-all text-green-700 font-mono block truncate cursor-pointer" data-url="{{ url('/v1') }}" onclick="copyToClipboard(this, this.dataset.url)">{{ url('/v1') }}</code>
             </div>
             <i class="fas fa-copy text-green-400 opacity-0 group-hover:opacity-100 transition text-xs absolute top-2 right-2"></i>
         </div>
@@ -73,7 +73,7 @@
             </div>
             <div class="min-w-0 flex-1">
                 <p class="text-xs font-semibold text-orange-800 mb-0.5">Anthropic Claude</p>
-                <code class="text-[11px] bg-white/70 border border-orange-200 rounded px-1.5 py-0.5 select-all text-orange-700 font-mono block truncate cursor-pointer" onclick="copyToClipboard(this, '{{ url('/v1') }}')">{{ url('/v1') }}</code>
+                <code class="text-[11px] bg-white/70 border border-orange-200 rounded px-1.5 py-0.5 select-all text-orange-700 font-mono block truncate cursor-pointer" data-url="{{ url('/v1') }}" onclick="copyToClipboard(this, this.dataset.url)">{{ url('/v1') }}</code>
             </div>
             <i class="fas fa-copy text-orange-400 opacity-0 group-hover:opacity-100 transition text-xs absolute top-2 right-2"></i>
         </div>
@@ -83,7 +83,7 @@
             </div>
             <div class="min-w-0 flex-1">
                 <p class="text-xs font-semibold text-blue-800 mb-0.5">__News__</p>
-                <code class="text-[11px] bg-white/70 border border-blue-200 rounded px-1.5 py-0.5 select-all text-blue-700 font-mono block truncate cursor-pointer" onclick="copyToClipboard(this, '{{ url('/news') }}')">{{ url('/news') }}</code>
+                <code class="text-[11px] bg-white/70 border border-blue-200 rounded px-1.5 py-0.5 select-all text-blue-700 font-mono block truncate cursor-pointer" data-url="{{ url('/news') }}" onclick="copyToClipboard(this, this.dataset.url)">{{ url('/news') }}</code>
             </div>
             <i class="fas fa-copy text-blue-400 opacity-0 group-hover:opacity-100 transition text-xs absolute top-2 right-2"></i>
         </div>
@@ -93,7 +93,7 @@
             </div>
             <div class="min-w-0 flex-1">
                 <p class="text-xs font-semibold text-purple-800 mb-0.5">__Search__</p>
-                <code class="text-[11px] bg-white/70 border border-purple-200 rounded px-1.5 py-0.5 select-all text-purple-700 font-mono block truncate cursor-pointer" onclick="copyToClipboard(this, '{{ url('/search') }}')">{{ url('/search') }}</code>
+                <code class="text-[11px] bg-white/70 border border-purple-200 rounded px-1.5 py-0.5 select-all text-purple-700 font-mono block truncate cursor-pointer" data-url="{{ url('/search') }}" onclick="copyToClipboard(this, this.dataset.url)">{{ url('/search') }}</code>
             </div>
             <i class="fas fa-copy text-purple-400 opacity-0 group-hover:opacity-100 transition text-xs absolute top-2 right-2"></i>
         </div>

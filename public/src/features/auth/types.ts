@@ -133,7 +133,14 @@ export interface SystemStatus {
     register_enabled?: boolean
     password_login_enabled?: boolean
     password_register_enabled?: boolean
-    custom_oauth_providers?: CustomOAuthProviderInfo[]
+        custom_oauth_providers?: CustomOAuthProviderInfo[]
+    api_protocol_endpoints?: Array<{
+      key: string
+      label: string
+      endpoint: string
+      description: string
+      protocol: string
+    }>
     [key: string]: unknown
   }
   // Allow direct access to common properties
@@ -177,7 +184,14 @@ export interface SystemStatus {
   register_enabled?: boolean
   password_login_enabled?: boolean
   password_register_enabled?: boolean
-  custom_oauth_providers?: CustomOAuthProviderInfo[]
+    custom_oauth_providers?: CustomOAuthProviderInfo[]
+  api_protocol_endpoints?: Array<{
+    key: string
+    label: string
+    endpoint: string
+    description: string
+    protocol: string
+  }>
   [key: string]: unknown
 }
 

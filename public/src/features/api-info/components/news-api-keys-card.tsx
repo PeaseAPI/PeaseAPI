@@ -65,11 +65,17 @@ function useNewsKeyFields(): NewsKeyFieldDef[] {
       description: t('API key for Tavily search provider'),
       placeholder: 'tvly-...',
     },
-    {
+        {
       key: 'news_exa_key',
       label: t('Exa Key'),
       description: t('API key for Exa search provider'),
       placeholder: 'exa-...',
+    },
+    {
+      key: 'news_brave_key',
+      label: t('Brave Search Key'),
+      description: t('API key for Brave Search provider'),
+      placeholder: 'BSA...',
     },
   ]
 }
@@ -97,12 +103,13 @@ export function NewsApiKeysCard() {
   const maskedKeys = data?.news_keys_masked
 
   const form = useForm<UpdateNewsKeysRequest>({
-    values: maskedKeys
+        values: maskedKeys
       ? {
           news_google_key: maskedKeys.news_google_key ?? '',
           news_newsapi_key: maskedKeys.news_newsapi_key ?? '',
           news_tavily_key: maskedKeys.news_tavily_key ?? '',
           news_exa_key: maskedKeys.news_exa_key ?? '',
+          news_brave_key: maskedKeys.news_brave_key ?? '',
         }
       : undefined,
   })

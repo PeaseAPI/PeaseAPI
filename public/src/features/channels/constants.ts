@@ -81,7 +81,8 @@ export const CHANNEL_TYPES = {
   80: 'Google Custom Search',
   81: 'NewsAPI',
   82: 'Tavily Search',
-  83: 'Exa Search',
+    83: 'Exa Search',
+  84: 'Brave Search',
 } as const
 
 const CHANNEL_TYPE_DISPLAY_ORDER: number[] = [

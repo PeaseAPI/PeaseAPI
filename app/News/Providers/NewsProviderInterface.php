@@ -18,7 +18,7 @@ use App\News\NewsSearchResult;
 interface NewsProviderInterface
 {
     /**
-     * Provider 标识（如 google_custom_search / news_api / tavily / exa）
+     * Provider 标识（如 google_custom_search / news_api / tavily / exa / brave_search）
      */
     public function getProviderKey(): string;
 
@@ -33,4 +33,12 @@ interface NewsProviderInterface
      * @throws \RuntimeException 上游请求失败或凭证缺失时抛出
      */
     public function search(NewsSearchRequest $request, Channel $channel): NewsSearchResult;
+
+    /**
+     * 是否为纯新闻 Provider（仅返回新闻内容）
+     *
+     * 返回 true  -> 走 /news 端点
+     * 返回 false -> 走 /search 端点（通用搜索 / AI 搜索）
+     */
+    public function isNewsOnly(): bool;
 }

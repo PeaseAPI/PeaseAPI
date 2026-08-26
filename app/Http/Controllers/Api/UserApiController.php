@@ -57,6 +57,7 @@ class UserApiController extends Controller
                 'news_newsapi_key' => $maskKey($setting['news_newsapi_key'] ?? ''),
                 'news_tavily_key' => $maskKey($setting['news_tavily_key'] ?? ''),
                 'news_exa_key' => $maskKey($setting['news_exa_key'] ?? ''),
+                'news_brave_key' => $maskKey($setting['news_brave_key'] ?? ''),
             ],
         ]);
     }
@@ -342,6 +343,7 @@ class UserApiController extends Controller
             'news_newsapi_key' => 'nullable|string|max:200',
             'news_tavily_key' => 'nullable|string|max:200',
             'news_exa_key' => 'nullable|string|max:200',
+            'news_brave_key' => 'nullable|string|max:200',
         ]);
 
         // Merge into existing setting JSON
@@ -363,7 +365,7 @@ class UserApiController extends Controller
 
         // Smart update: only overwrite if the submitted value is a new plaintext key
         // If submitted value is empty or matches the masked pattern, keep the original
-        $keyFields = ['news_google_key', 'news_newsapi_key', 'news_tavily_key', 'news_exa_key'];
+        $keyFields = ['news_google_key', 'news_newsapi_key', 'news_tavily_key', 'news_exa_key', 'news_brave_key'];
         foreach ($keyFields as $field) {
             $submitted = $validated[$field] ?? '';
             $existing = $setting[$field] ?? '';
@@ -386,6 +388,7 @@ class UserApiController extends Controller
                 'news_newsapi_key' => $maskKey($setting['news_newsapi_key'] ?? ''),
                 'news_tavily_key' => $maskKey($setting['news_tavily_key'] ?? ''),
                 'news_exa_key' => $maskKey($setting['news_exa_key'] ?? ''),
+                'news_brave_key' => $maskKey($setting['news_brave_key'] ?? ''),
             ],
         ]);
     }

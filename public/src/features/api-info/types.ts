@@ -29,6 +29,7 @@ export interface NewsKeysMasked {
   news_newsapi_key: string
   news_tavily_key: string
   news_exa_key: string
+  news_brave_key: string
 }
 
 /**
@@ -39,6 +40,7 @@ export interface UpdateNewsKeysRequest {
   news_newsapi_key?: string
   news_tavily_key?: string
   news_exa_key?: string
+  news_brave_key?: string
 }
 
 /**

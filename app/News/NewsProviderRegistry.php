@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\News;
 
 use App\Enums\ChannelType;
+use App\News\Providers\BraveSearchProvider;
 use App\News\Providers\ExaProvider;
 use App\News\Providers\GoogleCustomSearchProvider;
 use App\News\Providers\NewsApiProvider;
@@ -23,10 +24,11 @@ class NewsProviderRegistry
 
     public function __construct()
     {
-        $this->register(new GoogleCustomSearchProvider);
+                $this->register(new GoogleCustomSearchProvider);
         $this->register(new NewsApiProvider);
         $this->register(new TavilyProvider);
         $this->register(new ExaProvider);
+        $this->register(new BraveSearchProvider);
     }
 
     public function register(NewsProviderInterface $provider): void
@@ -63,7 +65,7 @@ class NewsProviderRegistry
      *
      * @return array<int, array<string, mixed>>
      */
-    public function list(): array
+        public function list(): array
     {
         $result = [];
         foreach ($this->providers as $key => $provider) {
@@ -73,6 +75,7 @@ class NewsProviderRegistry
                 'channel_type' => $type->value,
                 'label' => $type->label(),
                 'default_base_url' => $type->baseUrl(),
+                'is_news_only' => $provider->isNewsOnly(),
             ];
         }
 

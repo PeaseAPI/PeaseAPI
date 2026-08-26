@@ -14,6 +14,8 @@ use App\Http\Controllers\MidjourneyController;
 use App\Http\Controllers\ModelController;
 use App\Http\Controllers\OAuthController;
 use App\Http\Middleware\UserAuth;
+use App\Http\Controllers\NewsController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\OptionController;
 use App\Http\Controllers\RedemptionController;
 use App\Http\Controllers\RelayController;
@@ -551,6 +553,18 @@ Route::middleware(UserAuth::class)->group(function () {
     Route::get('v1/dashboard/billing/subscription', [SubscriptionController::class, 'dashboard']);
     Route::get('dashboard/billing/usage', [LogController::class, 'dashboardUsage']);
     Route::get('v1/dashboard/billing/usage', [LogController::class, 'dashboardUsage']);
+});
+
+// News / Search Aggregation (requires token auth)
+Route::middleware([TokenAuth::class])->prefix('news')->group(function () {
+    Route::post('search', [NewsController::class, 'search']);
+    Route::get('providers', [NewsController::class, 'providers']);
+});
+
+// Search (web / general search, requires token auth)
+Route::middleware([TokenAuth::class])->prefix('search')->group(function () {
+    Route::post('search', [SearchController::class, 'search']);
+    Route::get('providers', [SearchController::class, 'providers']);
 });
 
 // Catch-all for any remaining relay routes

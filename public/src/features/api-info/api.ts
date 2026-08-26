@@ -30,11 +30,12 @@ export async function getNewsKeys(): Promise<{
   const res = await api.get('/api/user/self')
   return {
     success: true,
-    news_keys_masked: res.data?.news_keys_masked ?? {
+        news_keys_masked: res.data?.news_keys_masked ?? {
       news_google_key: '',
       news_newsapi_key: '',
       news_tavily_key: '',
       news_exa_key: '',
+      news_brave_key: '',
     },
   }
 }

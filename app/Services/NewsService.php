@@ -24,11 +24,16 @@ use Illuminate\Support\Str;
  */
 class NewsService
 {
-    /** 自动选择渠道时遍历的新闻 ChannelType（按优先级排序） */
+    /** 纯新闻 ChannelType（走 /news 端点） */
     protected array $newsChannelTypes = [
+        ChannelType::NEWS_API,
+    ];
+
+    /** 通用搜索 ChannelType（走 /search 端点） */
+    protected array $searchChannelTypes = [
         ChannelType::TAVILY,
         ChannelType::EXA,
-        ChannelType::NEWS_API,
+        ChannelType::BRAVE_SEARCH,
         ChannelType::GOOGLE_CUSTOM_SEARCH,
     ];
 
@@ -37,12 +42,33 @@ class NewsService
         protected LogService $logService,
     ) {}
 
-    /**
-     * 执行新闻搜索
+        /**
+     * 执行新闻搜索（仅使用新闻类 Provider）
      *
      * @return array<string, mixed>
      */
     public function search(Request $request): array
+    {
+        return $this->doSearch($request, 'news');
+    }
+
+    /**
+     * 执行网页搜索（仅使用搜索类 Provider）
+     *
+     * @return array<string, mixed>
+     */
+    public function searchWeb(Request $request): array
+    {
+        return $this->doSearch($request, 'search');
+    }
+
+    /**
+     * 统一搜索逻辑
+     *
+     * @param  'news'|'search'  $mode  news = 仅新闻渠道，search = 仅搜索渠道
+     * @return array<string, mixed>
+     */
+    protected function doSearch(Request $request, string $mode): array
     {
         $searchRequest = NewsSearchRequest::fromArray($request->all());
 
@@ -65,7 +91,7 @@ class NewsService
         $userGroup = (string) $request->attributes->get('user_group', 'default');
         $requestId = (string) Str::uuid();
 
-        [$provider, $channel] = $this->selectProviderAndChannel($searchRequest->provider, $userGroup);
+                [$provider, $channel] = $this->selectProviderAndChannel($searchRequest->provider, $userGroup, $mode);
 
         if (! $provider || ! $channel) {
             return [
@@ -134,7 +160,7 @@ class NewsService
      *
      * @return array{0: ?NewsProviderInterface, 1: ?Channel}
      */
-    protected function selectProviderAndChannel(?string $providerKey, string $userGroup): array
+        protected function selectProviderAndChannel(?string $providerKey, string $userGroup, string $mode = 'news'): array
     {
         if ($providerKey) {
             $provider = $this->registry->get($providerKey);
@@ -145,7 +171,9 @@ class NewsService
             return [$provider, $this->findChannel($provider->getChannelType(), $userGroup)];
         }
 
-        foreach ($this->newsChannelTypes as $type) {
+        $channelTypes = $mode === 'search' ? $this->searchChannelTypes : $this->newsChannelTypes;
+
+        foreach ($channelTypes as $type) {
             $provider = $this->registry->getByChannelType($type);
             if (! $provider) {
                 continue;

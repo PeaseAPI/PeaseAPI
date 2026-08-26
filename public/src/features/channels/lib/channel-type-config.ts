@@ -178,7 +178,7 @@ export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
       models: 'Leave empty',
     },
   },
-  83: {
+    83: {
     id: 83,
     name: CHANNEL_TYPES[83],
     icon: 'openai',
@@ -186,6 +186,17 @@ export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
     hints: {
       baseUrl: 'Default: https://api.exa.ai',
       key: 'Exa API Key',
+      models: 'Leave empty',
+    },
+  },
+  84: {
+    id: 84,
+    name: CHANNEL_TYPES[84],
+    icon: 'openai',
+    defaultBaseUrl: 'https://api.search.brave.com',
+    hints: {
+      baseUrl: 'Default: https://api.search.brave.com',
+      key: 'Brave Search API Key',
       models: 'Leave empty',
     },
   },

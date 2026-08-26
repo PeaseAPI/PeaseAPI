@@ -147,6 +147,42 @@ class AdminController extends Controller
         // ---- Notice (PascalCase) ----
         $data['Notice'] = $public['Notice'] ?? '';
 
+                // ---- API Base URL ----
+        $data['server_address'] = $public['ServerAddress'] ?? '';
+
+                // ---- API Protocol Endpoints (auto-generated for user dashboard) ----
+        $serverAddress = rtrim($data['server_address'], '/');
+        $data['api_protocol_endpoints'] = [
+            [
+                'key' => 'openai',
+                'label' => 'OpenAI Compatible',
+                'endpoint' => $serverAddress ? $serverAddress . '/v1' : '',
+                'description' => 'OpenAI-compatible chat completions API',
+                'protocol' => 'OpenAI',
+            ],
+            [
+                'key' => 'anthropic',
+                'label' => 'Anthropic Claude',
+                'endpoint' => $serverAddress ? $serverAddress . '/v1' : '',
+                'description' => 'Anthropic Claude API (compatible endpoint)',
+                'protocol' => 'Anthropic',
+            ],
+            [
+                'key' => 'news',
+                'label' => 'News',
+                'endpoint' => $serverAddress ? $serverAddress . '/news' : '',
+                'description' => 'News aggregation API (NewsAPI etc.)',
+                'protocol' => 'News',
+            ],
+            [
+                'key' => 'search',
+                'label' => 'Search',
+                'endpoint' => $serverAddress ? $serverAddress . '/search' : '',
+                'description' => 'Web search API (Tavily, Exa, Brave Search, Google CSE)',
+                'protocol' => 'Search',
+            ],
+        ];
+
         // ---- Console content settings (snake_case at top level) ----
         $data['api_info_enabled'] = $public['console_setting.api_info_enabled'] ?? true;
         $data['api_info'] = $public['console_setting.api_info'] ?? [];

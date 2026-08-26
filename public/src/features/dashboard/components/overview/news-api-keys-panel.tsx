@@ -35,11 +35,12 @@ type KeyStatus = {
 }
 
 function getKeyStatuses(masked: NewsKeysMasked | undefined, t: (key: string) => string): KeyStatus[] {
-  const keys: { key: keyof NewsKeysMasked; label: string }[] = [
+    const keys: { key: keyof NewsKeysMasked; label: string }[] = [
     { key: 'news_google_key', label: t('Google') },
     { key: 'news_newsapi_key', label: t('NewsAPI') },
     { key: 'news_tavily_key', label: t('Tavily') },
     { key: 'news_exa_key', label: t('Exa') },
+    { key: 'news_brave_key', label: t('Brave') },
   ]
   return keys.map(({ key, label }) => ({
     key,

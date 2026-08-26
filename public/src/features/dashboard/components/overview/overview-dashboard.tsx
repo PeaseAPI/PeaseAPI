@@ -61,6 +61,7 @@ import {
   useDashboardContentVisibility,
 } from '../../hooks/use-status-data'
 import { AnnouncementsPanel } from './announcements-panel'
+import { ApiEndpointsPanel } from './api-endpoints-panel'
 import { ApiInfoPanel } from './api-info-panel'
 import { FAQPanel } from './faq-panel'
 import { NewsApiKeysPanel } from './news-api-keys-panel'
@@ -774,11 +775,14 @@ export function OverviewDashboard() {
                   <PerformanceHealthPanel />
                 </CardStaggerItem>
               )}
-              {showApiInfoPanel && (
+                            {showApiInfoPanel && (
                 <CardStaggerItem>
                   <ApiInfoPanel />
                 </CardStaggerItem>
               )}
+              <CardStaggerItem>
+                <ApiEndpointsPanel />
+              </CardStaggerItem>
               <CardStaggerItem>
                 <NewsApiKeysPanel />
               </CardStaggerItem>

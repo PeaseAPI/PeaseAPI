@@ -92,9 +92,9 @@ export function useSidebarData(): SidebarData {
             url: '/api-info',
             icon: Globe,
           },
-          {
+                    {
             title: t('News API Keys'),
-            url: '/api-info',
+            url: '/api-info/news-keys',
             icon: Newspaper,
           },
           {

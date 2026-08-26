@@ -24,11 +24,12 @@ class UserController extends Controller
         // Mask news API keys if present in setting JSON
         $setting = is_string($user->setting) ? json_decode($user->setting, true) : $user->setting;
         $newsKeys = $setting['news_keys'] ?? [];
-        $maskedNewsKeys = [
+                $maskedNewsKeys = [
             'news_google_key' => self::maskKey($newsKeys['news_google_key'] ?? ''),
             'news_newsapi_key' => self::maskKey($newsKeys['news_newsapi_key'] ?? ''),
             'news_tavily_key' => self::maskKey($newsKeys['news_tavily_key'] ?? ''),
             'news_exa_key' => self::maskKey($newsKeys['news_exa_key'] ?? ''),
+            'news_brave_key' => self::maskKey($newsKeys['news_brave_key'] ?? ''),
         ];
 
         return response()->json([
@@ -137,7 +138,7 @@ class UserController extends Controller
         $setting = is_string($user->setting) ? (json_decode($user->setting, true) ?? []) : ($user->setting ?? []);
         $newsKeys = $setting['news_keys'] ?? [];
 
-        $fields = ['news_google_key', 'news_newsapi_key', 'news_tavily_key', 'news_exa_key'];
+                $fields = ['news_google_key', 'news_newsapi_key', 'news_tavily_key', 'news_exa_key', 'news_brave_key'];
         foreach ($fields as $field) {
             if ($request->has($field)) {
                 $value = $request->input($field);
@@ -154,11 +155,12 @@ class UserController extends Controller
         $user->setting = json_encode($setting, JSON_UNESCAPED_UNICODE);
         $user->save();
 
-        $maskedNewsKeys = [
+                $maskedNewsKeys = [
             'news_google_key' => self::maskKey($newsKeys['news_google_key'] ?? ''),
             'news_newsapi_key' => self::maskKey($newsKeys['news_newsapi_key'] ?? ''),
             'news_tavily_key' => self::maskKey($newsKeys['news_tavily_key'] ?? ''),
             'news_exa_key' => self::maskKey($newsKeys['news_exa_key'] ?? ''),
+            'news_brave_key' => self::maskKey($newsKeys['news_brave_key'] ?? ''),
         ];
 
         return response()->json([

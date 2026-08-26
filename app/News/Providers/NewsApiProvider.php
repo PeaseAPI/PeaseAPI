@@ -28,6 +28,11 @@ class NewsApiProvider extends AbstractNewsProvider
         return ChannelType::NEWS_API;
     }
 
+        public function isNewsOnly(): bool
+    {
+        return true;
+    }
+
     public function search(NewsSearchRequest $request, Channel $channel): NewsSearchResult
     {
         $key = $this->getKey($channel);

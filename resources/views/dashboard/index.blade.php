@@ -182,12 +182,37 @@
 
 @push('scripts')
 <script>
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 function copyToClipboard(el, text) {
-    navigator.clipboard.writeText(text).then(() => {
-        const orig = el.textContent;
-        el.textContent = '已复制!';
-        setTimeout(() => { el.textContent = orig; }, 1200);
-    });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            const orig = el.textContent;
+            el.textContent = '已复制!';
+            setTimeout(() => { el.textContent = orig; }, 1200);
+        });
+    } else {
+        // Fallback for non-HTTPS environments
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            const orig = el.textContent;
+            el.textContent = '已复制!';
+            setTimeout(() => { el.textContent = orig; }, 1200);
+        } catch (e) {
+            console.error('Copy failed', e);
+        }
+        document.body.removeChild(textarea);
+    }
 }
 
 async function loadDashboard() {
@@ -212,7 +237,7 @@ async function loadDashboard() {
         if (tokensData.data && tokensData.data.length > 0) {
             document.getElementById('recentTokens').innerHTML = tokensData.data.map(token => `
                 <tr class="border-b border-gray-100 hover:bg-gray-50">
-                    <td class="py-3 font-medium">${token.name || '-'}</td>
+                    <td class="py-3 font-medium">${escapeHtml(token.name || '-')}</td>
                     <td class="py-3">${token.unlimited_quota ? '无限' : (token.remain_quota || 0).toLocaleString()}</td>
                     <td class="py-3">${(token.quota_used || 0).toLocaleString()}</td>
                     <td class="py-3">
@@ -232,8 +257,8 @@ async function loadDashboard() {
             document.getElementById('recentLogs').innerHTML = logsData.data.map(log => `
                 <tr class="border-b border-gray-100 hover:bg-gray-50">
                     <td class="py-3 text-gray-500">${log.created_at ? new Date(log.created_at * 1000).toLocaleString() : '-'}</td>
-                    <td class="py-3 font-mono text-xs">${log.model || '-'}</td>
-                    <td class="py-3">${log.channel_name || '-'}</td>
+                    <td class="py-3 font-mono text-xs">${escapeHtml(log.model || '-')}</td>
+                    <td class="py-3">${escapeHtml(log.channel_name || '-')}</td>
                     <td class="py-3">
                         <span class="px-2 py-1 text-xs rounded-full ${log.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
                             ${log.status === 'success' ? '成功' : '失败'}

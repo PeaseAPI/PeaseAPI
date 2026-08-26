@@ -69,6 +69,7 @@ class DashboardController extends Controller
     }
 
                 
+    
     public function newsKeys()
     {
         return view('dashboard.news-keys');

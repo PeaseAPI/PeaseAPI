@@ -23,8 +23,8 @@ class UserController extends Controller
 
         // Mask news API keys if present in setting JSON
         $setting = is_string($user->setting) ? json_decode($user->setting, true) : $user->setting;
-        $newsKeys = $setting['news_keys'] ?? [];
-                $maskedNewsKeys = [
+                $newsKeys = $setting['news_keys'] ?? [];
+        $maskedNewsKeys = [
             'news_google_key' => self::maskKey($newsKeys['news_google_key'] ?? ''),
             'news_newsapi_key' => self::maskKey($newsKeys['news_newsapi_key'] ?? ''),
             'news_tavily_key' => self::maskKey($newsKeys['news_tavily_key'] ?? ''),
@@ -125,7 +125,7 @@ class UserController extends Controller
     }
 
     /**
-     * PUT /api/user/news-keys - Update the user's news API keys.
+          * PUT /api/user/news-keys - Update the user's news API keys.
      */
     public function updateNewsKeys(Request $request): JsonResponse
     {
@@ -135,13 +135,21 @@ class UserController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
+        $validated = $request->validate([
+            'news_google_key' => 'nullable|string|max:200',
+            'news_newsapi_key' => 'nullable|string|max:200',
+            'news_tavily_key' => 'nullable|string|max:200',
+            'news_exa_key' => 'nullable|string|max:200',
+            'news_brave_key' => 'nullable|string|max:200',
+        ]);
+
         $setting = is_string($user->setting) ? (json_decode($user->setting, true) ?? []) : ($user->setting ?? []);
         $newsKeys = $setting['news_keys'] ?? [];
 
-                $fields = ['news_google_key', 'news_newsapi_key', 'news_tavily_key', 'news_exa_key', 'news_brave_key'];
+        $fields = ['news_google_key', 'news_newsapi_key', 'news_tavily_key', 'news_exa_key', 'news_brave_key'];
         foreach ($fields as $field) {
-            if ($request->has($field)) {
-                $value = $request->input($field);
+            if (array_key_exists($field, $validated)) {
+                $value = $validated[$field];
                 // Empty string means delete the key
                 if ($value === '' || $value === null) {
                     unset($newsKeys[$field]);
@@ -155,7 +163,7 @@ class UserController extends Controller
         $user->setting = json_encode($setting, JSON_UNESCAPED_UNICODE);
         $user->save();
 
-                $maskedNewsKeys = [
+        $maskedNewsKeys = [
             'news_google_key' => self::maskKey($newsKeys['news_google_key'] ?? ''),
             'news_newsapi_key' => self::maskKey($newsKeys['news_newsapi_key'] ?? ''),
             'news_tavily_key' => self::maskKey($newsKeys['news_tavily_key'] ?? ''),
@@ -185,11 +193,11 @@ class UserController extends Controller
         return str_repeat('*', strlen($key) - 4) . substr($key, -4);
     }
 
-    public function index(Request $request)
+                public function index(Request $request)
     {
         $query = User::query();
         if ($request->has('search')) {
-            $search = $request->search;
+            $search = addcslashes($request->search, '%_');
             $query->where('username', 'like', "%{$search}%")
                 ->orWhere('email', 'like', "%{$search}%");
         }

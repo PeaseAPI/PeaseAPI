@@ -108,7 +108,11 @@ export function SidebarModulesSection({
       },
       api_info: {
         title: t('API Info'),
-        description: t('API endpoint shortcuts and news search keys configuration.'),
+        description: t('API endpoint shortcuts and documentation links.'),
+      },
+      news_api_keys: {
+        title: t('News API Keys'),
+        description: t('Configure news search provider API keys.'),
       },
       log: {
         title: t('Usage logs'),

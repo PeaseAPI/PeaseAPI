@@ -27,6 +27,7 @@ import {
   LayoutDashboard,
   ListTodo,
   MessageSquare,
+  Newspaper,
   Radio,
   ServerCog,
   Settings,
@@ -90,6 +91,11 @@ export function useSidebarData(): SidebarData {
             title: t('API Info'),
             url: '/api-info',
             icon: Globe,
+          },
+          {
+            title: t('News API Keys'),
+            url: '/api-info',
+            icon: Newspaper,
           },
           {
             title: t('Usage Logs'),

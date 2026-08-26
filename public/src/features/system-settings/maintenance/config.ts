@@ -64,6 +64,7 @@ export const SIDEBAR_MODULES_DEFAULT: SidebarModulesAdminConfig = {
     detail: true,
     token: true,
     api_info: true,
+    news_api_keys: true,
     log: true,
     midjourney: true,
     task: true,

@@ -5230,6 +5230,11 @@
     "News API keys updated": "News API keys updated",
     "Failed to update news API keys": "Failed to update news API keys",
     "API endpoint shortcuts configured by the administrator": "API endpoint shortcuts configured by the administrator",
-    "No API info configured yet": "No API info configured yet"
+    "No API info configured yet": "No API info configured yet",
+    "News API Keys": "News API Keys",
+    "Your news search provider API key status": "Your news search provider API key status",
+    "Configured": "Configured",
+    "{{configured}} of {{total}} keys configured": "{{configured}} of {{total}} keys configured",
+    "Configure news search provider API keys": "Configure news search provider API keys"
   }
 }

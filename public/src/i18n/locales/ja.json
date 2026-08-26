@@ -5230,6 +5230,11 @@
     "News API keys updated": "ニュース検索 API キーが更新されました",
     "Failed to update news API keys": "ニュース検索 API キーの更新に失敗しました",
     "API endpoint shortcuts configured by the administrator": "管理者によって設定されたAPIエンドポイントショートカット",
-    "No API info configured yet": "API情報がまだ設定されていません"
+    "No API info configured yet": "API情報がまだ設定されていません",
+    "News API Keys": "ニュース API キー",
+    "Your news search provider API key status": "ニュース検索プロバイダーのAPIキーステータス",
+    "Configured": "設定済み",
+    "{{configured}} of {{total}} keys configured": "{{total}} 個中 {{configured}} 個のキーが設定済み",
+    "Configure news search provider API keys": "ニュース検索プロバイダーのAPIキーを設定"
   }
 }

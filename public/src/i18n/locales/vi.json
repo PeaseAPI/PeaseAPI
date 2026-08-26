@@ -5230,6 +5230,11 @@
     "News API keys updated": "Khóa API tìm kiếm tin tức đã được cập nhật",
     "Failed to update news API keys": "Cập nhật khóa API tìm kiếm tin tức thất bại",
     "API endpoint shortcuts configured by the administrator": "Phím tắt điểm cuối API được cấu hình bởi quản trị viên",
-    "No API info configured yet": "Chưa có thông tin API nào được cấu hình"
+    "No API info configured yet": "Chưa có thông tin API nào được cấu hình",
+    "News API Keys": "Khóa API tin tức",
+    "Your news search provider API key status": "Trạng thái khóa API nhà cung cấp tìm kiếm tin tức của bạn",
+    "Configured": "Đã cấu hình",
+    "{{configured}} of {{total}} keys configured": "Đã cấu hình {{configured}}/{{total}} khóa",
+    "Configure news search provider API keys": "Cấu hình khóa API nhà cung cấp tìm kiếm tin tức"
   }
 }

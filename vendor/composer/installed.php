@@ -3,7 +3,7 @@
         'name' => 'peaseapi/peaseapi',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '418f4dc9bfa3a7926fdf46496dfaa54920ca1f1d',
+        'reference' => 'd7357e3ca85dd990e72f5df0dffe558c339b0749',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -640,7 +640,7 @@
         'peaseapi/peaseapi' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '418f4dc9bfa3a7926fdf46496dfaa54920ca1f1d',
+            'reference' => 'd7357e3ca85dd990e72f5df0dffe558c339b0749',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

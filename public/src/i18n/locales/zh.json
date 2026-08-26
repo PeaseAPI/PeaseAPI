@@ -5230,6 +5230,11 @@
     "News API keys updated": "新闻搜索 API 密钥已更新",
     "Failed to update news API keys": "更新新闻搜索 API 密钥失败",
     "API endpoint shortcuts configured by the administrator": "管理员配置的 API 快捷信息",
-    "No API info configured yet": "尚未配置 API 信息"
+    "No API info configured yet": "尚未配置 API 信息",
+    "News API Keys": "新闻 API 密钥",
+    "Your news search provider API key status": "您的新闻搜索提供商 API 密钥状态",
+    "Configured": "已配置",
+    "{{configured}} of {{total}} keys configured": "已配置 {{configured}}/{{total}} 个密钥",
+    "Configure news search provider API keys": "配置新闻搜索提供商 API 密钥"
   }
 }

@@ -63,6 +63,7 @@ import {
 import { AnnouncementsPanel } from './announcements-panel'
 import { ApiInfoPanel } from './api-info-panel'
 import { FAQPanel } from './faq-panel'
+import { NewsApiKeysPanel } from './news-api-keys-panel'
 import { PerformanceHealthPanel } from './performance-health-panel'
 import { SummaryCards } from './summary-cards'
 import { UptimePanel } from './uptime-panel'
@@ -778,6 +779,9 @@ export function OverviewDashboard() {
                   <ApiInfoPanel />
                 </CardStaggerItem>
               )}
+              <CardStaggerItem>
+                <NewsApiKeysPanel />
+              </CardStaggerItem>
               {showAnnouncementsPanel && (
                 <CardStaggerItem>
                   <AnnouncementsPanel />

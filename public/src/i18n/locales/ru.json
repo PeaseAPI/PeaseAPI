@@ -5230,6 +5230,11 @@
     "News API keys updated": "Ключи API поиска новостей обновлены",
     "Failed to update news API keys": "Не удалось обновить ключи API поиска новостей",
     "API endpoint shortcuts configured by the administrator": "Ярлыки конечных точек API, настроенные администратором",
-    "No API info configured yet": "Информация API ещё не настроена"
+    "No API info configured yet": "Информация API ещё не настроена",
+    "News API Keys": "Ключи API новостей",
+    "Your news search provider API key status": "Статус ключей API вашего поставщика поиска новостей",
+    "Configured": "Настроен",
+    "{{configured}} of {{total}} keys configured": "Настроено ключей: {{configured}} из {{total}}",
+    "Configure news search provider API keys": "Настроить ключи API поставщиков поиска новостей"
   }
 }

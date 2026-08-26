@@ -5230,6 +5230,11 @@
     "News API keys updated": "News-Suche API-Schlüssel aktualisiert",
     "Failed to update news API keys": "Aktualisierung der News-Suche API-Schlüssel fehlgeschlagen",
     "API endpoint shortcuts configured by the administrator": "Vom Administrator konfigurierte API-Endpunkt-Verknüpfungen",
-    "No API info configured yet": "Noch keine API-Informationen konfiguriert"
+    "No API info configured yet": "Noch keine API-Informationen konfiguriert",
+    "News API Keys": "News API-Schlüssel",
+    "Your news search provider API key status": "Ihr News-Suchanbieter API-Schlüsselstatus",
+    "Configured": "Konfiguriert",
+    "{{configured}} of {{total}} keys configured": "{{configured}} von {{total}} Schlüsseln konfiguriert",
+    "Configure news search provider API keys": "News-Suchanbieter API-Schlüssel konfigurieren"
   }
 }

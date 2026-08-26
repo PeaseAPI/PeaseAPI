@@ -5230,6 +5230,11 @@
     "News API keys updated": "新聞搜尋 API 金鑰已更新",
     "Failed to update news API keys": "更新新聞搜尋 API 金鑰失敗",
     "API endpoint shortcuts configured by the administrator": "管理員設定的 API 快捷資訊",
-    "No API info configured yet": "尚未設定 API 資訊"
+    "No API info configured yet": "尚未設定 API 資訊",
+    "News API Keys": "新聞 API 金鑰",
+    "Your news search provider API key status": "您的新聞搜尋提供商 API 金鑰狀態",
+    "Configured": "已設定",
+    "{{configured}} of {{total}} keys configured": "已設定 {{configured}}/{{total}} 個金鑰",
+    "Configure news search provider API keys": "設定新聞搜尋提供商 API 金鑰"
   }
 }

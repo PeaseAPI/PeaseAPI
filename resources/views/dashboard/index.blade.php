@@ -50,6 +50,56 @@
     </div>
 </div>
 
+<!-- API Protocol Endpoints -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-900">API 协议地址</h3>
+        <span class="text-xs text-gray-400">可在支持 OpenAI 兼容格式的客户端中使用</span>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="group relative flex items-center gap-3 p-3.5 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 rounded-xl hover:shadow-md transition-all duration-200">
+            <div class="w-10 h-10 bg-green-500 text-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                <i class="fas fa-robot text-sm"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs font-semibold text-green-800 mb-0.5">OpenAI 兼容</p>
+                <code class="text-[11px] bg-white/70 border border-green-200 rounded px-1.5 py-0.5 select-all text-green-700 font-mono block truncate cursor-pointer" onclick="copyToClipboard(this, '{{ url('/v1') }}')">{{ url('/v1') }}</code>
+            </div>
+            <i class="fas fa-copy text-green-400 opacity-0 group-hover:opacity-100 transition text-xs absolute top-2 right-2"></i>
+        </div>
+        <div class="group relative flex items-center gap-3 p-3.5 bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-xl hover:shadow-md transition-all duration-200">
+            <div class="w-10 h-10 bg-orange-500 text-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                <i class="fas fa-brain text-sm"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs font-semibold text-orange-800 mb-0.5">Anthropic Claude</p>
+                <code class="text-[11px] bg-white/70 border border-orange-200 rounded px-1.5 py-0.5 select-all text-orange-700 font-mono block truncate cursor-pointer" onclick="copyToClipboard(this, '{{ url('/v1') }}')">{{ url('/v1') }}</code>
+            </div>
+            <i class="fas fa-copy text-orange-400 opacity-0 group-hover:opacity-100 transition text-xs absolute top-2 right-2"></i>
+        </div>
+        <div class="group relative flex items-center gap-3 p-3.5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl hover:shadow-md transition-all duration-200">
+            <div class="w-10 h-10 bg-blue-500 text-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                <i class="fas fa-newspaper text-sm"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs font-semibold text-blue-800 mb-0.5">__News__</p>
+                <code class="text-[11px] bg-white/70 border border-blue-200 rounded px-1.5 py-0.5 select-all text-blue-700 font-mono block truncate cursor-pointer" onclick="copyToClipboard(this, '{{ url('/news') }}')">{{ url('/news') }}</code>
+            </div>
+            <i class="fas fa-copy text-blue-400 opacity-0 group-hover:opacity-100 transition text-xs absolute top-2 right-2"></i>
+        </div>
+        <div class="group relative flex items-center gap-3 p-3.5 bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-100 rounded-xl hover:shadow-md transition-all duration-200">
+            <div class="w-10 h-10 bg-purple-500 text-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                <i class="fas fa-search text-sm"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs font-semibold text-purple-800 mb-0.5">__Search__</p>
+                <code class="text-[11px] bg-white/70 border border-purple-200 rounded px-1.5 py-0.5 select-all text-purple-700 font-mono block truncate cursor-pointer" onclick="copyToClipboard(this, '{{ url('/search') }}')">{{ url('/search') }}</code>
+            </div>
+            <i class="fas fa-copy text-purple-400 opacity-0 group-hover:opacity-100 transition text-xs absolute top-2 right-2"></i>
+        </div>
+    </div>
+</div>
+
 <!-- Quick Actions -->
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
     <h3 class="text-lg font-semibold text-gray-900 mb-4">快速操作</h3>
@@ -132,6 +182,14 @@
 
 @push('scripts')
 <script>
+function copyToClipboard(el, text) {
+    navigator.clipboard.writeText(text).then(() => {
+        const orig = el.textContent;
+        el.textContent = '已复制!';
+        setTimeout(() => { el.textContent = orig; }, 1200);
+    });
+}
+
 async function loadDashboard() {
     try {
         const [userRes, tokensRes, logsRes] = await Promise.all([

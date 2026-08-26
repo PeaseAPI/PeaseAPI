@@ -1,233 +1,204 @@
 @extends('layouts.dashboard')
-@section('title', '新闻/搜索 API Key')
+@section('title', '中转 Key 设置')
 
 @section('content')
-<div class="max-w-3xl mx-auto space-y-6">
-    @php
-    $inputCls = 'w-full h-10 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition text-sm bg-white';
-    @endphp
+<div class="max-w-3xl mx-auto">
+    <div class="mb-6">
+        <h2 class="text-xl font-bold text-gray-900">中转 Key 设置</h2>
+        <p class="text-sm text-gray-500 mt-1">配置新闻搜索等服务的 API Key，保存后即可使用对应功能</p>
+    </div>
+        <form id="newsKeysForm" class="space-y-5">
+        @csrf
 
-    <!-- 协议地址说明 -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">API 协议地址</h3>
-        <p class="text-sm text-gray-500 mb-4">以下为各服务的 API 协议地址，可在支持 OpenAI 兼容格式的客户端中使用。</p>
-        <div class="space-y-3">
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+        <!-- News Keys Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-green-100 text-green-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <i class="fas fa-robot text-sm"></i>
+                    <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-newspaper text-white text-sm"></i>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-gray-900">OpenAI 兼容</p>
-                        <p class="text-xs text-gray-500">Chat / Embeddings / Images 等</p>
+                        <h3 class="text-base font-semibold text-white">新闻服务 Key</h3>
+                        <p class="text-xs text-blue-100">配置后可使用 __News__ API</p>
                     </div>
                 </div>
-                <code class="text-xs bg-white border border-gray-200 rounded px-2 py-1 select-all text-primary-600 font-mono">{{ url('/v1') }}</code>
             </div>
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-orange-100 text-orange-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <i class="fas fa-brain text-sm"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium text-gray-900">Anthropic Claude</p>
-                        <p class="text-xs text-gray-500">Claude Messages API</p>
-                    </div>
-                </div>
-                <code class="text-xs bg-white border border-gray-200 rounded px-2 py-1 select-all text-primary-600 font-mono">{{ url('/v1') }}</code>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <i class="fas fa-newspaper text-sm"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium text-gray-900">__News__</p>
-                        <p class="text-xs text-gray-500">新闻搜索 API</p>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
+                        <img src="https://www.google.com/favicon.ico" class="w-4 h-4 rounded" alt="" onerror="this.style.display='none'">
+                        Google News Key
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="news_google_key" name="news_google_key"
+                            class="w-full h-11 px-4 pr-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm bg-gray-50 hover:bg-white focus:bg-white"
+                            placeholder="输入 Google News API Key" autocomplete="off">
+                        <button type="button" onclick="toggleKeyVisibility('news_google_key')"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+                            <i class="fas fa-eye text-sm"></i>
+                        </button>
                     </div>
                 </div>
-                <code class="text-xs bg-white border border-gray-200 rounded px-2 py-1 select-all text-primary-600 font-mono">{{ url('/news') }}</code>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-purple-100 text-purple-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <i class="fas fa-search text-sm"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium text-gray-900">__Search__</p>
-                        <p class="text-xs text-gray-500">网页搜索 API</p>
+                <div>
+                    <label class="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
+                        <img src="https://newsapi.org/favicon.ico" class="w-4 h-4 rounded" alt="" onerror="this.style.display='none'">
+                        NewsAPI Key
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="news_newsapi_key" name="news_newsapi_key"
+                            class="w-full h-11 px-4 pr-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm bg-gray-50 hover:bg-white focus:bg-white"
+                            placeholder="输入 NewsAPI Key" autocomplete="off">
+                        <button type="button" onclick="toggleKeyVisibility('news_newsapi_key')"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+                            <i class="fas fa-eye text-sm"></i>
+                        </button>
                     </div>
                 </div>
-                <code class="text-xs bg-white border border-gray-200 rounded px-2 py-1 select-all text-primary-600 font-mono">{{ url('/search') }}</code>
             </div>
         </div>
 
-    <!-- 新闻搜索 Provider Key -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-1">新闻搜索 API Key</h3>
-        <p class="text-sm text-gray-500 mb-4">配置你自己的新闻 / 搜索 Provider API Key，留空则使用系统默认渠道。</p>
-        <form id="newsKeysForm" class="space-y-4">
-            @csrf
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Google News Key</label>
-                <div class="relative">
-                    <input type="password" name="news_google_key" id="news_google_key" class="{{ $inputCls }} pr-10" placeholder="AIza..." autocomplete="off">
-                    <button type="button" onclick="toggleKeyVisibility('news_google_key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                        <i class="fas fa-eye text-sm"></i>
-                    </button>
+                <!-- Search Keys Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-4 bg-gradient-to-r from-purple-600 to-violet-600">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-search text-white text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-white">搜索服务 Key</h3>
+                        <p class="text-xs text-purple-100">配置后可使用 __Search__ API</p>
+                    </div>
                 </div>
-                <p class="text-xs text-gray-400 mt-1">Google Custom Search JSON API 的密钥</p>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">NewsAPI Key</label>
-                <div class="relative">
-                    <input type="password" name="news_newsapi_key" id="news_newsapi_key" class="{{ $inputCls }} pr-10" placeholder="abc123..." autocomplete="off">
-                    <button type="button" onclick="toggleKeyVisibility('news_newsapi_key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                        <i class="fas fa-eye text-sm"></i>
-                    </button>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
+                        <img src="https://tavily.com/favicon.ico" class="w-4 h-4 rounded" alt="" onerror="this.style.display='none'">
+                        Tavily Key
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="news_tavily_key" name="news_tavily_key"
+                            class="w-full h-11 px-4 pr-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-sm bg-gray-50 hover:bg-white focus:bg-white"
+                            placeholder="输入 Tavily API Key" autocomplete="off">
+                        <button type="button" onclick="toggleKeyVisibility('news_tavily_key')"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+                            <i class="fas fa-eye text-sm"></i>
+                        </button>
+                    </div>
                 </div>
-                <p class="text-xs text-gray-400 mt-1">NewsAPI.org 的 API Key</p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Tavily Key</label>
-                <div class="relative">
-                    <input type="password" name="news_tavily_key" id="news_tavily_key" class="{{ $inputCls }} pr-10" placeholder="tvly-..." autocomplete="off">
-                    <button type="button" onclick="toggleKeyVisibility('news_tavily_key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                        <i class="fas fa-eye text-sm"></i>
-                    </button>
+                <div>
+                    <label class="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
+                        <img src="https://exa.ai/favicon.ico" class="w-4 h-4 rounded" alt="" onerror="this.style.display='none'">
+                        Exa Key
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="news_exa_key" name="news_exa_key"
+                            class="w-full h-11 px-4 pr-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-sm bg-gray-50 hover:bg-white focus:bg-white"
+                            placeholder="输入 Exa API Key" autocomplete="off">
+                        <button type="button" onclick="toggleKeyVisibility('news_exa_key')"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+                            <i class="fas fa-eye text-sm"></i>
+                        </button>
+                    </div>
                 </div>
-                <p class="text-xs text-gray-400 mt-1">Tavily Search API 的密钥</p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Exa Key</label>
-                <div class="relative">
-                    <input type="password" name="news_exa_key" id="news_exa_key" class="{{ $inputCls }} pr-10" placeholder="exa-..." autocomplete="off">
-                    <button type="button" onclick="toggleKeyVisibility('news_exa_key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                        <i class="fas fa-eye text-sm"></i>
-                    </button>
+                <div>
+                    <label class="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
+                        <img src="https://brave.com/static-assets/images/brave-favicon.png" class="w-4 h-4 rounded" alt="" onerror="this.style.display='none'">
+                        Brave Search Key
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="news_brave_key" name="news_brave_key"
+                            class="w-full h-11 px-4 pr-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-sm bg-gray-50 hover:bg-white focus:bg-white"
+                            placeholder="输入 Brave Search API Key" autocomplete="off">
+                        <button type="button" onclick="toggleKeyVisibility('news_brave_key')"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+                            <i class="fas fa-eye text-sm"></i>
+                        </button>
+                    </div>
                 </div>
-                <p class="text-xs text-gray-400 mt-1">Exa Search API 的密钥</p>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Brave Search Key</label>
-                <div class="relative">
-                    <input type="password" name="news_brave_key" id="news_brave_key" class="{{ $inputCls }} pr-10" placeholder="BSA..." autocomplete="off">
-                    <button type="button" onclick="toggleKeyVisibility('news_brave_key')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                        <i class="fas fa-eye text-sm"></i>
-                    </button>
-                </div>
-                <p class="text-xs text-gray-400 mt-1">Brave Search API 的密钥</p>
-            </div>
-            <div class="flex justify-end">
-                <button type="submit" id="saveBtn" class="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium text-sm">保存 Key</button>
-            </div>
-        </form>
-    </div>
+        </div>
+
+        <!-- Save Button -->
+        <div class="flex items-center justify-end gap-3 pt-2">
+            <button type="submit" id="saveBtn"
+                class="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fas fa-save text-xs"></i>
+                保存配置
+            </button>
+        </div>
+    </form>
 </div>
 @endsection
 
 @push('scripts')
 <script>
-// 加载已有的 key（脱敏后）
+function showToast(msg, type) {
+    var t = document.createElement('div');
+    t.className = 'fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 transform translate-x-full ' + (type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(function() { t.classList.remove('translate-x-full'); });
+    setTimeout(function() { t.classList.add('translate-x-full'); setTimeout(function() { t.remove(); }, 300); }, 2500);
+}
+
 async function loadNewsKeys() {
     try {
-        const res = await fetch('/web-api/me', {
-            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+        var res = await fetch('/web-api/me', { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' } });
+        var data = await res.json();
+        var masked = data.news_keys_masked || {};
+        ['news_google_key','news_newsapi_key','news_tavily_key','news_exa_key','news_brave_key'].forEach(function(f) {
+            var el = document.getElementById(f);
+            if (el && masked[f]) { el.value = masked[f]; el.dataset.masked = 'true'; el.classList.add('bg-blue-50'); }
         });
-        const data = await res.json();
-        const masked = data.news_keys_masked || {};
-        const fields = ['news_google_key', 'news_newsapi_key', 'news_tavily_key', 'news_exa_key', 'news_brave_key'];
-        fields.forEach(f => {
-            const el = document.getElementById(f);
-            if (el && masked[f]) {
-                el.value = masked[f];
-                el.dataset.masked = 'true';
-            }
-        });
-    } catch (e) {
-        console.error('加载 News Key 失败', e);
-    }
+    } catch (e) { console.error('加载 Key 失败', e); }
 }
 
-// 切换密码可见性
 function toggleKeyVisibility(fieldId) {
-    const el = document.getElementById(fieldId);
+    var el = document.getElementById(fieldId);
     if (!el) return;
-    const icon = el.parentElement.querySelector('i');
-    if (el.type === 'password') {
-        el.type = 'text';
-        icon.classList.remove('fa-eye');
-        icon.classList.add('fa-eye-slash');
-    } else {
-        el.type = 'password';
-        icon.classList.remove('fa-eye-slash');
-        icon.classList.add('fa-eye');
-    }
+    var btn = el.parentElement.querySelector('button i');
+    if (el.type === 'password') { el.type = 'text'; btn.classList.replace('fa-eye','fa-eye-slash'); }
+    else { el.type = 'password'; btn.classList.replace('fa-eye-slash','fa-eye'); }
 }
 
-// 点击脱敏字段时清空，方便输入新值
-document.querySelectorAll('#newsKeysForm input').forEach(el => {
+document.querySelectorAll('#newsKeysForm input').forEach(function(el) {
     el.addEventListener('focus', function() {
-        if (this.dataset.masked === 'true') {
-            this.value = '';
-            this.dataset.masked = 'false';
-        }
-        });
+        if (this.dataset.masked === 'true') { this.value = ''; this.dataset.masked = 'false'; this.classList.remove('bg-blue-50'); }
+    });
 });
 
-// 保存
 document.getElementById('newsKeysForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    const btn = document.getElementById('saveBtn');
+    var btn = document.getElementById('saveBtn');
     btn.disabled = true;
-    btn.textContent = '保存中...';
-
-    const fields = ['news_google_key', 'news_newsapi_key', 'news_tavily_key', 'news_exa_key', 'news_brave_key'];
-    const payload = {};
-    fields.forEach(f => {
-        const el = document.getElementById(f);
-        const val = el ? el.value.trim() : '';
-        if (val && el.dataset.masked !== 'true') {
-            payload[f] = val;
-        } else if (val === '' && el) {
-            payload[f] = '';
-        }
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> 保存中...';
+    var fields = ['news_google_key','news_newsapi_key','news_tavily_key','news_exa_key','news_brave_key'];
+    var payload = {};
+    fields.forEach(function(f) {
+        var el = document.getElementById(f);
+        var val = el ? el.value.trim() : '';
+        if (val && el.dataset.masked !== 'true') payload[f] = val;
+        else if (val === '' && el) payload[f] = '';
     });
-
     try {
-        const res = await fetch('/web-api/news-keys', {
+        var res = await fetch('/web-api/news-keys', {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
             body: JSON.stringify(payload)
         });
-        const data = await res.json();
+        var data = await res.json();
         if (res.ok) {
-            alert('保存成功');
-            const masked = data.news_keys_masked || {};
-            fields.forEach(f => {
-                const el = document.getElementById(f);
-                if (el && masked[f]) {
-                    el.value = masked[f];
-                    el.dataset.masked = 'true';
-                    el.type = 'password';
-                } else if (el) {
-                    el.value = '';
-                    el.dataset.masked = 'false';
-                }
+            showToast('保存成功');
+            var masked = data.news_keys_masked || {};
+            fields.forEach(function(f) {
+                var el = document.getElementById(f);
+                if (el && masked[f]) { el.value = masked[f]; el.dataset.masked = 'true'; el.type = 'password'; el.classList.add('bg-blue-50'); }
+                else if (el) { el.value = ''; el.dataset.masked = 'false'; el.classList.remove('bg-blue-50'); }
             });
-        } else {
-            alert('保存失败：' + (data.message || JSON.stringify(data)));
-        }
-    } catch (err) {
-        alert('请求出错：' + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.textContent = '保存 Key';
-    }
+        } else { showToast('保存失败：' + (data.message || '未知错误'), 'error'); }
+    } catch (err) { showToast('请求出错：' + err.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save text-xs"></i> 保存配置'; }
 });
 
 loadNewsKeys();

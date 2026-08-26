@@ -71,6 +71,9 @@
                 <a href="{{ route('profile') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('profile') ? 'active' : '' }}">
                     <i class="fas fa-user w-5 mr-3"></i>个人信息
                 </a>
+                <a href="{{ route('news-keys') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('news-keys') ? 'active' : '' }}">
+                    <i class="fas fa-newspaper w-5 mr-3"></i>新闻/搜索 Key
+                </a>
 
                 @if(auth()->user() && auth()->user()->role >= 100)
                 <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-6 mb-2 px-3">管理后台</div>

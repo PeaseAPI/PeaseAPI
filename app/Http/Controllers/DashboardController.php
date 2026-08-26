@@ -68,6 +68,12 @@ class DashboardController extends Controller
         return view('dashboard.profile');
     }
 
+                
+    public function newsKeys()
+    {
+        return view('dashboard.news-keys');
+    }
+
     public function settings()
     {
         return view('dashboard.settings');

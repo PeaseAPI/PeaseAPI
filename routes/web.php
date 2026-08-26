@@ -84,6 +84,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/logs', [DashboardController::class, 'logs'])->name('user.logs');
     Route::get('/redeem', [DashboardController::class, 'redeem'])->name('redeem');
     Route::get('/profile', [DashboardController::class, 'profile'])->name('profile');
+    Route::get('/news-keys', [DashboardController::class, 'newsKeys'])->name('news-keys');
     Route::get('/settings', [DashboardController::class, 'settings'])->name('user.settings');
 
     // Web API routes (return JSON for frontend JS)

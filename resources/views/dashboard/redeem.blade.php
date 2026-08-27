@@ -26,7 +26,7 @@
 document.getElementById('redeemForm').onsubmit = function(e) {
     e.preventDefault();
     const code = this.code.value;
-    fetch('/web-api/redeem', {
+    fetch('/web-api/redeem', { credentials: 'same-origin',
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })

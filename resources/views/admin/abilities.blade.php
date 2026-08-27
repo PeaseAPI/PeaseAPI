@@ -104,7 +104,7 @@ function editAbility(id){
 function closeModal(){document.getElementById('abilityModal').classList.add('hidden')}
 function deleteAbility(id){
     if(!confirm('确定删除？'))return;
-    fetch(`/web-api/abilities/${id}`,{method:'DELETE',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'}})
+    fetch(`/web-api/abilities/${id}`, { credentials: 'same-origin',method:'DELETE',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'}})
         .then((response)=>handleApiResponse(response, '删除失败'))
         .then(()=>loadAbilities(page))
         .catch(e=>alert('删除失败: '+e.message));

@@ -144,7 +144,7 @@ function showToast(msg, type) {
 
 async function loadNewsKeys() {
     try {
-        var res = await fetch('/web-api/me', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+        var res = await fetch('/web-api/me', { credentials: 'same-origin', headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
         if (res.status === 401) { window.location.href = '/login'; return; }
         var data = res.ok ? await res.json() : {};
         var masked = data.news_keys_masked || {};
@@ -183,7 +183,7 @@ document.getElementById('newsKeysForm').addEventListener('submit', async functio
         else if (val === '' && el) payload[f] = '';
     });
     try {
-        var res = await fetch('/web-api/news-keys', {
+        var res = await fetch('/web-api/news-keys', { credentials: 'same-origin',
             method: 'PUT', credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
             body: JSON.stringify(payload)

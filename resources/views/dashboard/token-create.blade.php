@@ -71,7 +71,7 @@ document.getElementById('createForm').addEventListener('submit', async function(
     payload.remain_quota = parseInt(payload.remain_quota || 0);
     if (!payload.expired_time) delete payload.expired_time;
     try {
-        const res = await fetch('/web-api/tokens', {
+        const res = await fetch('/web-api/tokens', { credentials: 'same-origin',
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
             body: JSON.stringify(payload)

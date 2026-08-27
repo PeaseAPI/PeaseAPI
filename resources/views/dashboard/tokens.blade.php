@@ -238,7 +238,7 @@ function editToken(id, name, status) {
 
 function deleteToken(id) {
     if (!confirm('确定要删除此令牌吗？')) return;
-    fetch(`/web-api/tokens/${id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } })
+    fetch(`/web-api/tokens/${id}`, { credentials: 'same-origin', method: 'DELETE', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } })
         .then(res => res.json())
         .then(data => {
             alert(data.message || '删除成功');
@@ -253,7 +253,7 @@ function closeModal(id) {
 document.getElementById('createTokenForm').onsubmit = function(e) {
     e.preventDefault();
     const formData = new FormData(this);
-    fetch('/web-api/tokens', {
+    fetch('/web-api/tokens', { credentials: 'same-origin',
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json' },
         body: JSON.stringify(Object.fromEntries(formData))
@@ -269,7 +269,7 @@ document.getElementById('editTokenForm').onsubmit = function(e) {
     e.preventDefault();
     const id = document.getElementById('editTokenId').value;
     const formData = new FormData(this);
-    fetch(`/web-api/tokens/${id}`, {
+    fetch(`/web-api/tokens/${id}`, { credentials: 'same-origin',
         method: 'PUT',
         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json' },
         body: JSON.stringify(Object.fromEntries(formData))

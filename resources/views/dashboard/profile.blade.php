@@ -208,7 +208,7 @@ document.getElementById('avatarInput').addEventListener('change', function() {
     const formData = new FormData();
     formData.append('avatar', file);
     setMsg('avatarMsg', '上传中...', true);
-    fetch('/web-api/avatar', {
+    fetch('/web-api/avatar', { credentials: 'same-origin',
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': csrfToken },
         body: formData
@@ -233,7 +233,7 @@ document.getElementById('avatarInput').addEventListener('change', function() {
 document.getElementById('profileForm').onsubmit = function(e) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(this));
-    fetch('/web-api/profile', {
+    fetch('/web-api/profile', { credentials: 'same-origin',
         method: 'PUT',
         headers: { 'X-CSRF-TOKEN': csrfToken, 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -292,7 +292,7 @@ document.getElementById('phoneForm').onsubmit = function(e) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(this));
     setMsg('phoneMsg', '', true);
-    fetch('/web-api/phone', {
+    fetch('/web-api/phone', { credentials: 'same-origin',
         method: 'PUT',
         headers: { 'X-CSRF-TOKEN': csrfToken, 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -322,7 +322,7 @@ document.getElementById('passwordForm').onsubmit = function(e) {
         alert('两次密码不一致');
         return;
     }
-    fetch('/web-api/password', {
+    fetch('/web-api/password', { credentials: 'same-origin',
         method: 'PUT',
         headers: { 'X-CSRF-TOKEN': csrfToken, 'Content-Type': 'application/json' },
         body: JSON.stringify(data)

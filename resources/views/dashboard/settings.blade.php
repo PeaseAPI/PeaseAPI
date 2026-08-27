@@ -85,7 +85,7 @@ document.getElementById('securityForm').addEventListener('submit', async functio
     const payload = {}; fd.forEach((v,k)=>payload[k]=v);
     if (payload.password !== payload.password_confirmation) { alert('两次密码不一致'); return; }
     try {
-        const res = await fetch('/web-api/password', { method:'PUT', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}, body: JSON.stringify(payload) });
+        const res = await fetch('/web-api/password', { credentials: 'same-origin', method:'PUT', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}, body: JSON.stringify(payload) });
         const data = await res.json();
         if (res.ok && data.success !== false) { alert('密码更新成功'); this.reset(); }
         else { alert('更新失败：' + (data.message || JSON.stringify(data))); }
@@ -96,7 +96,7 @@ document.getElementById('prefForm').addEventListener('submit', async function(e)
     const fd = new FormData(this);
     const payload = {}; fd.forEach((v,k)=>payload[k]=v);
     try {
-        const res = await fetch('/web-api/profile', { method:'PUT', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}, body: JSON.stringify(payload) });
+        const res = await fetch('/web-api/profile', { credentials: 'same-origin', method:'PUT', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}, body: JSON.stringify(payload) });
         const data = await res.json();
         if (res.ok && data.success !== false) { alert('偏好已保存'); }
         else { alert('保存失败：' + (data.message || JSON.stringify(data))); }
@@ -113,7 +113,7 @@ async function loadSessions() {
 document.getElementById('revokeOthersBtn').addEventListener('click', async function() {
     if (!confirm('确定注销其他所有会话？')) return;
     try {
-        const res = await fetch('/web-api/sessions/revoke-others', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} });
+        const res = await fetch('/web-api/sessions/revoke-others', { credentials: 'same-origin', method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} });
         const data = await res.json();
         if (res.ok) alert('已注销其他会话'); else alert('操作失败：' + (data.message||''));
     } catch(e) { alert('请求出错'); }

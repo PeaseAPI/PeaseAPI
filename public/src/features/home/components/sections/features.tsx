@@ -26,6 +26,7 @@ import {
   Users,
   HeartHandshake,
   Newspaper,
+  Search,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -157,19 +158,41 @@ export function Features(_props: FeaturesProps) {
     },
     {
       id: 'news',
-      num: '04',
-      title: t('News & Search Aggregation'),
+      num: '05',
+      title: t('News API'),
       desc: t(
-        'Unified search API aggregating Google CSE, NewsAPI, Tavily and Exa with channel-based routing'
+        'Aggregate news from NewsAPI and Google News with unified formatting, channel routing and quota billing'
       ),
-      span: 'md:col-span-2',
-      icon: <Newspaper className='size-4 text-amber-400' />,
+      span: 'md:col-span-1',
+      icon: <Newspaper className='size-4 text-blue-400' />,
       visual: (
-        <div className='mt-4 grid grid-cols-2 gap-2'>
-          {['Google CSE', 'NewsAPI', 'Tavily', 'Exa'].map((name) => (
+        <div className='mt-4 flex flex-wrap gap-2'>
+          {['NewsAPI', 'Google News'].map((name) => (
             <div
               key={name}
-              className='border-border/30 bg-muted/20 text-muted-foreground flex items-center justify-center rounded-lg border px-3 py-2 text-xs transition-colors duration-300 hover:border-amber-500/30 hover:bg-amber-500/5'
+              className='border-border/30 bg-muted/20 text-muted-foreground flex items-center justify-center rounded-lg border px-3 py-2 text-xs transition-colors duration-300 hover:border-blue-500/30 hover:bg-blue-500/5'
+            >
+              {name}
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      id: 'search',
+      num: '06',
+      title: t('Search API'),
+      desc: t(
+        'Web search aggregating Tavily, Exa and Brave with channel-based routing, quota billing and usage logs'
+      ),
+      span: 'md:col-span-2',
+      icon: <Search className='size-4 text-purple-400' />,
+      visual: (
+        <div className='mt-4 grid grid-cols-3 gap-2'>
+          {['Tavily', 'Exa', 'Brave'].map((name) => (
+            <div
+              key={name}
+              className='border-border/30 bg-muted/20 text-muted-foreground flex items-center justify-center rounded-lg border px-3 py-2 text-xs transition-colors duration-300 hover:border-purple-500/30 hover:bg-purple-500/5'
             >
               {name}
             </div>

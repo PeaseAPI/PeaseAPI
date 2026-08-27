@@ -19,7 +19,7 @@
                     </div>
                     <div>
                         <h3 class="text-base font-semibold text-white">新闻服务 Key</h3>
-                        <p class="text-xs text-blue-100">配置后可使用新闻中转兼容协议工具 API</p>
+                        <p class="text-xs text-blue-100">配置后可使用新闻API。</p>
                     </div>
                 </div>
             </div>
@@ -66,7 +66,7 @@
                     </div>
                     <div>
                         <h3 class="text-base font-semibold text-white">搜索服务 Key</h3>
-                        <p class="text-xs text-purple-100">配置后可使用搜索中转兼容协议工具 API</p>
+                        <p class="text-xs text-purple-100">配置后可使用搜索API。</p>
                     </div>
                 </div>
             </div>

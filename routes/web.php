@@ -16,6 +16,7 @@ use App\Http\Controllers\RedemptionController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SystemInfoController;
 use App\Http\Controllers\WebAuthController;
+use App\Http\Controllers\AuthController;
 use App\Http\Middleware\AdminAuth;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -119,6 +120,9 @@ Route::middleware('auth')->group(function () {
 
         // News API keys (user's own search provider keys)
         Route::put('/news-keys', [UserApiController::class, 'updateNewsKeys']);
+
+        // Sessions
+        Route::post('/sessions/revoke-others', [AuthController::class, 'revokeOtherSessions']);
 
         // Admin routes
         Route::middleware(AdminAuth::class)->group(function () {

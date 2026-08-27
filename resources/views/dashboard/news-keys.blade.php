@@ -144,8 +144,9 @@ function showToast(msg, type) {
 
 async function loadNewsKeys() {
     try {
-        var res = await fetch('/web-api/me', { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' } });
-        var data = await res.json();
+        var res = await fetch('/web-api/me', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        var data = res.ok ? await res.json() : {};
         var masked = data.news_keys_masked || {};
         ['news_google_key','news_newsapi_key','news_tavily_key','news_exa_key','news_brave_key'].forEach(function(f) {
             var el = document.getElementById(f);
@@ -183,10 +184,11 @@ document.getElementById('newsKeysForm').addEventListener('submit', async functio
     });
     try {
         var res = await fetch('/web-api/news-keys', {
-            method: 'PUT',
+            method: 'PUT', credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
             body: JSON.stringify(payload)
         });
+        if (res.status === 401) { showToast('登录已过期，请重新登录', 'error'); window.location.href = '/login'; return; }
         var data = await res.json();
         if (res.ok) {
             showToast('保存成功');

@@ -218,14 +218,18 @@ function copyToClipboard(el, text) {
 async function loadDashboard() {
     try {
         const [userRes, tokensRes, logsRes] = await Promise.all([
-            fetch('/web-api/me'),
-            fetch('/web-api/tokens?per_page=5'),
-            fetch('/web-api/logs?per_page=5')
+            fetch('/web-api/me', { credentials: 'same-origin' }),
+            fetch('/web-api/tokens?per_page=5', { credentials: 'same-origin' }),
+            fetch('/web-api/logs?per_page=5', { credentials: 'same-origin' })
         ]);
         
-        const userData = await userRes.json();
-        const tokensData = await tokensRes.json();
-        const logsData = await logsRes.json();
+        // Handle auth failures - redirect to login
+        if (userRes.status === 401) { window.location.href = '/login'; return; }
+
+        const userData = userRes.ok ? await userRes.json() : {};
+        const tokensData = tokensRes.ok ? await tokensRes.json() : { data: [], total: 0 };
+        const logsData = logsRes.ok ? await logsRes.json() : { data: [] };
+        
         
         // Update stats
         document.getElementById('balance').textContent = (userData.balance || 0).toLocaleString();

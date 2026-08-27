@@ -61,7 +61,7 @@ function handleApiResponse(response, defaultMessage='请求失败'){
 }
 function loadAbilities(p=1){
     page=p;
-    fetch(`/web-api/abilities?page=${p}&per_page=15`)
+    fetch(`/web-api/abilities?page=${p}&per_page=15`, { credentials: 'same-origin' })
         .then((response)=>handleApiResponse(response, '加载能力失败'))
         .then(d=>{
             const t=document.getElementById('abilityTable');
@@ -86,7 +86,7 @@ function openCreate(){
     document.getElementById('abilityModal').classList.remove('hidden');
 }
 function editAbility(id){
-    fetch(`/web-api/abilities/${id}`)
+    fetch(`/web-api/abilities/${id}`, { credentials: 'same-origin' })
         .then((response)=>handleApiResponse(response, '加载能力失败'))
         .then(d=>{
             const a=d?.data||d;

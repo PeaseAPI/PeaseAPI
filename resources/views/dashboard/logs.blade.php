@@ -47,7 +47,7 @@ let currentPage = 1;
 function loadLogs(page = 1) {
     currentPage = page;
     const params = new URLSearchParams({ page, per_page: 15 });
-    fetch(`/web-api/logs?${params}`).then(res => res.json()).then(data => {
+    fetch(`/web-api/logs?${params}`, { credentials: 'same-origin' }).then(res => res.json()).then(data => {
         const tbody = document.getElementById('logTable');
         if (data.data && data.data.length > 0) {
             tbody.innerHTML = data.data.map(log => `

@@ -104,7 +104,7 @@ document.getElementById('prefForm').addEventListener('submit', async function(e)
 });
 async function loadSessions() {
     try {
-        const res = await fetch('/web-api/me');
+        const res = await fetch('/web-api/me', { credentials: 'same-origin' });
         const data = await res.json();
         const box = document.getElementById('sessionsList');
         box.innerHTML = '<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"><div><p class="text-sm font-medium text-gray-700">当前会话</p><p class="text-xs text-gray-400">浏览器登录</p></div><span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">活跃</span></div>';

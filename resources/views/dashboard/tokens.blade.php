@@ -162,7 +162,7 @@ function loadTokens(page = 1) {
     if (currentSearch) params.append('search', currentSearch);
     if (currentStatus) params.append('status', currentStatus);
     
-    fetch(`/web-api/tokens?${params}`)
+    fetch(`/web-api/tokens?${params}`, { credentials: 'same-origin' })
         .then(res => res.json())
         .then(data => {
             const tbody = document.getElementById('tokenTable');

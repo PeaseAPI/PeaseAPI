@@ -172,7 +172,7 @@ function renderAvatarPreview(avatarUrl, fallbackName) {
 }
 
 // 加载用户信息
-fetch('/web-api/me').then(r => {
+fetch('/web-api/me', { credentials: 'same-origin' }).then(r => {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();
 }).then(d => {

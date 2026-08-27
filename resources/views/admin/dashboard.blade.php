@@ -40,13 +40,13 @@
 
 @push('scripts')
 <script>
-fetch('/web-api/users?per_page=5').then(r=>r.json()).then(d=>{
+fetch('/web-api/users?per_page=5', { credentials: 'same-origin' }).then(r=>r.json()).then(d=>{
     document.getElementById('totalUsers').textContent=d.total||0;
     const t=document.getElementById('recentUsers');
     if(d.data&&d.data.length){t.innerHTML=d.data.map(u=>`<tr class="border-b border-gray-100"><td class="py-3 font-medium">${u.username}</td><td class="py-3">${u.email||'-'}</td><td class="py-3">${(u.quota||0).toLocaleString()}</td><td class="py-3"><span class="px-2 py-1 text-xs rounded-full ${u.status===1?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${u.status===1?'正常':'禁用'}</span></td><td class="py-3 text-gray-500">${u.created_at?new Date(u.created_at).toLocaleDateString():'-'}</td></tr>`).join('')}
     else{t.innerHTML='<tr><td colspan="5" class="py-4 text-center text-gray-500">暂无用户</td></tr>'}
 });
-fetch('/web-api/channels?per_page=1').then(r=>r.json()).then(d=>{document.getElementById('totalChannels').textContent=d.total||0});
-fetch('/web-api/tokens?per_page=1').then(r=>r.json()).then(d=>{document.getElementById('totalTokens').textContent=d.total||0});
+fetch('/web-api/channels?per_page=1', { credentials: 'same-origin' }).then(r=>r.json()).then(d=>{document.getElementById('totalChannels').textContent=d.total||0});
+fetch('/web-api/tokens?per_page=1', { credentials: 'same-origin' }).then(r=>r.json()).then(d=>{document.getElementById('totalTokens').textContent=d.total||0});
 </script>
 @endpush

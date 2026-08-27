@@ -82,7 +82,7 @@
                 <i class="fas fa-newspaper text-sm"></i>
             </div>
             <div class="min-w-0 flex-1">
-                <a href="{{ url('/news-keys') }}" class="text-xs font-semibold text-blue-800 mb-0.5 hover:underline block">新闻中砖兼容协议工具</a>
+                <a href="{{ url('/news-keys') }}" class="text-xs font-semibold text-blue-800 mb-0.5 hover:underline block">新闻中转兼容协议工具</a>
                 <code class="text-[11px] bg-white/70 border border-blue-200 rounded px-1.5 py-0.5 select-all text-blue-700 font-mono block truncate cursor-pointer" data-url="{{ url('/news') }}" onclick="copyToClipboard(this, this.dataset.url)">{{ url('/news') }}</code>
             </div>
             <i class="fas fa-copy text-blue-400 opacity-0 group-hover:opacity-100 transition text-xs absolute top-2 right-2"></i>
@@ -92,7 +92,7 @@
                 <i class="fas fa-search text-sm"></i>
             </div>
             <div class="min-w-0 flex-1">
-                <a href="{{ url('/news-keys') }}" class="text-xs font-semibold text-purple-800 mb-0.5 hover:underline block">搜索中砖兼容协议工具</a>
+                <a href="{{ url('/news-keys') }}" class="text-xs font-semibold text-purple-800 mb-0.5 hover:underline block">搜索中转兼容协议工具</a>
                 <code class="text-[11px] bg-white/70 border border-purple-200 rounded px-1.5 py-0.5 select-all text-purple-700 font-mono block truncate cursor-pointer" data-url="{{ url('/search') }}" onclick="copyToClipboard(this, this.dataset.url)">{{ url('/search') }}</code>
             </div>
             <i class="fas fa-copy text-purple-400 opacity-0 group-hover:opacity-100 transition text-xs absolute top-2 right-2"></i>

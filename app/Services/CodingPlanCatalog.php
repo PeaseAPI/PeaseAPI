@@ -23,7 +23,8 @@ use InvalidArgumentException;
  *  - 火山引擎 Coding Plan：volcengine.com/docs/82379/1925114（额度数值 JS 渲染未公布，价格以购买页为准）
  *  - Moonshot Kimi：platform.kimi.com/docs/pricing/chat（按量计费，无订阅制）
  *  - 百度千帆 Token Plan：cloud.baidu.com/product/codingplan.html（积分↔token 折算未公布，不预置比率）
- *  - 联通 / 移动：官方页无法程序化访问（超大 payload / WAF），模板仅建壳，待人工补全
+ *  - 联通：support.cucloud.cn/document/127/591/2357（Coding Plan arcid=7015 / Token Plan arcid=7080，2026-09-11 经代理直连抓取全量文档核对）
+ *  - 移动：官方页拒绝程序化访问（WAF），模板仅建壳，待人工补全
  *
  * 维护约定：
  *  1. 官方改价 → 更新本文件模板 → 管理端重新「应用模板」（幂等，仅覆盖仍是官方预置态的行）；
@@ -58,10 +59,8 @@ class CodingPlanCatalog
             'moonshot' => self::moonshot(),
             'tencent' => self::tencent(),
             'baidu' => self::baidu(),
-            'unicom' => self::shell('unicom', '中国联通 Coding Plan', 1, '点', 'https://support.cucloud.cn/document/127/591/2357.html?id=2357&arcid=7015&lang=zh',
-                '官方页内嵌超大 payload 无法程序化抓取；请人工录入档位与抵扣规则，并配置 pricing_source_url 启用定时监测。'),
-            'unicom-token' => self::shell('unicom-token', '中国联通 Token Plan', 2, '千token', 'https://support.cucloud.cn/document/127/591/2357.html?id=2357&arcid=7080&lang=zh',
-                '官方页内嵌超大 payload 无法程序化抓取；请人工录入档位与抵扣规则，并配置 pricing_source_url 启用定时监测。'),
+            'unicom' => self::unicom(),
+            'unicom-token' => self::unicomToken(),
             'cmcc' => self::shell('cmcc', '中国移动 Coding Plan', 1, '点', 'https://ecloud.10086.cn/op-help-center/doc/article/98322',
                 '官方页拒绝程序化访问（WAF）；请人工录入档位与抵扣规则，并配置 pricing_source_url 启用定时监测。'),
             'cmcc-token' => self::shell('cmcc-token', '中国移动 Token Plan', 2, '千token', 'https://ecloud.10086.cn/op-help-center/doc/outline/108724',
@@ -193,9 +192,9 @@ class CodingPlanCatalog
                 ['name' => 'Coding Plan · Pro', 'price' => null, 'price_note' => '价格以官网购买页为准', 'period' => '月', 'quota' => null, 'quota_unit' => '点', 'quota_note' => '高强度开发档；5 小时与周限额周期刷新', 'sort' => 20, 'status' => 0],
             ],
             'ratios' => [
-                ['model' => 'doubao-', 'match_type' => 'prefix', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => null, 'cached_rate' => null, 'output_rate' => null, 'sort' => 10, 'status' => 0],
-                ['model' => 'kimi-', 'match_type' => 'prefix', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => null, 'cached_rate' => null, 'output_rate' => null, 'sort' => 20, 'status' => 0],
-                ['model' => 'deepseek-', 'match_type' => 'prefix', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => null, 'cached_rate' => null, 'output_rate' => null, 'sort' => 30, 'status' => 0],
+                ['model' => 'doubao-', 'match_type' => 'prefix', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 10, 'status' => 0],
+                ['model' => 'kimi-', 'match_type' => 'prefix', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 20, 'status' => 0],
+                ['model' => 'deepseek-', 'match_type' => 'prefix', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 30, 'status' => 0],
             ],
         ];
     }
@@ -374,6 +373,85 @@ class CodingPlanCatalog
                 ['name' => '个人版 · Max', 'price' => 600, 'price_note' => '首购五折 299.9（限量秒杀）', 'period' => '月', 'quota' => 165000, 'quota_unit' => '积分', 'quota_note' => '重度开发', 'sort' => 40, 'status' => 1],
             ],
             'ratios' => [],
+        ];
+    }
+
+    /**
+     * 中国联通 Coding Plan（联通云 AI 服务平台 AISP，按「模型调用次数」计量）
+     *
+     * 官方口径要点（2026-09-11 抓取 support.cucloud.cn/document/127/591/2357，arcid=7015）：
+     *  - Lite 40元/月：每 5 小时约 1,200 次 / 每周约 9,000 次 / 每订阅月约 18,000 次请求；
+     *  - Pro 200元/月：每 5 小时约 6,000 次 / 每周约 45,000 次 / 每订阅月约 90,000 次请求；
+     *  - 额度消耗：单次提问按实际「模型调用次数」扣减（简单 Agent 任务约 5-10 次、复杂 10-30+ 次），
+     *    即 1 次模型调用 = 1 次额度，与模型无关 → per_request 1:1（比率行停用，管理员核对后启用）；
+     *  - 支持模型（贵阳基地二区/武汉四区）：aisp-auto-route（智能路由）、DeepSeek-V4-Flash、glm-5.1/glm-5、
+     *    Qwen3.6-27B、kimi-k2.6/kimi-k2.5、Qwen3.5-397B-A17B、Qwen3-235B-A22B、MiniMax-M2.5；
+     *    DeepSeek-V4-Flash 仅供尝鲜（上下文 200K），高峰期易限流；
+     *  - 订阅不退款、仅升配；额度按 5 小时/周/订阅月周期刷新（月额度订阅月第 1 日 00:00 刷新）。
+     */
+    private static function unicom(): array
+    {
+        return [
+            'name' => '中国联通 Coding Plan',
+            'plan_kind' => 1,
+            'billing_mode' => 2,
+            'unit_name' => '次',
+            'docs_url' => 'https://support.cucloud.cn/document/127/591/2357.html?id=2357&arcid=7015&lang=zh',
+            'verified_at' => '2026-09-11',
+            'notes' => '按「模型调用次数」扣减（简单 Agent 任务约 5-10 次、复杂 10-30+ 次）；Lite 40 元/月、Pro 200 元/月；5 小时/周/订阅月三重限额；不退款、仅升配；兼容 OpenAI/Anthropic 协议（aigw-gzgy2.cucloud.cn:8443）。',
+            'tiers' => [
+                ['name' => 'Coding Plan · Lite', 'price' => 40, 'price_note' => '', 'period' => '月', 'quota' => 18000, 'quota_unit' => '次/订阅月', 'quota_note' => '每 5 小时约 1,200 次、每周约 9,000 次；入门尝鲜档', 'sort' => 10, 'status' => 1],
+                ['name' => 'Coding Plan · Pro', 'price' => 200, 'price_note' => '', 'period' => '月', 'quota' => 90000, 'quota_unit' => '次/订阅月', 'quota_note' => '每 5 小时约 6,000 次、每周约 45,000 次；额度为 Lite 的 5 倍', 'sort' => 20, 'status' => 1],
+            ],
+            'ratios' => [
+                ['model' => 'aisp-auto-route', 'match_type' => 'exact', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 10, 'status' => 0],
+                ['model' => 'DeepSeek-', 'match_type' => 'prefix', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 20, 'status' => 0],
+                ['model' => 'glm-', 'match_type' => 'prefix', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 30, 'status' => 0],
+                ['model' => 'Qwen', 'match_type' => 'prefix', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 40, 'status' => 0],
+                ['model' => 'kimi-', 'match_type' => 'prefix', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 50, 'status' => 0],
+                ['model' => 'MiniMax-', 'match_type' => 'prefix', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 60, 'status' => 0],
+            ],
+        ];
+    }
+
+    /**
+     * 中国联通 Token Plan（个人版 tokens 1:1 + 团队版 credits 折算，两条产品线）
+     *
+     * 官方口径要点（2026-09-11 抓取同页，arcid=7080 区段）：
+     *  - 个人版：Lite/Pro/Max 15/30/45 元/月，600/1,200/1,800 万 tokens，tokens 1:1 扣减；
+     *    个人版仅开放 DeepSeek-V4-Flash 与 MiniMax-M2.5（贵阳二区/武汉四区/广州一区）。
+     *  - 团队版：Lite/Pro/Max 198/698/1398 元/月，25,000/100,000/250,000 credits（仅贵阳二区，独享 DeepSeek-V4-Pro）；
+     *    官方未公布逐模型系数，但给出线性折算示例（25,000 credits ≈ V4-Pro 27 百万 / V4-Flash 357 百万 /
+     *    MiniMax-M2.5 227 百万 tokens）→ 1 credit ≈ 0.01 元，credits/百万 tokens = 综合单价 × 100
+     *    → 每千 tokens 系数 DeepSeek-V4-Pro 0.93、DeepSeek-V4-Flash 0.07、MiniMax-M2.5 0.11（与三组示例全部吻合）。
+     *  - exact 行为团队版 credits 口径（优先命中），prefix 行为个人版 tokens 1:1 兜底；个人版与团队版互不切换、仅升配。
+     *  - 按量兜底刊例（元/千 tokens，非套餐口径）：DeepSeek-V3 0.002/0.008、R1 0.004/0.016、V3.1 0.004/0.012（入/出）。
+     */
+    private static function unicomToken(): array
+    {
+        return [
+            'name' => '中国联通 Token Plan',
+            'plan_kind' => 2,
+            'billing_mode' => 2,
+            'unit_name' => '千token',
+            'docs_url' => 'https://support.cucloud.cn/document/127/591/2357.html?id=2357&arcid=7080&lang=zh',
+            'verified_at' => '2026-09-11',
+            'notes' => '个人版 tokens 1:1（600/1,200/1,800 万/月，15/30/45 元）；团队版 credits（25,000/100,000/250,000，198/698/1398 元），折算系数由官方线性示例导出（1 credit ≈ 0.01 元）；个人版仅 V4-Flash/M2.5，团队版独享 V4-Pro；不退款、仅升配。',
+            'tiers' => [
+                ['name' => '个人版 · Lite', 'price' => 15, 'price_note' => '', 'period' => '月', 'quota' => 6000000, 'quota_unit' => 'tokens', 'quota_note' => '仅 DeepSeek-V4-Flash / MiniMax-M2.5；tokens 1:1 扣减', 'sort' => 10, 'status' => 1],
+                ['name' => '个人版 · Pro', 'price' => 30, 'price_note' => '', 'period' => '月', 'quota' => 12000000, 'quota_unit' => 'tokens', 'quota_note' => '2 倍于 Lite 额度；仅 DeepSeek-V4-Flash / MiniMax-M2.5', 'sort' => 20, 'status' => 1],
+                ['name' => '个人版 · Max', 'price' => 45, 'price_note' => '', 'period' => '月', 'quota' => 18000000, 'quota_unit' => 'tokens', 'quota_note' => '3 倍于 Lite 额度；仅 DeepSeek-V4-Flash / MiniMax-M2.5', 'sort' => 30, 'status' => 1],
+                ['name' => '团队版 · Lite', 'price' => 198, 'price_note' => '', 'period' => '月', 'quota' => 25000, 'quota_unit' => 'credits', 'quota_note' => '约 27 百万 tokens（V4-Pro）/ 357 百万（V4-Flash）/ 227 百万（M2.5）；仅贵阳二区', 'sort' => 40, 'status' => 1],
+                ['name' => '团队版 · Pro', 'price' => 698, 'price_note' => '', 'period' => '月', 'quota' => 100000, 'quota_unit' => 'credits', 'quota_note' => '4 倍于 Lite 额度；含 DeepSeek-V4-Pro；仅贵阳二区', 'sort' => 50, 'status' => 1],
+                ['name' => '团队版 · Max', 'price' => 1398, 'price_note' => '', 'period' => '月', 'quota' => 250000, 'quota_unit' => 'credits', 'quota_note' => '10 倍于 Lite 额度；含 DeepSeek-V4-Pro；仅贵阳二区', 'sort' => 60, 'status' => 1],
+            ],
+            'ratios' => [
+                ['model' => 'DeepSeek-V4-Pro', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.93, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 10, 'status' => 0],
+                ['model' => 'DeepSeek-V4-Flash', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.07, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 20, 'status' => 0],
+                ['model' => 'MiniMax-M2.5', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.11, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 30, 'status' => 0],
+                ['model' => 'DeepSeek-', 'match_type' => 'prefix', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 40, 'status' => 0],
+                ['model' => 'MiniMax-', 'match_type' => 'prefix', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 50, 'status' => 0],
+            ],
         ];
     }
 

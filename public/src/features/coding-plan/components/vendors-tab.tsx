@@ -318,6 +318,25 @@ export function VendorsTab() {
                 onChange={(e) => set('pricing_source_url', e.target.value)}
                 placeholder='https://vendor.example/prices.json'
               />
+              <div className='flex items-center gap-2'>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  disabled={!form.code.trim()}
+                  onClick={() =>
+                    set(
+                      'pricing_source_url',
+                      `${window.location.origin}/api/coding_plan/pricing_source/${form.code.trim()}`
+                    )
+                  }
+                >
+                  使用内置官方源
+                </Button>
+                <span className='text-muted-foreground text-xs'>
+                  指向本站由官方模板目录生成的 JSON（需先填厂商代码），官方改价随目录更新自动进入待确认清单
+                </span>
+              </div>
             </div>
             <div className='grid grid-cols-3 gap-3'>
               <div className='grid gap-1.5'>

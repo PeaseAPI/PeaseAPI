@@ -73,6 +73,9 @@ Route::get('/pricing', [OptionController::class, 'pricing']);
 // Public Coding Plan deduction offers (vendors + model ratios + last verification)
 Route::get('/coding_plan/offers', [CodingPlanController::class, 'publicOffers']);
 
+// Built-in pricing source JSON (CodingPlanCatalog ratios) for vendor pricing_source_url
+Route::get('/coding_plan/pricing_source/{code}', [CodingPlanController::class, 'pricingSource']);
+
 // Public Subscription Plans
 Route::get('/subscription/plans', [SubscriptionController::class, 'plans']);
 

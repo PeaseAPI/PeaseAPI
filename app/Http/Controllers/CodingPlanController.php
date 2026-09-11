@@ -605,6 +605,45 @@ class CodingPlanController extends Controller
     }
 
     /**
+     * 内置官方定价源（App\Services\CodingPlanCatalog 折算标准的 JSON 视图）
+     * GET /coding_plan/pricing_source/{code}（公开：校对命令服务端拉取，无法携带管理态）
+     *
+     * 把模板目录的折算标准发布为 verify-ratios 约定的结构化 JSON（{"models":[...]}），
+     * 供厂商 pricing_source_url 指向本站（{站点地址}/api/coding_plan/pricing_source/{code}）：
+     * 无需自建定价源即可获得每 6 小时的官方同步 diff——官方改价 → 更新目录（随代码发布）→
+     * 校对生成待确认变更；管理员手工改动预置行同样会被检出（漂移监测）。
+     * 只读静态数组、无 DB 查询；壳模板（联通/移动）目录暂无折算标准，配置后源状态为「拉取失败」直到录入。
+     */
+    public function pricingSource(string $code): JsonResponse
+    {
+        $template = CodingPlanCatalog::templates()[$code] ?? null;
+        if ($template === null) {
+            return $this->error("官方模板不存在: {$code}", 404);
+        }
+
+        $models = collect($template['ratios'])
+            ->map(fn (array $r) => [
+                'model' => $r['model'],
+                'match_type' => $r['match_type'],
+                'cost_mode' => $r['cost_mode'],
+                'unit_cost' => (float) $r['unit_cost'],
+                'input_rate' => (float) $r['input_rate'],
+                'cached_rate' => (float) $r['cached_rate'],
+                'output_rate' => (float) $r['output_rate'],
+            ])
+            ->values()
+            ->all();
+
+        return response()->json([
+            'vendor' => $code,
+            'unit_name' => $template['unit_name'],
+            'verified_at' => $template['verified_at'],
+            'source' => 'App\\Services\\CodingPlanCatalog',
+            'models' => $models,
+        ]);
+    }
+
+    /**
      * 各供应商最近一次定时校对结果（含待确认变更清单）
      * GET /coding_plan/checks
      *

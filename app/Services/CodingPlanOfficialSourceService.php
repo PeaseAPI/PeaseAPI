@@ -11,6 +11,8 @@ use App\Services\CodingPlanParsers\AnthropicParser;
 use App\Services\CodingPlanParsers\DeepSeekParser;
 use App\Services\CodingPlanParsers\GoogleParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
+use App\Services\CodingPlanParsers\TencentTokenHubParser;
+use App\Services\CodingPlanParsers\XaiMarkdownParser;
 use App\Services\CodingPlanParsers\ZhipuMarkdownParser;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
@@ -92,12 +94,12 @@ class CodingPlanOfficialSourceService
         ],
         'xai' => [
             'label' => 'xAI Grok',
-            'pricing_url' => 'https://docs.x.ai/docs/models',
-            'format' => 'html',
-            'parser' => null,
+            'pricing_url' => 'https://docs.x.ai/developers/models.md',
+            'format' => 'markdown',
+            'parser' => XaiMarkdownParser::class,
             'proxy' => true,
             'model_catalog_url' => null,
-            'notes' => 'grok-4.6：输入 $2.00 / 1M、输出 $6.00 / 1M（2026-09-12）',
+            'notes' => '.md 直取（/docs/models 308 → /developers/models）；长上下文分档取 < 200k 首档；Imagine/Voice 按次计价表跳过',
         ],
         'zhipu' => [
             'label' => '智谱 BigModel',
@@ -122,10 +124,11 @@ class CodingPlanOfficialSourceService
             'label' => '腾讯云 TokenHub',
             'pricing_url' => 'https://cloud.tencent.com/document/product/1823/130060',
             'format' => 'html',
-            'parser' => null,
+            'parser' => TencentTokenHubParser::class,
             'proxy' => false,
             'model_catalog_url' => null,
-            'notes' => '积分抵扣 8 档；GLM-5/5.1 于 2026-10-09 下线（P2-2 model_retirement）',
+            'catalog_from_pricing' => true,
+            'notes' => 'Slate SSR；套餐积分配额页无按量价 → catalog_from_pricing 产 model_catalog（Model ID 表逐变体拆分）；GLM-5/5.1 于 2026-10-09 下线（P2-2 model_retirement）',
         ],
         'siliconflow' => [
             'label' => 'SiliconFlow 硅基流动',

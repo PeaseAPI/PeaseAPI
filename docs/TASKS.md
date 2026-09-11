@@ -62,7 +62,7 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 
 ## 3. 当前执行指针
 
-> **下一步从 P1-2 剩余解析器开始**（google/anthropic/xai/zhipu/aliyun/tencent/siliconflow，原始响应已存 `storage/app/private/coding-plan-snapshots/*/` 供解析器调试；volcengine/unicom/cmcc/minimax/moonshot/baidu 源待探测）。P0 已全部完成；P1-1/3/4/5/7/8/10 已完成（2026-09-12）。新需求 R9-R12 → P7/P8/P9（见任务清单末尾）。
+> **下一步从 P1-2 剩余解析器开始**（aliyun 源 404 待重定位 + moonshot/volcengine/unicom/cmcc/minimax/baidu 源待探测；siliconflow 结构已摸清、待 P7 多货币口径落地后接入），原始响应已存 `storage/app/private/coding-plan-snapshots/*/` 供解析器调试。P0 已全部完成；P1-1/3/4/5/7/8/10 已完成（2026-09-12）。新需求 R9-R12 → P7/P8/P9（见任务清单末尾）。
 
 ---
 
@@ -80,12 +80,12 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
   - [x] openai：`https://platform.openai.com/docs/pricing.md`（**需代理**；Markdown 表；short/long context 双列 + Batch 半价表 + cache writes 列）✅ 2026-09-12 全链路：解析 67 模型（长上下文价忽略、裸缩写补全、Batch 首表优先、无缓存价=输入价保守）→ diff「新增 67」待人工确认
   - [x] google：`https://ai.google.dev/gemini-api/docs/pricing`（**需代理**；SSR 中文机翻 HTML；模型名只在锚点 id，表在 standard/batch/flex/priority 子标题下）✅ 2026-09-12 全链路：解析 28 模型（只取 standard 层；双价取「起为」恢复价=2027-01-01 长期价，促销价归 P2；分档长上下文取首档；「/小时（存储价格）」「每张图片」换算价、模态列表「/ 图片」精确区分）→ diff「新增 28」待人工确认
   - [x] anthropic：`https://docs.anthropic.com/en/docs/about-claude/pricing`（**需代理**；Next.js SSR，表格由 div+CSS 渲染无 `<table>`，按 `<tr>` 平铺扫描）✅ 2026-09-12 全链路：解析 17 模型（显示名「Claude Opus 4.6」→ claude-opus-4.6；「Model」表头行重置列定位；Batch 半价表/CCU 说明表/1M 长上下文合并名行跳过，同模型首条为准）→ diff「新增 17」待人工确认
-  - [ ] xai：`https://docs.x.ai/docs/models`（**需代理**；grok-4.6 $2/$6；Retirement 公告 → 模型下架输入）【已验证可抓】
+  - [x] xai：`https://docs.x.ai/developers/models.md`（**.md 直取**；原 /docs/models 308 → /developers/models；grok-4.6 $2/$0.5/$6；长上下文分档取 < 200k 首档、≥200k 条件价跳过；Imagine/Voice 按次计价表跳过）→ 真抓 7 模型「新增 7」✅2026-09-12
   - [x] zhipu：`https://docs.bigmodel.cn/cn/coding-plan/overview.md`（Mintlify `.md` 直取；页面=套餐积分配额表，**无模型按量价**）✅ 2026-09-12：`catalog_from_pricing` 复用同响应体产 `model_catalog`（GLM‑5.3 等 6 模型，U+2011 非断连字符归一化）→ 目录 diff「新增 4」待人工确认；按量三率已预置迁移 000009
   - [ ] aliyun：`https://docs.bailian.console.aliyun.com/llms.txt` 索引 → token-plan-personal-overview（7 天限额/限时价/夜间五折）【首页已验证】
   - [ ] moonshot：`https://platform.moonshot.cn/docs/price/chat`（SPA；探测 `/docs/llms.txt` 与页面内嵌 JSON）
-  - [ ] tencent：`https://cloud.tencent.com/document/product/1823/130060`（SSR HTML；通用/Hy 8 档 + 模型表 + GLM-5/5.1 下线日期）【已验证可抓】
-  - [ ] siliconflow：`https://siliconflow.cn/pricing`（SSR HTML；「费用发生时段」文本 → time_discounts）
+  - [x] tencent：`https://cloud.tencent.com/document/product/1823/130060`（Slate SSR；套餐积分配额页无按量价 → `catalog_from_pricing`；Model ID 表逐变体拆分——`data-slate-string` 每 ul 一个 ID，点/横线双风格并存；「整格全 ID」规则滤掉概览/工具生态格）→ 目录新增 16 ✅2026-09-12
+  - [ ] siliconflow：`https://siliconflow.cn/pricing`（SSR；结构已摸清：`pricing-row-{text|image|audio|video}-*` 行 + `<a title="vendor/model">` + 「费用发生时段: 9点～18点」双时段价组；**¥/M tokens 人民币口径 → 待 P7-1 currency 字段落地后接入**，否则美元字段存人民币=资损口径错误）
   - [ ] volcengine：doccenter SPA → 探测文档中心 XHR API（SPA garfish 配置可见）；失败则依赖已核对预置 + 人工
   - [ ] unicom：`support.cucloud.cn/document/127/591/2357.html?...arcid=7015/7080`（Vue SPA，16MB 正文内嵌 → 探测 `window.__INITIAL_STATE__` 或文档 API）
   - [ ] cmcc：`https://ecloud.10086.cn/op-help-center/doc/article/98322` 与 `outline/108724`（Vue SPA `cloud-cms-service-web` → 探测 CMS JSON API）
@@ -169,7 +169,7 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 | openai | 模型目录 | https://platform.openai.com/docs/models.md | MD | **是** | ✅已接（sync-official 目录 diff） |
 | google | Gemini API | https://ai.google.dev/gemini-api/docs/pricing | HTML | **是** | ✅已抓取 |
 | anthropic | Claude API | https://docs.anthropic.com/en/docs/about-claude/pricing | HTML | **是** | ⚠️区域封锁，备选 .md |
-| xai | Grok API | https://docs.x.ai/docs/models | HTML | **是** | ✅已抓取 |
+| xai | Grok API | https://docs.x.ai/developers/models.md | Markdown | **是** | ✅已解析 |
 | zhipu | GLM Coding Plan | https://docs.bigmodel.cn/cn/coding-plan/overview（llms.txt 索引） | Mintlify | 否 | ✅已抓取 |
 | aliyun | Token Plan 个人版 | https://docs.bailian.console.aliyun.com/zh/model-studio/token-plan-personal-overview（llms.txt 索引） | HTML | 否 | ✅已抓取 |
 | tencent | TokenHub Token Plan | https://cloud.tencent.com/document/product/1823/130060 | HTML | 否 | ✅已抓取 |
@@ -188,3 +188,5 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 - 2026-09-12：建立账本；完成 P0（首轮 9+ 家官方源抓取、快照预存 `docs/upstream-snapshots/2026-09-12/`）；确认 OpenAI/Google/xAI/Anthropic 需代理（本机 `http://127.0.0.1:7890` 已验证可用）；发现 OpenAI 文档页支持 `.md` 后缀直取 Markdown（P1-2 关键技巧）。
 - 2026-09-12（二）：新增需求 R9-R12 → P7 多货币与结算体系 / P8 厂商模型上架流 / P9 成本感知路由与配额恢复感知（复用点已探明：`CodingPlanAccount` 5h/周/月窗口 + STATUS_EXHAUSTED 自动恢复、`ChannelSelectService` 静态调度、`UsdExchangeRate`、前端 `currency.ts`）。P1 核心工程落地：`CodingPlanOfficialSourceService`（15 家源注册表 + 代理抓取 `PEASE_API_HTTP_PROXY` + 快照保留 10 份 + 复用 diff/忽略/流水）+ `coding-plan:sync-official` 命令（每 6h 先于 verify）+ deepseek/openai 解析器（deepseek 真实结构=转置表；openai 代理链路解析 67 模型 → 「新增 67」待人工确认）+ fixture 测试 21 项断言（`tests/coding-plan-parser-fixture.php`）。发现并修正：快照实际落 `storage/app/private/`（Laravel 11 local disk root）；diffEntries 需兼容 list 输入（数字索引 key 误配）；停用行（status=0）不应报「新增」。回归：test-time-discounts 28/28、verify-ratios 无回归。
 - 2026-09-12（三）：P1-2 再落三家解析器并全链路真抓验证（5/5 厂商 0 失败，共 116 处待确认变更）：google（SSR 中文机翻；锚点 id 模型名 + standard 层表；双价「起为」取恢复价防 2027-01-01 刷屏；分档长上下文首档；存储价「/小时」「每张图片」换算价与模态列表「/ 图片」噪声精确区分 → 28 模型）、anthropic（Next.js SSR div 表无 `<table>`，`<tr>` 平铺扫描 + 「Model」表头行重置列定位；显示名转 id；Batch/1M/CCU 表跳过同模型首条为准 → 17 模型）、zhipu（Mintlify `.md` 直取；页面=套餐积分配额无按量价 → `catalog_from_pricing` 注册表开关复用响应体产 model_catalog，U+2011 归一化 → 目录新增 4）。基建：`htmlTables()` 基类助手；sync 命令目录解析提前到条目判空前（entries 空 + catalog 空才算 SOURCE_FAILED）；fixture 扩至 42 项断言。回归：test-time-discounts 28/28、verify-ratios 无回归、pint PASS。
+- 2026-09-12（四）：P1-2 再落 xai/tencent 两家解析器并全链路真抓验证（7 厂商 0 失败）：xai（**发现 `.md` 直取技巧同样适用**——原 /docs/models 已 308 → /developers/models.md；Text API Pricing 表长上下文分档取 < 200k 首档、≥200k 条件价跳过；Imagine/Voice 按次计价表跳过 → 7 模型「新增 7」）、tencent（Slate SSR；套餐积分配额页无按量价 → `catalog_from_pricing`；Model ID 表逐变体拆分 + 「整格全 ID」规则滤概览/工具格；GLM-5/5.1 下线经 catalog missing 呈现 → 目录新增 16）。**配置修复**：`.env` 补 `PEASE_API_HTTP_PROXY`（上轮代理仅临时环境变量，导致本轮境外源全超时误报抓取失败）。**工程决策**：siliconflow 结构摸清（pricing-row-{text|image|audio|video} 行 + `title="vendor/model"` + 「费用发生时段」双时段价组）但 ¥/M tokens 人民币口径待 P7-1 currency 字段，现在接入=美元字段存人民币资损口径错误 → 延后 P7；aliyun 原 URL 已 404 待重定位（llms.txt 索引法待试）。fixture 扩至 51 项断言（xai 分档/÷1000/非 token 表、tencent 双风格变体/杂质过滤）；修复 fixture 尾部重复 echo/exit。回归：test-time-discounts 28/28、verify-ratios 无回归、pint PASS。
+

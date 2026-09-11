@@ -12,6 +12,8 @@ use App\Services\CodingPlanParsers\AnthropicParser;
 use App\Services\CodingPlanParsers\DeepSeekParser;
 use App\Services\CodingPlanParsers\GoogleParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
+use App\Services\CodingPlanParsers\TencentTokenHubParser;
+use App\Services\CodingPlanParsers\XaiMarkdownParser;
 use App\Services\CodingPlanParsers\ZhipuMarkdownParser;
 
 $fail = 0;
@@ -196,8 +198,55 @@ $z = new ZhipuMarkdownParser;
 check('zhipu parsePricing=空（套餐积分页无模型按量价）', $z->parsePricing($zMd) === []);
 check('zhipu catalog=3（U+2011 归一化为普通连字符）', $z->parseCatalog($zMd) === ['glm-5.3', 'glm-5.3-flash', 'glm-5.2']);
 
-echo $fail === 0 ? "\n✅ 解析器 fixture 全部通过\n" : "\n❌ {$fail} 项失败\n";
-exit($fail === 0 ? 0 : 1);
+// ---- xAI（Mintlify .md：Text API Pricing 表；长上下文分档取 < 200k 首档）----
+$xMd = <<<'MD'
+#### Key Information
+
+# Models
+
+### Text API Pricing
+
+| Model | Context | Input / 1M tokens | Cached input / 1M tokens | Output / 1M tokens |
+| --- | --- | --- | --- | --- |
+| grok-4.6 (< 200k prompt tokens) | 500k | $2.00 | $0.50 | $6.00 |
+| grok-4.6 (≥ 200k prompt tokens) | 500k | $4.00 | $1.00 | $12.00 |
+| grok-build-0.1 (< 200k prompt tokens) | 256k | $1.00 | $0.20 | $2.00 |
+
+*Prices shown per million tokens.*
+
+### Imagine Pricing
+
+| Model | Cost |
+| --- | --- |
+| grok-imagine-image | $0.02 / image |
+MD;
+
+$x = new XaiMarkdownParser;
+$xEntries = $x->parsePricing($xMd);
+$xByModel = [];
+foreach ($xEntries as $entry) {
+    $xByModel[$entry['model']] = $entry;
+}
+check('xai 解析 2 条（≥200k 档跳过；Imagine 按次计价表不产条目）', count($xEntries) === 2);
+check('grok-4.6 input=0.002（$2/1M → $/1k）', abs(($xByModel['grok-4.6']['input_rate'] ?? 0) - 0.002) < 1e-9);
+check('grok-4.6 cached=0.0005、output=0.006', abs(($xByModel['grok-4.6']['cached_rate'] ?? 0) - 0.0005) < 1e-9 && abs(($xByModel['grok-4.6']['output_rate'] ?? 0) - 0.006) < 1e-9);
+check('imagine 模型不在结果（非 token 计价）', ! isset($xByModel['grok-imagine-image']));
+
+// ---- 腾讯云 TokenHub（Slate SSR：Model ID 表逐变体拆分 → catalog）----
+$tHtml = <<<'HTML'
+<tr><td data-slate-node="element"><span data-slate-string="true">Model Name</span></td><td data-slate-node="element"><span data-slate-string="true">Model ID</span></td><td data-slate-node="element"><span data-slate-string="true">说明</span></td></tr>
+<tr><td><div><span data-slate-string="true">MiniMax-M2.7</span></div></td><td><div class="tse-markdown-ul"><span class="tse-ul-content"><span data-slate-string="true">minimax-m2.7</span></span></div><div class="tse-markdown-ul"><span class="tse-ul-content"><span data-slate-string="true">minimax-m-2-7</span></span></div></td><td><div><span data-slate-string="true">MiniMax 旗舰</span></div></td></tr>
+<tr><td><div><span data-slate-string="true">Auto</span></div></td><td><div><span data-slate-string="true">tc-code-latest</span></div></td><td><div><span data-slate-string="true">智能路由</span></div></td></tr>
+<tr><td><div><span data-slate-string="true">Hy Token Plan</span></div></td><td><div><span data-slate-string="true">每订阅月780 积分</span></div></td><td><div><span data-slate-string="true">套餐档位</span></div></td></tr>
+<tr><td><div><span data-slate-string="true">WorkBuddy腾讯云全场景 AI 桌面智能体</span></div></td><td><div><span data-slate-string="true">WorkBuddy</span><span data-slate-string="true">腾讯云全场景 AI 桌面智能体</span></div></td><td><div></div></td></tr>
+HTML;
+
+$t = new TencentTokenHubParser;
+$tCatalog = $t->parseCatalog($tHtml);
+check('tencent parsePricing=空（套餐积分配额页）', $t->parsePricing($tHtml) === []);
+check('tencent catalog 含双风格变体（minimax-m2.7 与 minimax-m-2-7）', in_array('minimax-m2.7', $tCatalog, true) && in_array('minimax-m-2-7', $tCatalog, true));
+check('tencent catalog 含 tc-code-latest', in_array('tc-code-latest', $tCatalog, true));
+check('tencent 表头/套餐格/工具生态格不入目录', ! in_array('model id', $tCatalog, true) && ! in_array('workbuddy', $tCatalog, true) && count($tCatalog) === 3);
 
 echo $fail === 0 ? "\n✅ 解析器 fixture 全部通过\n" : "\n❌ {$fail} 项失败\n";
 exit($fail === 0 ? 0 : 1);

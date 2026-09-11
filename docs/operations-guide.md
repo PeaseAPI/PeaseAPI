@@ -125,6 +125,19 @@
 - `CodingPlanRequireSubscription=true` 时，使用 Coding Plan 需持有对应厂商的有效订阅。
 - 账号池/用量折算操作见 [使用指南 → Coding Plan](usage-guide.md#coding-plan-账号池与转换-api)。
 
+### 3.5 Coding Plan 供应商初始化
+
+供应商数据来自两处，**升级后需手动执行一次 seeder**：
+
+```bash
+php artisan db:seed --class=CodingPlanVendorSeeder --force
+```
+
+- **国际订阅制 4 家**（anthropic / openai / google / alibaba）：seeder 写入并**默认启用**，每家带一条前缀兜底比率（1 请求 = 1 积分，Qwen 按千 token 折算），语义明确、可直接使用。
+- **国内 12 家**（火山引擎 / 联通 / 移动 / 智谱 / 阿里百炼 / 腾讯混元 / 百度千帆 / 火山方舟 / DeepSeek / Moonshot 等）：由迁移 `2026_09_11_000002_add_coding_plan_vendor_presets` 幂等预置，**默认停用 `status=0`**——预置内容只有「脚手架」：档位（tencent 8 档、aliyun 8 档、zhipu 5 档、volcengine 1 档）与 `unit_cost=1` 占位比率模板（联通/移动连模板都没有，需人工抄录档位）。
+- **启用前必须人工核对真实价目**（错误价格 = 资损）：在管理后台「模型折算比率」把占位值改为真实 `unit_cost` / 三段系数后再启用厂商与比率。
+- 启用后可用 `php artisan coding-plan:verify-ratios`（每 6 小时自动跑）做 stale 检测与定价源 diff；为厂商配置 `pricing_source_url`（结构化 JSON）可自动发现新增/变价/下架，变更只记录待确认，绝不自动改价。
+
 ---
 
 ## 4. 定时任务

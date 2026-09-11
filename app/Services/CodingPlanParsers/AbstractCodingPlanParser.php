@@ -37,6 +37,27 @@ abstract class AbstractCodingPlanParser implements CodingPlanParserInterface
     }
 
     /**
+     * 按 <table> 分组抽取行（每表 = 行数组的数组），供多表页面区分表头。
+     *
+     * @return list<list<list<string>>>
+     */
+    protected function htmlTables(string $body): array
+    {
+        $tables = [];
+        if (! preg_match_all('/<table[^>]*>(.*?)<\/table>/is', $body, $tableMatches)) {
+            return [];
+        }
+        foreach ($tableMatches[1] as $inner) {
+            $rows = $this->tableRows((string) $inner);
+            if ($rows !== []) {
+                $tables[] = $rows;
+            }
+        }
+
+        return $tables;
+    }
+
+    /**
      * 从 Markdown 抽取全部管道表格（header + 数据行）。
      *
      * @return list<array{header: list<string>, rows: list<list<string>>}>

@@ -84,7 +84,7 @@ class DeepSeekParser extends AbstractCodingPlanParser
      * 纵向布局（模型为行）：表头行做指标映射，逐行提取费率。
      *
      * @param  list<list<string>>  $rows
-     * @return array<string, array<string, array<string, float>>>  model => metric => phase => value
+     * @return array<string, array<string, array<string, float>>> model => metric => phase => value
      */
     protected function extractRatesByColumns(array $rows): array
     {
@@ -162,7 +162,7 @@ class DeepSeekParser extends AbstractCodingPlanParser
      * 单位写在数值格内（"0.02元"）。
      *
      * @param  list<list<string>>  $rows
-     * @return array<string, array<string, array<string, float>>>  model => metric => phase => value
+     * @return array<string, array<string, array<string, float>>> model => metric => phase => value
      */
     protected function extractRatesTransposed(array $rows): array
     {

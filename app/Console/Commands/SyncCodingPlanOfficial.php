@@ -11,6 +11,7 @@ use App\Services\CodingPlanOfficialSourceService;
 use App\Services\CodingPlanParsers\CodingPlanParserInterface;
 use App\Services\OptionService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 
@@ -133,6 +134,7 @@ class SyncCodingPlanOfficial extends Command
         }
 
         // 条目解析：结构化 JSON 与内置解析器输出同一约定
+        $parser = null;
         if ($source['kind'] === 'structured') {
             $entries = $sources->normalizeStructuredEntries(json_decode($body, true));
         } else {
@@ -140,23 +142,26 @@ class SyncCodingPlanOfficial extends Command
             $parser = app($source['parser']);
             $entries = $parser->parsePricing($body);
         }
-        if ($entries === []) {
+
+        // 模型目录：独立 model_catalog_url，或 catalog_from_pricing（目录与定价同一响应体）。
+        // 目录产出先于条目判空 —— 套餐积分类页面（如 zhipu）无定价条目但有模型清单
+        $catalog = [];
+        $catalogBody = null;
+        if ($source['model_catalog_url'] !== null) {
+            $catalogBody = $sources->fetchBody($source['model_catalog_url'], $source['proxy']);
+        } elseif (($source['catalog_from_pricing'] ?? false) && $parser !== null) {
+            $catalogBody = $body;
+        }
+        if ($catalogBody !== null && $parser !== null) {
+            $catalog = $parser->parseCatalog($catalogBody);
+        }
+
+        if ($entries === [] && $catalog === []) {
             $path = $sources->saveSnapshot($code, $this->snapshotPayload($source, $code, false, 0, 0), $body);
             $sources->recordCheck($code, CodingPlanRatioCheck::SOURCE_FAILED);
             $this->line("[{$code}] {$label}: 解析出 0 条条目（原始响应已存快照 → {$path}）");
 
             return -1;
-        }
-
-        // 模型目录（仅配置了 model_catalog_url 的内置源；P8 上架流数据源）
-        $catalog = [];
-        if ($source['model_catalog_url'] !== null) {
-            $catalogBody = $sources->fetchBody($source['model_catalog_url'], $source['proxy']);
-            if ($catalogBody !== null) {
-                /** @var CodingPlanParserInterface $parser */
-                $parser = app($source['parser']);
-                $catalog = $parser->parseCatalog($catalogBody);
-            }
         }
 
         $path = $sources->saveSnapshot(
@@ -174,7 +179,7 @@ class SyncCodingPlanOfficial extends Command
             return 0;
         }
 
-        /** @var \Illuminate\Support\Collection<int, CodingPlanModelRatio> $ratios */
+        /** @var Collection<int, CodingPlanModelRatio> $ratios */
         // 全量行（含停用）：存在性比对不受上下架影响；数值 diff 在 diffEntries 内只对启用行生效
         $ratios = CodingPlanModelRatio::query()->where('vendor', $code)->get();
         $changes = $sources->diffEntries($entries, $ratios);

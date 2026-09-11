@@ -78,10 +78,10 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 - [ ] P1-2 逐厂商解析器（输入=HTTP 响应体，输出=标准化条目数组，格式见 P1-3）：
   - [x] deepseek：`https://api-docs.deepseek.com/zh-cn/quick_start/pricing/`（**真实结构=转置表**：模型为列、指标为行、rowspan 分段、单位在格内如「0.02元」；纵向表做兜底；空闲/高峰 → time_discounts 窗口与迁移 000009 零漂移）✅ 2026-09-12 端到端「无变更」
   - [x] openai：`https://platform.openai.com/docs/pricing.md`（**需代理**；Markdown 表；short/long context 双列 + Batch 半价表 + cache writes 列）✅ 2026-09-12 全链路：解析 67 模型（长上下文价忽略、裸缩写补全、Batch 首表优先、无缓存价=输入价保守）→ diff「新增 67」待人工确认
-  - [ ] google：`https://ai.google.dev/gemini-api/docs/pricing`（**需代理**；HTML 表；「促销价至 2026-12-31、2027-01-01 恢复」双价列）【已验证可抓】
-  - [ ] anthropic：`https://docs.anthropic.com/en/docs/about-claude/pricing`（**需代理**；区域封锁，备选 `.md` 后缀 / anthropic.com/pricing#api；拿不到记 source_failed 不阻塞其他家）
+  - [x] google：`https://ai.google.dev/gemini-api/docs/pricing`（**需代理**；SSR 中文机翻 HTML；模型名只在锚点 id，表在 standard/batch/flex/priority 子标题下）✅ 2026-09-12 全链路：解析 28 模型（只取 standard 层；双价取「起为」恢复价=2027-01-01 长期价，促销价归 P2；分档长上下文取首档；「/小时（存储价格）」「每张图片」换算价、模态列表「/ 图片」精确区分）→ diff「新增 28」待人工确认
+  - [x] anthropic：`https://docs.anthropic.com/en/docs/about-claude/pricing`（**需代理**；Next.js SSR，表格由 div+CSS 渲染无 `<table>`，按 `<tr>` 平铺扫描）✅ 2026-09-12 全链路：解析 17 模型（显示名「Claude Opus 4.6」→ claude-opus-4.6；「Model」表头行重置列定位；Batch 半价表/CCU 说明表/1M 长上下文合并名行跳过，同模型首条为准）→ diff「新增 17」待人工确认
   - [ ] xai：`https://docs.x.ai/docs/models`（**需代理**；grok-4.6 $2/$6；Retirement 公告 → 模型下架输入）【已验证可抓】
-  - [ ] zhipu：`https://docs.bigmodel.cn/llms.txt` 索引 → coding-plan overview / pricing 页（Mintlify，可直接 `.md`）【首页已验证】
+  - [x] zhipu：`https://docs.bigmodel.cn/cn/coding-plan/overview.md`（Mintlify `.md` 直取；页面=套餐积分配额表，**无模型按量价**）✅ 2026-09-12：`catalog_from_pricing` 复用同响应体产 `model_catalog`（GLM‑5.3 等 6 模型，U+2011 非断连字符归一化）→ 目录 diff「新增 4」待人工确认；按量三率已预置迁移 000009
   - [ ] aliyun：`https://docs.bailian.console.aliyun.com/llms.txt` 索引 → token-plan-personal-overview（7 天限额/限时价/夜间五折）【首页已验证】
   - [ ] moonshot：`https://platform.moonshot.cn/docs/price/chat`（SPA；探测 `/docs/llms.txt` 与页面内嵌 JSON）
   - [ ] tencent：`https://cloud.tencent.com/document/product/1823/130060`（SSR HTML；通用/Hy 8 档 + 模型表 + GLM-5/5.1 下线日期）【已验证可抓】
@@ -95,11 +95,11 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 - [x] P1-4 快照预存：`storage/app/private/coding-plan-snapshots/{vendor}/{Y-m-d-Hi}.json` + 清理策略（保留 10 份，`.raw.txt` 随 JSON 连带清理）；抓取失败沿用上次快照并在 check 记 source_failed ✅ 2026-09-12
 - [x] P1-5 diff 与预存基准对比（把现有 diff 逻辑抽成可复用方法），结果写 `coding_plan_ratio_checks` ✅ 2026-09-12（`fetchStructuredSource()`/`diffEntries()`/`diffCatalogModels()`/`markIgnoredChanges()`/`recordCheck()`；diffEntries 兼容 keyed map 与 list 输入，数值 diff 仅对启用行、存在性比对含停用行）
   - [ ] P1-5b `VerifyCodingPlanRatios::diffPricingSource` 切换到复用方法（低优先重构，现有实现工作正常）
-- [ ] P1-6 模型上下架检测：各厂商「模型列表」源单独解析 → `kind=model_catalog`（new=上架 / missing=下架；含 OpenAI `/docs/models.md`、xai Retirement、腾讯 GLM-5/5.1 2026-10-09 下线等）【diffCatalogModels + openai 目录源已接，其余厂商目录源待接】
+- [ ] P1-6 模型上下架检测：各厂商「模型列表」源单独解析 → `kind=model_catalog`（new=上架 / missing=下架；含 OpenAI `/docs/models.md`、xai Retirement、腾讯 GLM-5/5.1 2026-10-09 下线等）【diffCatalogModels + openai 目录源、zhipu catalog_from_pricing（目录与定价同一响应体，注册表布尔开关）已接，其余厂商目录源待接】
 - [x] P1-7 新命令 `coding-plan:sync-official {--vendor=} {--snapshot-only}`：抓取→快照→diff→check 串起来；调度每 6 小时（先 sync 后 verify）；保留手动 `pricing_source_url` 自管源 ✅ 2026-09-12（`--vendor` 为合并而非过滤，与 verify 同口径；快照含 proxy_used/parser/entries/catalog 元数据）
 - [x] P1-8 代理支持：`PEASE_API_HTTP_PROXY` env（默认空；本机开发 `http://127.0.0.1:7890`），仅对 proxy:true 的源使用；写进 settings-reference.md ✅ 2026-09-12
 - [ ] P1-9 健康告警：同一源连续 ≥2 次抓取失败 → check 流水标记 + 管理端同步页红点
-- [x] P1-10 解析器单元测试：以 `docs/upstream-snapshots/2026-09-12/` 存档为 fixture，断言解析数值 ✅ `php tests/coding-plan-parser-fixture.php`（21 项断言：转置/纵向双布局、窗口编码零漂移、长上下文/Batch/裸缩写/缓存缺省等容错）
+- [x] P1-10 解析器单元测试：以 `docs/upstream-snapshots/2026-09-12/` 存档为 fixture，断言解析数值 ✅ `php tests/coding-plan-parser-fixture.php`（42 项断言：deepseek 转置/纵向、openai 长上下文/Batch/裸缩写、google 双价恢复价/分档/存储与图价噪声、anthropic 显示名转 id/Batch 去重/CCU、zhipu U+2011 归一化等容错）
 
 ### P2 活动与到期提醒（R7）
 - [ ] P2-1 迁移新表 `coding_plan_promotions`：vendor, kind(=discount/free/price_change/model_retirement), title, description, discount, starts_at, ends_at(可空=官方未公布), source_url, status, remind_days(默认7), sort, remark
@@ -187,3 +187,4 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 
 - 2026-09-12：建立账本；完成 P0（首轮 9+ 家官方源抓取、快照预存 `docs/upstream-snapshots/2026-09-12/`）；确认 OpenAI/Google/xAI/Anthropic 需代理（本机 `http://127.0.0.1:7890` 已验证可用）；发现 OpenAI 文档页支持 `.md` 后缀直取 Markdown（P1-2 关键技巧）。
 - 2026-09-12（二）：新增需求 R9-R12 → P7 多货币与结算体系 / P8 厂商模型上架流 / P9 成本感知路由与配额恢复感知（复用点已探明：`CodingPlanAccount` 5h/周/月窗口 + STATUS_EXHAUSTED 自动恢复、`ChannelSelectService` 静态调度、`UsdExchangeRate`、前端 `currency.ts`）。P1 核心工程落地：`CodingPlanOfficialSourceService`（15 家源注册表 + 代理抓取 `PEASE_API_HTTP_PROXY` + 快照保留 10 份 + 复用 diff/忽略/流水）+ `coding-plan:sync-official` 命令（每 6h 先于 verify）+ deepseek/openai 解析器（deepseek 真实结构=转置表；openai 代理链路解析 67 模型 → 「新增 67」待人工确认）+ fixture 测试 21 项断言（`tests/coding-plan-parser-fixture.php`）。发现并修正：快照实际落 `storage/app/private/`（Laravel 11 local disk root）；diffEntries 需兼容 list 输入（数字索引 key 误配）；停用行（status=0）不应报「新增」。回归：test-time-discounts 28/28、verify-ratios 无回归。
+- 2026-09-12（三）：P1-2 再落三家解析器并全链路真抓验证（5/5 厂商 0 失败，共 116 处待确认变更）：google（SSR 中文机翻；锚点 id 模型名 + standard 层表；双价「起为」取恢复价防 2027-01-01 刷屏；分档长上下文首档；存储价「/小时」「每张图片」换算价与模态列表「/ 图片」噪声精确区分 → 28 模型）、anthropic（Next.js SSR div 表无 `<table>`，`<tr>` 平铺扫描 + 「Model」表头行重置列定位；显示名转 id；Batch/1M/CCU 表跳过同模型首条为准 → 17 模型）、zhipu（Mintlify `.md` 直取；页面=套餐积分配额无按量价 → `catalog_from_pricing` 注册表开关复用响应体产 model_catalog，U+2011 归一化 → 目录新增 4）。基建：`htmlTables()` 基类助手；sync 命令目录解析提前到条目判空前（entries 空 + catalog 空才算 SOURCE_FAILED）；fixture 扩至 42 项断言。回归：test-time-discounts 28/28、verify-ratios 无回归、pint PASS。

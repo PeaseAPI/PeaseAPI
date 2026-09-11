@@ -7,8 +7,11 @@ namespace App\Services;
 use App\Console\Commands\VerifyCodingPlanRatios;
 use App\Models\CodingPlanModelRatio;
 use App\Models\CodingPlanRatioCheck;
+use App\Services\CodingPlanParsers\AnthropicParser;
 use App\Services\CodingPlanParsers\DeepSeekParser;
+use App\Services\CodingPlanParsers\GoogleParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
+use App\Services\CodingPlanParsers\ZhipuMarkdownParser;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -73,19 +76,19 @@ class CodingPlanOfficialSourceService
             'label' => 'Google Gemini',
             'pricing_url' => 'https://ai.google.dev/gemini-api/docs/pricing',
             'format' => 'html',
-            'parser' => null,
+            'parser' => GoogleParser::class,
             'proxy' => true,
             'model_catalog_url' => null,
-            'notes' => '全表促销价至 2026-12-31、2027-01-01 恢复 ×2 —— 解析器需记录双价与切换日',
+            'notes' => '中文机翻 SSR；模型名在锚点 id、表在层级子标题下（只取 standard）；基础价=恢复价（2027-01-01 起长期价），促销价归 P2 promotions',
         ],
         'anthropic' => [
             'label' => 'Anthropic',
             'pricing_url' => 'https://docs.anthropic.com/en/docs/about-claude/pricing',
             'format' => 'html',
-            'parser' => null,
+            'parser' => AnthropicParser::class,
             'proxy' => true,
             'model_catalog_url' => null,
-            'notes' => '区域封锁，备选 docs.anthropic.com/en/docs/about-claude/pricing.md',
+            'notes' => 'Next.js SSR div 表格（平铺 <tr> 扫描）；显示名转 id；Batch/1M 长上下文表与 CCU 说明跳过',
         ],
         'xai' => [
             'label' => 'xAI Grok',
@@ -98,12 +101,13 @@ class CodingPlanOfficialSourceService
         ],
         'zhipu' => [
             'label' => '智谱 BigModel',
-            'pricing_url' => 'https://docs.bigmodel.cn/cn/coding-plan/overview',
-            'format' => 'mintlify',
-            'parser' => null,
+            'pricing_url' => 'https://docs.bigmodel.cn/cn/coding-plan/overview.md',
+            'format' => 'markdown',
+            'parser' => ZhipuMarkdownParser::class,
             'proxy' => false,
             'model_catalog_url' => null,
-            'notes' => 'Mintlify 站点可试 .md 后缀；高峰窗口=周一至五 14:00-18:00（已预置 000009）',
+            'catalog_from_pricing' => true,
+            'notes' => 'Mintlify .md 直取；页面=套餐积分（非模型价，parsePricing 空）+ GLM 覆盖模型清单（catalog_from_pricing 产 model_catalog）；高峰窗口=周一至五 14:00-18:00（已预置 000009）',
         ],
         'aliyun' => [
             'label' => '阿里云百炼',
@@ -202,7 +206,7 @@ class CodingPlanOfficialSourceService
      * 解析厂商抓取源：管理端 pricing_source_url（结构化 JSON 约定）优先，
      * 否则回落内置注册表。内置源解析器未就绪时 parser=null（仅存原始快照）。
      *
-     * @return array{url: string, kind: string, format: string, parser: ?string, proxy: bool, model_catalog_url: ?string, notes: string}|null
+     * @return array{url: string, kind: string, format: string, parser: ?string, proxy: bool, model_catalog_url: ?string, catalog_from_pricing: bool, notes: string}|null
      */
     public function resolveSource(?string $adminUrl, string $vendor): ?array
     {
@@ -214,6 +218,7 @@ class CodingPlanOfficialSourceService
                 'parser' => null,
                 'proxy' => false,
                 'model_catalog_url' => null,
+                'catalog_from_pricing' => false,
                 'notes' => '管理端配置的结构化定价源',
             ];
         }
@@ -230,6 +235,7 @@ class CodingPlanOfficialSourceService
             'parser' => $builtIn['parser'] ?? null,
             'proxy' => (bool) ($builtIn['proxy'] ?? false),
             'model_catalog_url' => $builtIn['model_catalog_url'] ?? null,
+            'catalog_from_pricing' => (bool) ($builtIn['catalog_from_pricing'] ?? false),
             'notes' => (string) ($builtIn['notes'] ?? ''),
         ];
     }
@@ -272,7 +278,6 @@ class CodingPlanOfficialSourceService
      * storage/app/coding-plan-snapshots/{vendor}/{Y-m-d-Hi}.json
      * 解析失败时另存 {Y-m-d-Hi}.raw.txt 原始响应（修解析器的第一手材料）。
      */
-
     protected function snapshotDir(string $vendor): string
     {
         return self::SNAPSHOT_DIR.'/'.$vendor;

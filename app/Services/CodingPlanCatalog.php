@@ -24,7 +24,10 @@ use InvalidArgumentException;
  *  - Moonshot Kimi：platform.kimi.com/docs/pricing/chat（按量计费，无订阅制）
  *  - 百度千帆 Token Plan：cloud.baidu.com/product/codingplan.html（积分↔token 折算未公布，不预置比率）
  *  - 联通：support.cucloud.cn/document/127/591/2357（Coding Plan arcid=7015 / Token Plan arcid=7080，2026-09-11 经代理直连抓取全量文档核对）
- *  - 移动：官方页拒绝程序化访问（WAF），模板仅建壳，待人工补全
+ *  - 移动：官方帮助中心 ecloud.10086.cn 为纯前端 SPA（HTML 壳仅 1KB），但 CMS 数据接口可程序化直连：
+ *    GET /op-help-center/request-api/service-api/article/content/{文件UID}（带 article/info/{id} 取 UID，
+ *    头 categoryRootParent/tentId/isPreview）——2026-09-11 据此抓取 MoMA 平台全部套餐文档核对：
+ *    Coding Plan ART 98320/98337、Token Plan 个人版 ART 100224、团队版 ART 99471、接入地址 ART 100418。
  *
  * 维护约定：
  *  1. 官方改价 → 更新本文件模板 → 管理端重新「应用模板」（幂等，仅覆盖仍是官方预置态的行）；
@@ -62,29 +65,9 @@ class CodingPlanCatalog
             'baidu' => self::baidu(),
             'unicom' => self::unicom(),
             'unicom-token' => self::unicomToken(),
-            'cmcc' => self::shell('cmcc', '中国移动 Coding Plan', 1, '点', 'https://ecloud.10086.cn/op-help-center/doc/article/98322',
-                '官方页拒绝程序化访问（WAF）；请人工录入档位与抵扣规则，并配置 pricing_source_url 启用定时监测。'),
-            'cmcc-token' => self::shell('cmcc-token', '中国移动 Token Plan', 2, '千token', 'https://ecloud.10086.cn/op-help-center/doc/outline/108724',
-                '官方页拒绝程序化访问（WAF）；请人工录入档位与抵扣规则，并配置 pricing_source_url 启用定时监测。'),
-        ];
-    }
-
-    /**
-     * 壳模板：官方页无法程序化核对，仅落地厂商元数据（默认停用），
-     * 档位与折算标准需人工录入，或配置 pricing_source_url 后由定时校对补全。
-     */
-    private static function shell(string $code, string $name, int $planKind, string $unitName, string $docsUrl, string $notes): array
-    {
-        return [
-            'name' => $name,
-            'plan_kind' => $planKind,
-            'billing_mode' => 2,
-            'unit_name' => $unitName,
-            'docs_url' => $docsUrl,
-            'verified_at' => null,
-            'notes' => $notes,
-            'tiers' => [],
-            'ratios' => [],
+            'cmcc' => self::cmcc(),
+            'cmcc-token' => self::cmccToken(),
+            'cmcc-token-team' => self::cmccTokenTeam(),
         ];
     }
 
@@ -545,6 +528,139 @@ class CodingPlanCatalog
                 ['model' => 'MiniMax-M2.5', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.11, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 30, 'status' => 0],
                 ['model' => 'DeepSeek-', 'match_type' => 'prefix', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 40, 'status' => 0],
                 ['model' => 'MiniMax-', 'match_type' => 'prefix', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 50, 'status' => 0],
+            ],
+        ];
+    }
+
+    /**
+     * 中国移动 Coding Plan（按「模型调用次数」扣减的订阅包，MoMA 平台）
+     *
+     * 官方口径要点（2026-09-11 经 CMS API 抓取 ART 98320《Coding Plan介绍》、98337《套餐QA》核对）：
+     *  - Lite 40 元/月：每 5 小时约 1,200 次 / 每周约 9,000 次 / 每订阅月 18,000 次；
+     *    Pro 200 元/月：Lite 的 5 倍（6,000/45,000/90,000 次）；周一 00:00 重置周限额。
+     *  - 仅支持 MiniMax-M2.5（192K 上下文，抵扣系数 1，每请求扣 1 次；简单任务约 5-10 次/提问、
+     *    复杂 10-30+ 次）；超出限制使用（不转按量）；仅呼和浩特/武汉/郑州/广州8 四资源池。
+     *  - 接入（ART 98322）：OpenAI 兼容 https://zhenze-{region}.cmecloud.cn/api/coding/v1，
+     *    Anthropic 协议去 /v1；模型名 MiniMax-M2.5 或 Auto 路由名 cm-code-latest（不区分大小写）。
+     *  - 营销活动（至 2026-12-31）：首订 Lite 7.9 元 / Pro 39.9 元，续订 5 折券 1 次；不退订、仅升配。
+     */
+    private static function cmcc(): array
+    {
+        return [
+            'name' => '中国移动 Coding Plan',
+            'plan_kind' => 1,
+            'billing_mode' => 2,
+            'unit_name' => '次请求',
+            'docs_url' => 'https://ecloud.10086.cn/op-help-center/doc/article/98320',
+            'verified_at' => '2026-09-11',
+            'notes' => '按「模型调用次数」扣减（每请求扣 1 次；简单任务约 5-10 次/提问、复杂 10-30+ 次）；仅 MiniMax-M2.5（192K）；Lite 40 元 1.8 万次/月、Pro 200 元 9 万次/月（5 小时/周/月三重限额，周一 00:00 重置周限额）；活动价首订 7.9/39.9 元（至 2026-12-31）；超限限用不转按量；仅编程工具接入（严禁 API 直调）；不退款、仅升配。',
+            'tiers' => [
+                ['name' => 'Coding Plan · Lite', 'price' => 40, 'price_note' => '活动价 7.9 元/月（至 2026-12-31）', 'period' => '月', 'quota' => 18000, 'quota_unit' => '次请求/订阅月', 'quota_note' => '每 5 小时约 1,200 次、每周约 9,000 次；日均请求 <600 次适用', 'sort' => 10, 'status' => 1],
+                ['name' => 'Coding Plan · Pro', 'price' => 200, 'price_note' => '活动价 39.9 元/月（至 2026-12-31）', 'period' => '月', 'quota' => 90000, 'quota_unit' => '次请求/订阅月', 'quota_note' => '每 5 小时约 6,000 次、每周约 45,000 次；额度为 Lite 的 5 倍', 'sort' => 20, 'status' => 1],
+            ],
+            'ratios' => [
+                ['model' => 'MiniMax-M2.5', 'match_type' => 'exact', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 10, 'status' => 0],
+                ['model' => 'cm-code-latest', 'match_type' => 'exact', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 20, 'status' => 0],
+            ],
+        ];
+    }
+
+    /**
+     * 中国移动 Token Plan 个人版（「算力豆」计量：豆按模型兑换率折算为 tokens）
+     *
+     * 官方口径要点（2026-09-11 经 CMS API 抓取 ART 100224《Token Plan个人版介绍》核对）：
+     *  - 档位：月包 5/10/20/40/100/200/500 元 → 200/450/950/2,000/5,500/12,000/35,000 豆（每档限购 1 个）；
+     *    次包 10/20/100 元 → 400/900/5,000 豆（可重复订购）；尝鲜包 9.9 元 → 1,200 豆（限 1 个，仅 Auto）。
+     *  - 1 豆兑换 tokens：GLM-5.1 1500、GLM-5.2 1450、Deepseek-V4-Flash 11000、Qwen3.7-max 800、
+     *    Qwen3.6-plus 1300、Qwen3.6-Flash 2200、kimi-k2.6 1500、Kimi-K3 650、
+     *    Qwen3.7-plus 6500（≤256K）/2300（256K-1M）、Minimax-m3 9000（≤512K）/4500（512K-1M）、Auto 10000；
+     *    图片 Qwen-image-2.0-pro 1 豆=0.03 张；视频 happyhorse 系 720P 1 豆=0.015 秒（预扣费多退少补）。
+     *  - 比率行存「豆/千 token = 1000 ÷ 兑换率」（不分输入/输出/缓存全量折算）；
+     *    上下文分段模型取低段系数，高段（Qwen3.7-plus 0.4348 / Minimax-m3 0.2222）由管理员手动下调启用。
+     *  - 接入（ART 100418）：https://moma.cmecloud.cn/tokenplan-personal/v1/chat/completions（OpenAI 兼容）；
+     *    视觉模型端点独立且不支持 AI 工具。先扣最快到期套餐；月包仅升配、不退订。
+     */
+    private static function cmccToken(): array
+    {
+        return [
+            'name' => '中国移动 Token Plan 个人版',
+            'plan_kind' => 2,
+            'billing_mode' => 2,
+            'unit_name' => '算力豆',
+            'docs_url' => 'https://ecloud.10086.cn/op-help-center/doc/article/100224',
+            'verified_at' => '2026-09-11',
+            'notes' => '「算力豆」计量：1 豆按模型兑换率折算 tokens（GLM-5.1 1500、V4-Flash 11000、Auto 10000 等，豆/千 token=1000÷兑换率，全量 token 统一折算不分段）；月包 5~500 元 7 档（限购各 1）+ 次包 3 档（可复购）+ 尝鲜包 9.9 元 1200 豆（仅 Auto）；豆率随官方调整可能下调；先扣最快到期套餐；月包仅升配、不退订；视觉/视频模型兑换口径特殊（张/秒）由管理员按需录入。',
+            'tiers' => [
+                ['name' => '月包 · 5 元', 'price' => 5, 'price_note' => '', 'period' => '月', 'quota' => 200, 'quota_unit' => '算力豆', 'quota_note' => 'Auto 路由约 200 万 tokens', 'sort' => 10, 'status' => 1],
+                ['name' => '月包 · 10 元', 'price' => 10, 'price_note' => '', 'period' => '月', 'quota' => 450, 'quota_unit' => '算力豆', 'quota_note' => 'Auto 约 450 万 / V4-Flash 约 4,950 万 tokens', 'sort' => 20, 'status' => 1],
+                ['name' => '月包 · 20 元', 'price' => 20, 'price_note' => '', 'period' => '月', 'quota' => 950, 'quota_unit' => '算力豆', 'quota_note' => 'Auto 约 950 万 tokens', 'sort' => 30, 'status' => 1],
+                ['name' => '月包 · 40 元', 'price' => 40, 'price_note' => '', 'period' => '月', 'quota' => 2000, 'quota_unit' => '算力豆', 'quota_note' => 'Auto 约 2,000 万 tokens', 'sort' => 40, 'status' => 1],
+                ['name' => '月包 · 100 元', 'price' => 100, 'price_note' => '', 'period' => '月', 'quota' => 5500, 'quota_unit' => '算力豆', 'quota_note' => 'Auto 约 5,500 万 tokens', 'sort' => 50, 'status' => 1],
+                ['name' => '月包 · 200 元', 'price' => 200, 'price_note' => '', 'period' => '月', 'quota' => 12000, 'quota_unit' => '算力豆', 'quota_note' => 'Auto 约 1.2 亿 tokens', 'sort' => 60, 'status' => 1],
+                ['name' => '月包 · 500 元', 'price' => 500, 'price_note' => '', 'period' => '月', 'quota' => 35000, 'quota_unit' => '算力豆', 'quota_note' => 'Auto 约 3.5 亿 tokens', 'sort' => 70, 'status' => 1],
+                ['name' => '次包 · 10 元', 'price' => 10, 'price_note' => '一次性补充包，可重复订购', 'period' => '月', 'quota' => 400, 'quota_unit' => '算力豆', 'quota_note' => '有效期 1 逻辑月；先订先扣', 'sort' => 80, 'status' => 1],
+                ['name' => '次包 · 20 元', 'price' => 20, 'price_note' => '一次性补充包，可重复订购', 'period' => '月', 'quota' => 900, 'quota_unit' => '算力豆', 'quota_note' => '有效期 1 逻辑月；先订先扣', 'sort' => 90, 'status' => 1],
+                ['name' => '次包 · 100 元', 'price' => 100, 'price_note' => '一次性补充包，可重复订购', 'period' => '月', 'quota' => 5000, 'quota_unit' => '算力豆', 'quota_note' => '有效期 1 逻辑月；先订先扣', 'sort' => 100, 'status' => 1],
+                ['name' => '尝鲜包 · 9.9 元', 'price' => 9.9, 'price_note' => '每账号限购 1 个', 'period' => '月', 'quota' => 1200, 'quota_unit' => '算力豆', 'quota_note' => '仅支持 Auto 智能路由，不可指定模型', 'sort' => 110, 'status' => 1],
+            ],
+            'ratios' => [
+                ['model' => 'ZHIPU/GLM-5.1', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.6667, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 10, 'status' => 0],
+                ['model' => 'ZHIPU/GLM-5.2', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.6897, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 20, 'status' => 0],
+                ['model' => 'Deepseek-V4-Flash', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.0909, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 30, 'status' => 0],
+                ['model' => 'Qwen/Qwen3.7-max', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1.25, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 40, 'status' => 0],
+                ['model' => 'Qwen/Qwen3.6-plus', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.7692, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 50, 'status' => 0],
+                ['model' => 'Qwen/Qwen3.6-Flash', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.4545, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 60, 'status' => 0],
+                ['model' => 'Kimi/kimi-k2.6', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.6667, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 70, 'status' => 0],
+                ['model' => 'Kimi/Kimi-K3', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1.5385, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 80, 'status' => 0],
+                ['model' => 'Qwen/Qwen3.7-plus', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.1538, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 90, 'status' => 0],
+                ['model' => 'Minimax/Minimax-m3', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.1111, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 100, 'status' => 0],
+                ['model' => 'Auto', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 110, 'status' => 0],
+            ],
+        ];
+    }
+
+    /**
+     * 中国移动 Token Plan 团队版（「折算 tokens」倍率计量：消耗 M tokens 扣 M×N）
+     *
+     * 官方口径要点（2026-09-11 经 CMS API 抓取 ART 99471《TokenPlan团队版介绍》核对）：
+     *  - 档位：团队版 5,000 元/月 = 55 亿 tokens/50 key；Lite 1,000 元/月 = 10 亿 tokens/10 key；
+     *    可重复订购，基于 key 的额度管理；不支持升/降配；超额部分次月额度优先扣除。
+     *  - 抵扣系数 N（官方折算示例：Minimax-M3 N=2 时输入 50K+输出 0.5K → 扣 101K 折算 tokens）：
+     *    MiniMax-M2.5 1、Qwen3.6-Plus 1.5（≤256K）/6（256K-1M）、DeepSeek-V4-Flash 0.6、Qwen3.7-Max 10、
+     *    GLM-5.1 3.5（0-200K 全段）、GLM-5.2 4.5、Minimax-M3 2（≤512K）/3（512K-1M）、Minimax-M2.7 1.1、
+     *    Kimi-K2.7-code 7、Kimi-K2.6 3、Qwen/GLM-5.2 2（官方表原样条目，疑为 GLM-5.2 渠道别名，照录）、
+     *    DeepSeek-V4-Pro 5。
+     *  - unit_name=「千折算tokens」，比率行 unit_cost 即官方系数 N（每千基础 token 消耗 N 千折算 tokens）；
+     *    官方明示后续可能不定期下调系数（以官网文档为准）。
+     *  - 接入（ART 100418）：https://zhenze-huhehaote.cmecloud.cn/tokenplan/v1（OpenAI 兼容）。
+     */
+    private static function cmccTokenTeam(): array
+    {
+        return [
+            'name' => '中国移动 Token Plan 团队版',
+            'plan_kind' => 2,
+            'billing_mode' => 2,
+            'unit_name' => '千折算tokens',
+            'docs_url' => 'https://ecloud.10086.cn/op-help-center/doc/article/99471',
+            'verified_at' => '2026-09-11',
+            'notes' => '「折算 tokens」倍率计量：消耗 M tokens 扣 M×N（N=官方抵扣系数，unit_cost 即 N）；团队版 5,000 元 55 亿 tokens/50 key、Lite 1,000 元 10 亿 tokens/10 key；可重复订购、基于 key 的额度管理；不支持升/降配；超额部分次月额度优先扣除；官方可能不定期下调系数（Qwen3.6-Plus 高段 6、Minimax-M3 高段 3 由管理员按 256K/512K 分界手动调整）。',
+            'tiers' => [
+                ['name' => '团队版 · Lite', 'price' => 1000, 'price_note' => '', 'period' => '月', 'quota' => 1000000000, 'quota_unit' => '折算tokens', 'quota_note' => '10 亿折算 tokens/月，支持 10 个 key', 'sort' => 10, 'status' => 1],
+                ['name' => '团队版', 'price' => 5000, 'price_note' => '', 'period' => '月', 'quota' => 5500000000, 'quota_unit' => '折算tokens', 'quota_note' => '55 亿折算 tokens/月，支持 50 个 key', 'sort' => 20, 'status' => 1],
+            ],
+            'ratios' => [
+                ['model' => 'MiniMax-M2.5', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 10, 'status' => 0],
+                ['model' => 'Qwen/Qwen3.6-Plus', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1.5, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 20, 'status' => 0],
+                ['model' => 'DeepSeek-V4-Flash', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.6, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 30, 'status' => 0],
+                ['model' => 'Qwen/Qwen3.7-Max', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 10, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 40, 'status' => 0],
+                ['model' => 'ZHIPU/GLM-5.1', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 3.5, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 50, 'status' => 0],
+                ['model' => 'ZHIPU/GLM-5.2', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 4.5, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 60, 'status' => 0],
+                ['model' => 'Minimax/Minimax-M3', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 2, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 70, 'status' => 0],
+                ['model' => 'Minimax/Minimax-M2.7', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1.1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 80, 'status' => 0],
+                ['model' => 'Kimi/Kimi-K2.7-code', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 7, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 90, 'status' => 0],
+                ['model' => 'Kimi/Kimi-K2.6', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 3, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 100, 'status' => 0],
+                ['model' => 'Qwen/GLM-5.2', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 2, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 110, 'status' => 0],
+                ['model' => 'Qwen/DeepSeek-V4-Pro', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 5, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 120, 'status' => 0],
             ],
         ];
     }

@@ -466,7 +466,7 @@ php artisan coding_plan:reset-usage
 | plan_kind | 类型 | 计费方式 | 预置厂商（迁移 `2026_09_11_000002`，默认**停用**） |
 |---|---|---|---|
 | 1 | 订阅制 Coding Plan | 包月/包量，按请求次数或资源点折算（比率 `cost_mode=per_request`） | 火山引擎、中国联通、中国移动、智谱 GLM |
-| 2 | 按量 Token Plan | 按 token 用量折算扣减（比率 `cost_mode=per_1k_tokens`） | 阿里云百炼、腾讯混元、百度千帆、火山方舟（按量）、DeepSeek 开放平台、Moonshot Kimi |
+| 2 | 按量 Token Plan | 按 token 用量折算扣减（比率 `cost_mode=per_1k_tokens`） | 阿里云百炼、腾讯混元（TokenHub）、百度千帆、火山方舟（按量）、DeepSeek 开放平台、Moonshot Kimi；后续迁移新增：联通 Token Plan（`unicom-token`）、腾讯 TokenHub 企业版（`tencent-team`）、移动 Token Plan 个人版/团队版（`cmcc-token`/`cmcc-token-team`） |
 
 接入新厂商的标准流程（控制台 → Coding Plan 积分管理）：
 
@@ -521,7 +521,8 @@ units = (输入 token × input_rate + 缓存命中 × cached_rate + 输出 token
 
 > 阿里云 Token Plan 与火山方舟 Agent Plan 分别以 Credits / AFP 统一计量，虽然按月订阅，但其扣减语义是
 > 「按用量折算 Credits/AFP」，因此归入 plan_kind=2（按量 Token Plan）、计数单位为 Credits/AFP；
-> 火山引擎 Coding Plan / 联通 / 移动 / 智谱的订阅制资源包维持 plan_kind=1。
+> 火山引擎 Coding Plan / 联通 Coding Plan / 移动 Coding Plan / 智谱的订阅制资源包维持 plan_kind=1
+> （联通 Token Plan、腾讯 TokenHub 企业版、移动 Token Plan 个人版/团队版等按用量折算的产品线为 plan_kind=2）。
 
 #### 官方模板目录与定时同步工作流（迁移 `2026_09_11_000004`）
 
@@ -544,11 +545,15 @@ units = (输入 token × input_rate + 缓存命中 × cached_rate + 输出 token
 | `volcengine` | 火山引擎 Coding Plan（Lite/Pro） | 1 | 点 | 2 | 3（前缀占位） | ⚠️ 额度数值官方页未公布，价格以购买页为准 |
 | `unicom` | 联通 Coding Plan（Lite/Pro） | 1 | 次 | 2 | 6（per_request 1:1：auto 路由 exact + 5 个模型前缀） | ✅ 官方文档核对（按调用次数扣减） |
 | `unicom-token` | 联通 Token Plan（个人版+团队版） | 2 | 千token | 6 | 5（个人版 1:1 前缀兜底 + 团队版 credits exact 0.93/0.07/0.11） | ✅ 官方文档核对（团队版系数由官方线性示例导出） |
-| `cmcc` / `cmcc-token` | 移动 Coding Plan / Token Plan | 1 / 2 | 点 / 千token | 壳 | — | ❌ 官方页拒绝程序化访问 |
+| `cmcc` | 移动 Coding Plan（Lite/Pro） | 1 | 次请求 | 2 | 2（per_request 1:1：MiniMax-M2.5 + Auto 路由 cm-code-latest，每请求扣 1 次） | ✅ 官方文档核对（ART 98320/98337/98322，CMS API 逆向抓取） |
+| `cmcc-token` | 移动 Token Plan 个人版（算力豆计量） | 2 | 算力豆 | 11 | 11（豆/千 token=1000÷官方兑换率 exact：GLM-5.1 0.6667 → V4-Flash 0.0909 → Auto 0.1，全量 token 统一折算不分段） | ✅ 官方文档核对（ART 100224） |
+| `cmcc-token-team` | 移动 Token Plan 团队版（折算 tokens 计量） | 2 | 千折算tokens | 2 | 12（官方系数 N 全量 exact：MiniMax-M2.5 1 → Kimi-K2.7-code 7 → Qwen3.7-Max 10；unit_cost 即 N） | ✅ 官方文档核对（ART 99471） |
 
-> 迁移 `2026_09_11_000005/000006/000007` 将上述新核对的官方数据幂等落地到预置厂商（`volcengine-ark` 更名
+> 迁移 `2026_09_11_000005/000006/000007/000008` 将上述新核对的官方数据幂等落地到预置厂商（`volcengine-ark` 更名
 > 「火山方舟 Agent Plan」、单位修正为 AFP/元/积分；联通由壳模板升级为全量档位 + 折算标准；腾讯补全个人版/
-> 企业版逐模型积分价并新增 `tencent-team` 厂商，百度补全 Token 制 1:1 折算与双轨额度文案）。全量比率行仍为
+> 企业版逐模型积分价并新增 `tencent-team` 厂商，百度补全 Token 制 1:1 折算与双轨额度文案；移动由壳模板升级为
+> Coding Plan 2 档 + Token Plan 个人版 11 档（新增 `cmcc-token` 拆分）+ 团队版 2 档（新增 `cmcc-token-team` 厂商，
+> 折算 tokens 与算力豆两种计量口径分开建厂商防汇率混用））。全量比率行仍为
 > `status=0`，启用流程不变。腾讯旧预置占位行 `hunyuan-` 与百度 `ernie-` 前缀在官方 TokenHub/千帆 Token Plan
 > 模型清单中已无对应产品（status=0 无风险），可由管理员自行清理；百度旧占位行 `deepseek-` 已被 `000007`
 > 就地升级为官方口径（unit_cost=1 与官方 1:1 一致）。
@@ -590,7 +595,7 @@ diff 只报告不落库，全部变更须管理端人工确认（改错比率等
 管理端「供应商」编辑框点「使用内置官方源」即可填入 `{站点地址}/api/coding_plan/pricing_source/{code}`。
 工作方式：官方改价 → 更新目录并随代码发布 → 6 小时内校对生成待确认变更；管理员手工改动预置行
 （与目录不一致）同样会被检出。注意：diff 只对比**启用**的比率行，请先启用再配置（否则未启用模型
-会持续以「新增」出现）；壳模板（移动）目录暂无折算标准，录入前源状态为「拉取失败」。
+会持续以「新增」出现）；当前全部 14 个模板均已内置折算标准（占位性质的行以模板注释为准）。
 
 **各厂商官方口径速查（2026-09-11 抓取，改价以上游为准 —— 模板与监测的依据）**：
 
@@ -603,7 +608,7 @@ diff 只报告不落库，全部变更须管理端人工确认（改错比率等
 | DeepSeek | 无套餐档位，充值余额直接按量扣费 | 元/百万 token：flash 输入未命中 2（命中 0.04）输出 8；v4-pro 9（0.30）/27 | 高峰=周一至五 9:00–12:00、14:00–18:00，空闲全部减半 | deepseek-v4-flash 等旧名自动路由 flash 并按 Flash 价计费 |
 | 火山引擎 | Agent Plan（AFP 抵扣+超额后付费）与 Coding Plan 双产品线 | 逐档价格/系数官方页 JS 渲染不可核证，需人工录入 | 存在「指定模型抵扣系数限时折扣」活动（临时） | 官方有「模型抵扣系数调整公告」「模型上线/下线公告」——监测重点 |
 | 联通 | Coding Plan 与 Token Plan（个人版+团队版）两条产品线；不退款、仅升配 | Coding Plan 按「模型调用次数」扣减（1 次调用=1 次额度，Agent 任务 5-30+ 次；Lite 40 元 1.8 万次/Pro 200 元 9 万次每月）；Token Plan 个人版 tokens 1:1（600/1,200/1,800 万，15/30/45 元），团队版 credits≈0.01 元（25,000/100,000/250,000 credits → V4-Pro 0.93 / V4-Flash 0.07 / M2.5 0.11 每千 token） | — | 个人版仅 V4-Flash/M2.5（贵阳二区/武汉四区/广州一区），团队版独享 V4-Pro（仅贵阳二区）；高峰易限流建议切换模型 |
-| 移动 | 分 Coding Plan 与 Token Plan 两条产品线 | 官方页 WAF 无法程序化抓取，档位与系数需人工录入 | — | 建议人工盯官方页并配置定价源 |
+| 移动 | Coding Plan（Lite/Pro）+ Token Plan 个人版（月包 7 档+次包 3 档+尝鲜包）+ 团队版（Lite/标准）；不退款，Coding Plan 不可叠加、Token Plan 月包仅升配、团队版不可升降配 | Coding Plan 按「模型调用次数」扣减（每请求 1 次，仅 MiniMax-M2.5 192K，40/200 元 → 1.8万/9万 次/月）；个人版「算力豆」计量：1 豆按模型兑换 tokens（GLM-5.1 1500、V4-Flash 11000、Auto 10000 等，即豆/千 token=1000÷兑换率，5~500 元月包 → 200~35,000 豆）；团队版「折算 tokens」倍率：消耗 M 扣 M×N（N=系数，1000/5000 元 → 10 亿/55 亿折算 tokens） | 首订活动 Lite 7.9 元/Pro 39.9 元（至 2026-12-31，续订 5 折券 1 次；标准价 40/200 元） | MiniMax-M2.5/V4-Flash 资源有限易限流；官方可能不定期下调豆率/系数（以官网文档为准）；Coding Plan 严禁编程工具外 API 直调 |
 
 > 模板落地后，公开介绍页（`/coding-plan`）仅展示 `status=1` 的档位；折算标准行需管理员
 > 核对 `unit_exchange_rate` 后手动启用。时间相关折扣（夜间/非高峰 5 折等）当前**不自动**

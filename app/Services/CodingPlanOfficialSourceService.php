@@ -10,6 +10,8 @@ use App\Models\CodingPlanRatioCheck;
 use App\Services\CodingPlanParsers\AnthropicParser;
 use App\Services\CodingPlanParsers\DeepSeekParser;
 use App\Services\CodingPlanParsers\GoogleParser;
+use App\Services\CodingPlanParsers\MiniMaxParser;
+use App\Services\CodingPlanParsers\MoonshotParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
 use App\Services\CodingPlanParsers\TencentTokenHubParser;
 use App\Services\CodingPlanParsers\XaiMarkdownParser;
@@ -113,12 +115,12 @@ class CodingPlanOfficialSourceService
         ],
         'aliyun' => [
             'label' => '阿里云百炼',
-            'pricing_url' => 'https://help.aliyun.com/zh/model-studio/token-plan-for-individual-users',
-            'format' => 'html',
+            'pricing_url' => 'https://docs.bailian.console.aliyun.com/llms-full.txt',
+            'format' => 'markdown',
             'parser' => null,
             'proxy' => false,
             'model_catalog_url' => null,
-            'notes' => '个人版档位有限时价 39/139/499 + 用量包 2 万 Credits（快照 diff #1）',
+            'notes' => '源重定位（2026-09-12）：help.aliyun.com 旧页 404 → docs.bailian llms.txt/llms-full.txt 可抓（单页 .md 被 WAF 拦需 X-Request-Context）；内容=Token Plan 个人/团队套餐档位（39/139/499 元，CNY）+用量包，无按量 token 价 → 归 P2-1 套餐档 + P7 币种字段',
         ],
         'tencent' => [
             'label' => '腾讯云 TokenHub',
@@ -141,12 +143,12 @@ class CodingPlanOfficialSourceService
         ],
         'moonshot' => [
             'label' => 'Kimi / Moonshot',
-            'pricing_url' => 'https://platform.moonshot.cn/docs/price/chat',
-            'format' => 'spa',
-            'parser' => null,
-            'proxy' => false,
+            'pricing_url' => 'https://platform.kimi.ai/docs/pricing/chat.md',
+            'format' => 'markdown',
+            'parser' => MoonshotParser::class,
+            'proxy' => true,
             'model_catalog_url' => null,
-            'notes' => 'SPA 未取到表格 → 探测 /docs/llms.txt',
+            'notes' => 'moonshot.cn 301 → platform.kimi.com；llms.txt 索引 + .md 直取；注册国际站 kimi.ai（$，DocTable JSX rows），中文站为 ¥ 不配；列序命中价在前；batch/tools 独立页不配',
         ],
         'volcengine' => [
             'label' => '火山方舟',
@@ -177,12 +179,12 @@ class CodingPlanOfficialSourceService
         ],
         'minimax' => [
             'label' => 'MiniMax',
-            'pricing_url' => null,
-            'format' => 'spa',
-            'parser' => null,
-            'proxy' => false,
+            'pricing_url' => 'https://platform.minimax.io/docs/guides/pricing-paygo.md',
+            'format' => 'markdown',
+            'parser' => MiniMaxParser::class,
+            'proxy' => true,
             'model_catalog_url' => null,
-            'notes' => 'SPA 未取到表格；官网另有 API Token Plan 入口待探测',
+            'notes' => 'llms.txt + .md 直取；注册国际站 minimax.io（$，国内 minimaxi.com 为 ¥ 不配）；Priority Tab（1.5x 条件价）/Legacy Accordion 整段剥离；M3 分档取 ≤512k 首档；划线价取实价；Token Plan 套餐页归 P2-1',
         ],
         'baidu' => [
             'label' => '百度千帆',

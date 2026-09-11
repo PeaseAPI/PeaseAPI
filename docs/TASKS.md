@@ -62,7 +62,7 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 
 ## 3. 当前执行指针
 
-> **下一步从 P1-2 剩余解析器开始**（aliyun 源 404 待重定位 + moonshot/volcengine/unicom/cmcc/minimax/baidu 源待探测；siliconflow 结构已摸清、待 P7 多货币口径落地后接入），原始响应已存 `storage/app/private/coding-plan-snapshots/*/` 供解析器调试。P0 已全部完成；P1-1/3/4/5/7/8/10 已完成（2026-09-12）。新需求 R9-R12 → P7/P8/P9（见任务清单末尾）。
+> **下一步从 P1-2 剩余解析器开始**（volcengine/unicom/cmcc/baidu 源待探测；aliyun 源已重定位但内容=套餐档位归 P2-1；siliconflow 结构已摸清、待 P7 多货币口径落地后接入），原始响应已存 `storage/app/private/coding-plan-snapshots/*/` 供解析器调试。P0 已全部完成；P1-1/3/4/5/7/8/10 已完成（2026-09-12）。新需求 R9-R12 → P7/P8/P9（见任务清单末尾）。
 
 ---
 
@@ -82,14 +82,14 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
   - [x] anthropic：`https://docs.anthropic.com/en/docs/about-claude/pricing`（**需代理**；Next.js SSR，表格由 div+CSS 渲染无 `<table>`，按 `<tr>` 平铺扫描）✅ 2026-09-12 全链路：解析 17 模型（显示名「Claude Opus 4.6」→ claude-opus-4.6；「Model」表头行重置列定位；Batch 半价表/CCU 说明表/1M 长上下文合并名行跳过，同模型首条为准）→ diff「新增 17」待人工确认
   - [x] xai：`https://docs.x.ai/developers/models.md`（**.md 直取**；原 /docs/models 308 → /developers/models；grok-4.6 $2/$0.5/$6；长上下文分档取 < 200k 首档、≥200k 条件价跳过；Imagine/Voice 按次计价表跳过）→ 真抓 7 模型「新增 7」✅2026-09-12
   - [x] zhipu：`https://docs.bigmodel.cn/cn/coding-plan/overview.md`（Mintlify `.md` 直取；页面=套餐积分配额表，**无模型按量价**）✅ 2026-09-12：`catalog_from_pricing` 复用同响应体产 `model_catalog`（GLM‑5.3 等 6 模型，U+2011 非断连字符归一化）→ 目录 diff「新增 4」待人工确认；按量三率已预置迁移 000009
-  - [ ] aliyun：`https://docs.bailian.console.aliyun.com/llms.txt` 索引 → token-plan-personal-overview（7 天限额/限时价/夜间五折）【首页已验证】
-  - [ ] moonshot：`https://platform.moonshot.cn/docs/price/chat`（SPA；探测 `/docs/llms.txt` 与页面内嵌 JSON）
+  - [x] aliyun：源重定位 ✅2026-09-12——help.aliyun.com 旧页 404 → `docs.bailian.console.aliyun.com/llms.txt`（126KB 索引）+ `llms-full.txt`（5.7MB 全站拼接）可抓；**单页 .md 直取被 WAF 拦**（要求动态 `X-Request-Context` 头）；内容=Token Plan 个人/团队**套餐档位**（Lite 39/Standard 139/Pro 499 元 + 用量包，CNY，无按量 token 价）→ 注册表改指 llms-full.txt（parser=null 仅存快照），档位解析归 P2-1、币种归 P7-1
+  - [x] moonshot：`https://platform.kimi.ai/docs/pricing/chat.md`（**需代理**）✅ 2026-09-12 全链路：platform.moonshot.cn 301 → platform.kimi.com（Kimi 开放平台）；llms.txt 索引 + .md 直取，表格为 JSX `<DocTable rows={[...]}>`；**注册国际站 kimi.ai（$），中文站 kimi.com 为 ¥ 不配**；列序=命中价在前（与 DeepSeek 相反）；batch/tools 独立页不配 → 真抓 4 模型，**与库内预置零 diff（交叉验证通过）**
   - [x] tencent：`https://cloud.tencent.com/document/product/1823/130060`（Slate SSR；套餐积分配额页无按量价 → `catalog_from_pricing`；Model ID 表逐变体拆分——`data-slate-string` 每 ul 一个 ID，点/横线双风格并存；「整格全 ID」规则滤掉概览/工具生态格）→ 目录新增 16 ✅2026-09-12
   - [ ] siliconflow：`https://siliconflow.cn/pricing`（SSR；结构已摸清：`pricing-row-{text|image|audio|video}-*` 行 + `<a title="vendor/model">` + 「费用发生时段: 9点～18点」双时段价组；**¥/M tokens 人民币口径 → 待 P7-1 currency 字段落地后接入**，否则美元字段存人民币=资损口径错误）
   - [ ] volcengine：doccenter SPA → 探测文档中心 XHR API（SPA garfish 配置可见）；失败则依赖已核对预置 + 人工
   - [ ] unicom：`support.cucloud.cn/document/127/591/2357.html?...arcid=7015/7080`（Vue SPA，16MB 正文内嵌 → 探测 `window.__INITIAL_STATE__` 或文档 API）
   - [ ] cmcc：`https://ecloud.10086.cn/op-help-center/doc/article/98322` 与 `outline/108724`（Vue SPA `cloud-cms-service-web` → 探测 CMS JSON API）
-  - [ ] minimax：`https://www.minimaxi.com/document/price`（SPA → 探测内嵌 JSON / llms.txt）
+  - [x] minimax：`https://platform.minimax.io/docs/guides/pricing-paygo.md`（**需代理**）✅ 2026-09-12 全链路：minimaxi.com/minimax.io 均 llms.txt + .md 直取；**注册国际站 minimax.io（$），国内 minimaxi.com 为 ¥ 不配**；Priority Tab（1.5x 条件价）与 Legacy Accordion（M2.5/M2.1）整段剥离；M3 ≤512k/>512k 分档取首档；划线促销「~~$0.60~~ $0.30」Permanent 50% off 取实价 → 真抓 3 模型「新增 3」待人工确认
   - [ ] baidu：千帆文档站 HTML（SSR）；模型列表页单独源
 - [x] P1-3 统一标准化格式（与 `VerifyCodingPlanRatios::fetchSource` JSON 约定一致：`models[]{model,match_type,cost_mode,unit_cost,input_rate,cached_rate,output_rate,time_discounts}`）✅ 实现于 `CodingPlanOfficialSourceService::normalizeStructuredEntries()`；解析器同约定输出（单位统一=币种/1k tokens，官方每百万标价 ÷1000）
 - [x] P1-4 快照预存：`storage/app/private/coding-plan-snapshots/{vendor}/{Y-m-d-Hi}.json` + 清理策略（保留 10 份，`.raw.txt` 随 JSON 连带清理）；抓取失败沿用上次快照并在 check 记 source_failed ✅ 2026-09-12
@@ -171,14 +171,14 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 | anthropic | Claude API | https://docs.anthropic.com/en/docs/about-claude/pricing | HTML | **是** | ⚠️区域封锁，备选 .md |
 | xai | Grok API | https://docs.x.ai/developers/models.md | Markdown | **是** | ✅已解析 |
 | zhipu | GLM Coding Plan | https://docs.bigmodel.cn/cn/coding-plan/overview（llms.txt 索引） | Mintlify | 否 | ✅已抓取 |
-| aliyun | Token Plan 个人版 | https://docs.bailian.console.aliyun.com/zh/model-studio/token-plan-personal-overview（llms.txt 索引） | HTML | 否 | ✅已抓取 |
+| aliyun | Token Plan | https://docs.bailian.console.aliyun.com/llms-full.txt（源重定位；单页 .md 被 WAF 拦） | Markdown 拼接 | 否 | ✅已抓取（内容=套餐档位，归 P2-1/P7） |
 | tencent | TokenHub Token Plan | https://cloud.tencent.com/document/product/1823/130060 | HTML | 否 | ✅已抓取 |
 | siliconflow | 模型价格中心 | https://siliconflow.cn/pricing | HTML | 否 | ✅已抓取 |
-| moonshot | Kimi API | https://platform.moonshot.cn/docs/price/chat | SPA→探测 llms.txt | 否 | ⏳待探测 |
+| moonshot | Kimi API | https://platform.kimi.ai/docs/pricing/chat.md（moonshot.cn 301 → kimi.com；国际站 $） | Mintlify .md | **是** | ✅已解析（4 模型，与预置零 diff） |
 | volcengine | 方舟模型服务/Agent Plan | https://www.volcengine.com/docs/82379/1099320 | SPA→探测 doccenter API | 否 | ⏳待探测（价目已在迁移 000005 核对） |
 | unicom | Coding/Token Plan | https://support.cucloud.cn/document/127/591/2357.html?id=2357&arcid=7015 / 7080 | Vue SPA（16MB 内嵌数据） | 否 | ⏳待探测（价目已在迁移 000006 核对） |
 | cmcc | Coding/Token Plan | https://ecloud.10086.cn/op-help-center/doc/article/98322 、/doc/outline/108724 | Vue SPA→探测 CMS API | 否 | ⏳待探测（价目已在迁移 000008 核对） |
-| minimax | API 按量 / Token Plan | https://www.minimaxi.com/document/price | SPA→探测 | 否 | ⏳待探测 |
+| minimax | API 按量 | https://platform.minimax.io/docs/guides/pricing-paygo.md（国际站 $；国内站 ¥） | Mintlify .md | **是** | ✅已解析（3 模型「新增 3」） |
 | baidu | 千帆 | https://cloud.baidu.com/doc/QIANFAN/s/hlpl7xe2f | HTML | 否 | ⏳页面框架已抓，价格表待定位 |
 
 ---
@@ -189,4 +189,5 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 - 2026-09-12（二）：新增需求 R9-R12 → P7 多货币与结算体系 / P8 厂商模型上架流 / P9 成本感知路由与配额恢复感知（复用点已探明：`CodingPlanAccount` 5h/周/月窗口 + STATUS_EXHAUSTED 自动恢复、`ChannelSelectService` 静态调度、`UsdExchangeRate`、前端 `currency.ts`）。P1 核心工程落地：`CodingPlanOfficialSourceService`（15 家源注册表 + 代理抓取 `PEASE_API_HTTP_PROXY` + 快照保留 10 份 + 复用 diff/忽略/流水）+ `coding-plan:sync-official` 命令（每 6h 先于 verify）+ deepseek/openai 解析器（deepseek 真实结构=转置表；openai 代理链路解析 67 模型 → 「新增 67」待人工确认）+ fixture 测试 21 项断言（`tests/coding-plan-parser-fixture.php`）。发现并修正：快照实际落 `storage/app/private/`（Laravel 11 local disk root）；diffEntries 需兼容 list 输入（数字索引 key 误配）；停用行（status=0）不应报「新增」。回归：test-time-discounts 28/28、verify-ratios 无回归。
 - 2026-09-12（三）：P1-2 再落三家解析器并全链路真抓验证（5/5 厂商 0 失败，共 116 处待确认变更）：google（SSR 中文机翻；锚点 id 模型名 + standard 层表；双价「起为」取恢复价防 2027-01-01 刷屏；分档长上下文首档；存储价「/小时」「每张图片」换算价与模态列表「/ 图片」噪声精确区分 → 28 模型）、anthropic（Next.js SSR div 表无 `<table>`，`<tr>` 平铺扫描 + 「Model」表头行重置列定位；显示名转 id；Batch/1M/CCU 表跳过同模型首条为准 → 17 模型）、zhipu（Mintlify `.md` 直取；页面=套餐积分配额无按量价 → `catalog_from_pricing` 注册表开关复用响应体产 model_catalog，U+2011 归一化 → 目录新增 4）。基建：`htmlTables()` 基类助手；sync 命令目录解析提前到条目判空前（entries 空 + catalog 空才算 SOURCE_FAILED）；fixture 扩至 42 项断言。回归：test-time-discounts 28/28、verify-ratios 无回归、pint PASS。
 - 2026-09-12（四）：P1-2 再落 xai/tencent 两家解析器并全链路真抓验证（7 厂商 0 失败）：xai（**发现 `.md` 直取技巧同样适用**——原 /docs/models 已 308 → /developers/models.md；Text API Pricing 表长上下文分档取 < 200k 首档、≥200k 条件价跳过；Imagine/Voice 按次计价表跳过 → 7 模型「新增 7」）、tencent（Slate SSR；套餐积分配额页无按量价 → `catalog_from_pricing`；Model ID 表逐变体拆分 + 「整格全 ID」规则滤概览/工具格；GLM-5/5.1 下线经 catalog missing 呈现 → 目录新增 16）。**配置修复**：`.env` 补 `PEASE_API_HTTP_PROXY`（上轮代理仅临时环境变量，导致本轮境外源全超时误报抓取失败）。**工程决策**：siliconflow 结构摸清（pricing-row-{text|image|audio|video} 行 + `title="vendor/model"` + 「费用发生时段」双时段价组）但 ¥/M tokens 人民币口径待 P7-1 currency 字段，现在接入=美元字段存人民币资损口径错误 → 延后 P7；aliyun 原 URL 已 404 待重定位（llms.txt 索引法待试）。fixture 扩至 51 项断言（xai 分档/÷1000/非 token 表、tencent 双风格变体/杂质过滤）；修复 fixture 尾部重复 echo/exit。回归：test-time-discounts 28/28、verify-ratios 无回归、pint PASS。
+- 2026-09-12（五）：P1-2 再落 moonshot/minimax 两家解析器（现 9 厂商接通、0 失败），**llms.txt 索引法成为 SPA 探测标准动作**：moonshot（platform.moonshot.cn 301 → platform.kimi.com；`/docs/llms.txt` 直达索引 → `platform.kimi.ai/docs/pricing/chat.md`；表格=Mintlify JSX `<DocTable rows={[...]}>`，行内 `<>{"$"}</>` 价格元素 + `\"` JSON 转义 → 入口先归一化再匹配；**列序=缓存命中价在前**与 DeepSeek 相反；**注册国际站 kimi.ai 美元口径**，中文站 ¥ 不配——同 siliconflow 资损逻辑 → 真抓 4 模型**与库内预置零 diff，交叉验证通过**）、minimax（minimax.io/`pricing-paygo.md`；Standard/Priority 双 Tab → Priority 1.5x 条件价整段剥离、Legacy Accordion（M2.5/M2.1 退役）剥离、M3 ≤512k/>512k 分档取首档、划线促销 `~~$0.60~~ $0.30` Permanent 50% off 取实价 → 真抓 3 模型「新增 3」）。**aliyun 源重定位完成**：llms.txt（126KB）+ llms-full.txt（5.7MB）可抓，但**单页 .md 直取被 WAF 拦**（动态 `X-Request-Context` 头）；内容=Token Plan 个人/团队套餐档位（39/139/499 元 CNY，无按量价）→ 注册表改指 llms-full.txt 仅存快照，档位解析归 P2-1、币种归 P7-1。fixture 扩至 61 项断言（moonshot JSX/列序/上下文数字防污染、minimax 划线实价/Tab/Accordion 剥离/分档）。回归：fixture 61/61、pint PASS；待确认变更 121 处（moonshot 零 diff 未增）。
 

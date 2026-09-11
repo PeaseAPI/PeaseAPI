@@ -11,6 +11,8 @@ require '/Users/snails/Project/PeaseAPI/vendor/autoload.php';
 use App\Services\CodingPlanParsers\AnthropicParser;
 use App\Services\CodingPlanParsers\DeepSeekParser;
 use App\Services\CodingPlanParsers\GoogleParser;
+use App\Services\CodingPlanParsers\MiniMaxParser;
+use App\Services\CodingPlanParsers\MoonshotParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
 use App\Services\CodingPlanParsers\TencentTokenHubParser;
 use App\Services\CodingPlanParsers\XaiMarkdownParser;
@@ -247,6 +249,91 @@ check('tencent parsePricing=空（套餐积分配额页）', $t->parsePricing($t
 check('tencent catalog 含双风格变体（minimax-m2.7 与 minimax-m-2-7）', in_array('minimax-m2.7', $tCatalog, true) && in_array('minimax-m-2-7', $tCatalog, true));
 check('tencent catalog 含 tc-code-latest', in_array('tc-code-latest', $tCatalog, true));
 check('tencent 表头/套餐格/工具生态格不入目录', ! in_array('model id', $tCatalog, true) && ! in_array('workbuddy', $tCatalog, true) && count($tCatalog) === 3);
+
+// ---- Kimi / Moonshot（kimi.ai .md：DocTable JSX rows；列序=命中价在前）----
+$kMd = <<<'MD'
+# Model Pricing
+
+export const DocTable = ({columns = [], rows = []}) => {
+  return <div className=\"doc-table-wrap\"><table className=\"doc-table\"><tbody>
+        {rows.map((row, rowIndex) => <tr key={rowIndex}>
+              {row.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}
+            </tr>)}
+        </tbody></table></div>;
+};
+
+<DocTable
+  columns={[
+{ title: \"Model\", width: \"24%\" },
+{ title: \"Input (cache hit)\", width: \"16%\" },
+{ title: \"Input (cache miss)\", width: \"16%\" },
+{ title: \"Output\", width: \"14%\" },
+]}
+  rows={[
+[\"kimi-k3\", \"1M tokens\", <>{\"$\"}0.30</>, <>{\"$\"}3.00</>, <>{\"$\"}15.00</>, \"1,048,576 tokens\"],
+[\"kimi-k2.7-code\", \"1M tokens\", <>{\"$\"}0.19</>, <>{\"$\"}0.95</>, <>{\"$\"}4.00</>, \"262,144 tokens\"],
+[\"kimi-k2.7-code-highspeed\", \"1M tokens\", <>{\"$\"}0.38</>, <>{\"$\"}1.90</>, <>{\"$\"}8.00</>, \"262,144 tokens\"],
+[\"kimi-k2.6\", \"1M tokens\", \"$0.16\", \"$0.95\", \"$4.00\", \"262,144 tokens\"],
+]}
+/>
+
+Here, 1M = 1,000,000. The prices in the table represent the cost per 1M tokens consumed.
+MD;
+
+$k = new MoonshotParser;
+$kEntries = $k->parsePricing($kMd);
+$kByModel = [];
+foreach ($kEntries as $entry) {
+    $kByModel[$entry['model']] = $entry;
+}
+check('moonshot 解析 4 条（JSX 与字符串价混排）', count($kEntries) === 4);
+check('kimi-k3 cached=0.0003（列序命中价在前，$/1M → $/1k）', abs(($kByModel['kimi-k3']['cached_rate'] ?? 0) - 0.0003) < 1e-9);
+check('kimi-k3 input=0.003（未命中价列）、output=0.015', abs(($kByModel['kimi-k3']['input_rate'] ?? 0) - 0.003) < 1e-9 && abs(($kByModel['kimi-k3']['output_rate'] ?? 0) - 0.015) < 1e-9);
+check('kimi-k2.6 纯字符串价行 cached=0.00016', abs(($kByModel['kimi-k2.6']['cached_rate'] ?? 0) - 0.00016) < 1e-9);
+check('上下文窗口数字（1,048,576）未污染价格', count($kEntries[0]) === 8 && ($kEntries[0]['input_rate'] ?? null) !== null);
+
+// ---- MiniMax（minimax.io paygo.md：划线价取实价；Priority Tab / Legacy Accordion 剥离；M3 分档取首档）----
+$mmMd = <<<'MD'
+## LLM
+
+<Tabs>
+  <Tab title=\"Standard\">
+    | Model | Input | Output | Prompt caching Read |
+    | :--- | :--- | :--- | :--- |
+    | **MiniMax-M3**<br />≤ 512k input tokens <span>Permanent 50% off</span> | ~~\$0.60~~ \$0.30 / M tokens | ~~\$2.40~~ \$1.20 / M tokens | ~~\$0.12~~ \$0.06 / M tokens |
+    | **MiniMax-M3**<br />> 512k input tokens* <span>Permanent 50% off</span> | ~~\$1.20~~ \$0.60 / M tokens | ~~\$4.80~~ \$2.40 / M tokens | ~~\$0.24~~ \$0.12 / M tokens |
+  </Tab>
+
+  <Tab title=\"Priority*\">
+    | Model | Input | Output | Prompt caching Read |
+    | :--- | :--- | :--- | :--- |
+    | **MiniMax-M3**<br />≤ 512k input tokens | \$0.90 / M tokens | \$1.80 / M tokens | \$0.09 / M tokens |
+  </Tab>
+</Tabs>
+
+| Model | Input | Output | Prompt caching Read | Prompt caching Write |
+| :--- | :--- | :--- | :--- | :--- |
+| **MiniMax-M2.7** | \$0.3 / M tokens | \$1.2 / M tokens | \$0.06 / M tokens | \$0.375 / M tokens |
+| **MiniMax-M2.7-highspeed** | \$0.6 / M tokens | \$2.4 / M tokens | \$0.06 / M tokens | \$0.375 / M tokens |
+
+<Accordion title=\"Legacy Models\">
+  | Model | Input | Output | Prompt caching Read | Prompt caching Write |
+  | :--- | :--- | :--- | :--- | :--- |
+  | **MiniMax-M2.5** | \$0.3 / M tokens | \$1.2 / M tokens | \$0.03 / M tokens | \$0.375 / M tokens |
+</Accordion>
+MD;
+
+$mm = new MiniMaxParser;
+$mmEntries = $mm->parsePricing($mmMd);
+$mmByModel = [];
+foreach ($mmEntries as $entry) {
+    $mmByModel[$entry['model']] = $entry;
+}
+check('minimax 解析 3 条（M3 >512k 档、Priority、Legacy 均不产条目）', count($mmEntries) === 3 && isset($mmByModel['minimax-m3']) && isset($mmByModel['minimax-m2.7']) && isset($mmByModel['minimax-m2.7-highspeed']));
+check('minimax-m3 划线价取实价 input=0.0003（$0.30/1M）', abs(($mmByModel['minimax-m3']['input_rate'] ?? 0) - 0.0003) < 1e-9);
+check('minimax-m3 output=0.0012、cached=0.00006', abs(($mmByModel['minimax-m3']['output_rate'] ?? 0) - 0.0012) < 1e-9 && abs(($mmByModel['minimax-m3']['cached_rate'] ?? 0) - 0.00006) < 1e-9);
+check('minimax-m2.7-highspeed input=0.0006、legacy m2.5 未收', abs(($mmByModel['minimax-m2.7-highspeed']['input_rate'] ?? 0) - 0.0006) < 1e-9 && ! isset($mmByModel['minimax-m2.5']));
+check('minimax Caching Write 列不入字段（entry 8 键）', count($mmEntries[1]) === 8);
 
 echo $fail === 0 ? "\n✅ 解析器 fixture 全部通过\n" : "\n❌ {$fail} 项失败\n";
 exit($fail === 0 ? 0 : 1);

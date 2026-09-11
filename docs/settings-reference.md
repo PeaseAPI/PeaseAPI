@@ -333,3 +333,17 @@ OptionService::set(key, value)
 4. **消费**：业务代码统一 `OptionService::get('键', 默认值)`，不要直连 `Option` 模型。
 5. **文档**：更新本文档对应表，并在 [运维手册](operations-guide.md) 补充操作影响。
 
+---
+
+## 出站代理（官方源抓取，P1-8）
+
+`coding-plan:sync-official`（每 6 小时）抓取厂商官方定价/目录页时，源注册表中 `proxy=true` 的境外源（openai / google / anthropic / xai）需要走出站代理，国内源直连。
+
+| 设置 | 说明 |
+|------|------|
+| `PEASE_API_HTTP_PROXY` | `.env` 环境变量（非 options 表）。格式 `http://127.0.0.1:7890`，默认空。为空时境外源抓取失败并记 `source_failed` 流水（不影响国内源与平台其他功能）。 |
+
+- 仅 `app/Services/CodingPlanOfficialSourceService::fetchBody()` 消费（`Http::withOptions(['proxy' => ...])`）。
+- 判定某厂商是否需代理：`CodingPlanOfficialSourceService::builtInSource($code)['proxy']`；管理端自管源（`pricing_source_url`）始终直连。
+- 验证：`php artisan coding-plan:sync-official --vendor=openai`，快照落 `storage/app/private/coding-plan-snapshots/openai/`。
+

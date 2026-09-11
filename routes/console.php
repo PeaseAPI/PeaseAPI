@@ -8,6 +8,7 @@ use App\Console\Commands\RefreshPricing;
 use App\Console\Commands\ResetCodingPlanUsage;
 use App\Console\Commands\ResetSubscriptions;
 use App\Console\Commands\SyncChannelCache;
+use App\Console\Commands\SyncCodingPlanOfficial;
 use App\Console\Commands\VerifyCodingPlanRatios;
 use App\Models\AuthFlow;
 use App\Models\PerfMetric;
@@ -129,6 +130,19 @@ Schedule::command(RefreshPricing::class)
     ->withoutOverlapping(10)
     ->onOneServer()
     ->dailyAt('04:00');
+
+// Sync official coding plan pricing/catalog sources every 6 hours (P1-1/P1-7):
+// fetch (proxy-aware) → parse → snapshot → diff vs ratios & model catalog.
+// Changes are recorded to coding_plan_ratio_checks only - applying them stays a
+// manual admin decision. Registered BEFORE verify-ratios so both land in the
+// same scheduling window (sync feeds fresher snapshots, verify adds stale check).
+if (Schema::hasTable('coding_plan_model_ratios')) {
+    Schedule::command(SyncCodingPlanOfficial::class)
+        ->name('pease:sync-coding-plan-official')
+        ->withoutOverlapping(10)
+        ->onOneServer()
+        ->everySixHours();
+}
 
 // Verify Coding Plan deduction ratios every 6 hours (stale detection + optional
 // pricing source diff). Changes are recorded to coding_plan_ratio_checks only -

@@ -494,7 +494,8 @@ php artisan coding_plan:reset-usage
 | 智谱 GLM Coding Plan（团队版） | 标准版 / 高级版（每席位，2 席位起购） | 以官网为准（售前咨询） | 每席位每 5 小时 15000 / 35000；每周 66000 / 155000；超额可按量（API 刊例 9 折） |
 | 腾讯 TokenHub（迁移 `000004` 预置） | 通用 Lite/Standard/Pro/Max | ¥39 / ¥99 / ¥299 / ¥599 每月 | 780 / 1980 / 5980 / 11980 积分每订阅月 |
 | 腾讯 TokenHub（迁移 `000004` 预置） | Hy Lite/Standard/Pro/Max | ¥28 / ¥78 / ¥238 / ¥468 每月 | 560 / 1560 / 4760 / 9360 积分每订阅月（混元 Hy3/Hy4 专用） |
-| 火山引擎 | Agent Plan · Small | ¥9.9/月起（待官方文档核实） | 支持 Doubao / GLM / DeepSeek / Kimi / MiniMax（默认隐藏，核实后开放展示） |
+| 火山方舟 Agent Plan（迁移 `000005` 预置） | Small / Medium / Large / Max | ¥40 / ¥200 / ¥500 / ¥1000 每月 | 2 万 / 10 万 / 25 万 / 50 万 AFP（周额度 7000/35000/87500/175000；Small 限时活动价 ¥9.9 起） |
+| 百度千帆 Token Plan（迁移 `000005` 预置） | 个人版 Mini / Lite / Pro / Max | ¥9.9 / ¥40 / ¥200 / ¥600 每月（首购五折 4.9/19.9/99.9/299.9 限量秒杀） | 1400 / 6600 / 4.5 万 / 16.5 万 积分每订阅月 |
 
 **分段折算（`cost_mode=per_token_parts`）**：真实上游（智谱 GLM、阿里云百炼）按「输入 / 缓存命中 / 输出」三段独立系数计量，
 比率表统一存储为**每千 token 系数**：
@@ -514,8 +515,9 @@ units = (输入 token × input_rate + 缓存命中 × cached_rate + 输出 token
 - `coding-plan:verify-ratios` 定价源 diff 支持 `per_token_parts` 条目：源中携带
   `cost_mode:"per_token_parts"` + `input_rate`/`cached_rate`/`output_rate`（`unit_cost` 可省略），三率任一变化都会计入「待确认变更」。
 
-> 阿里云 Token Plan 以 Credits 统一计量，虽然按月订阅，但其扣减语义是「按用量折算 Credits」，因此归入 plan_kind=2（按量 Token Plan）、
-> 计数单位为 Credits；火山/联通/移动/智谱的订阅制资源包维持 plan_kind=1。
+> 阿里云 Token Plan 与火山方舟 Agent Plan 分别以 Credits / AFP 统一计量，虽然按月订阅，但其扣减语义是
+> 「按用量折算 Credits/AFP」，因此归入 plan_kind=2（按量 Token Plan）、计数单位为 Credits/AFP；
+> 火山引擎 Coding Plan / 联通 / 移动 / 智谱的订阅制资源包维持 plan_kind=1。
 
 #### 官方模板目录与定时同步工作流（迁移 `2026_09_11_000004`）
 
@@ -530,10 +532,17 @@ units = (输入 token × input_rate + 缓存命中 × cached_rate + 输出 token
 | `aliyun` | 阿里云百炼 Token Plan（个人+团队） | 2 | Credits | 8 | 1（qwen3.6-plus 分段） | ✅ 官方文档核对 |
 | `zhipu` | 智谱 GLM Coding Plan（个人+团队） | 1 | 资源点 | 5 | 2（glm-5.3 / flash 分段） | ✅ 官方文档核对 |
 | `tencent` | 腾讯云 TokenHub Token Plan（通用+Hy） | 2 | 积分 | 8 | 0（官方系数页未定位，不预置防资损） | ✅ 价目核对，系数待人工 |
-| `deepseek` | DeepSeek 开放平台（纯 API 按量） | 2 | 千token | 0 | 2（高峰口径分段参考价） | ✅ 官方文档核对 |
-| `volcengine` | 火山引擎 Agent/Coding Plan | 1 | 点 | 1 | 3（前缀占位） | ⚠️ 官方页 JS 渲染，待核价 |
+| `deepseek` | DeepSeek 开放平台（纯 API 按量） | 2 | 元 | 0 | 2（高峰口径分段参考价） | ✅ 官方文档核对 |
+| `volcengine-ark` | 火山方舟 Agent Plan（Small/Medium/Large/Max） | 2 | AFP | 4 | 13（官方 AFP 系数 2026-09-01 起，含 auto 活动系数） | ✅ 官方文档核对 |
+| `moonshot` | Moonshot Kimi 开放平台（纯 API 按量） | 2 | 元 | 0 | 4（kimi-k3 / k2.7-code(-highspeed) / k2.6 分段） | ✅ 官方文档核对 |
+| `baidu` | 百度千帆 Token Plan（Mini/Lite/Pro/Max） | 2 | 积分 | 4 | 0（积分↔token 折算官方未公布，不预置防资损） | ✅ 价目核对，折算待人工 |
+| `volcengine` | 火山引擎 Coding Plan（Lite/Pro） | 1 | 点 | 2 | 3（前缀占位） | ⚠️ 额度数值官方页未公布，价格以购买页为准 |
 | `unicom` / `unicom-token` | 联通 Coding Plan / Token Plan | 1 / 2 | 点 / 千token | 壳 | — | ❌ 官方页无法程序化访问 |
 | `cmcc` / `cmcc-token` | 移动 Coding Plan / Token Plan | 1 / 2 | 点 / 千token | 壳 | — | ❌ 官方页拒绝程序化访问 |
+
+> 迁移 `2026_09_11_000005` 将上述新核对的官方数据幂等落地到预置厂商（`volcengine-ark` 更名「火山方舟 Agent Plan」、
+> 单位修正为 AFP/元/积分），并移除 volcengine 下错位的「Agent Plan · Small」占位档。全量比率行仍为 `status=0`，
+> 启用流程不变。
 
 **应用模板（`POST /api/coding_plan/catalog/{code}/apply`）是幂等的**：新建厂商一律停用态；
 档位/折算标准按模板预置（折算标准全部 `status=0`）；重新应用只更新仍是「官方档位/官方折算标准」备注的行，

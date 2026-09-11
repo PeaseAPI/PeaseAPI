@@ -19,7 +19,10 @@ use InvalidArgumentException;
  *  - 智谱 GLM Coding Plan：docs.bigmodel.cn/cn/coding-plan/overview（含团队版权益页 /team）
  *  - 腾讯云 TokenHub Token Plan：cloud.tencent.com/document/product/1823/130060
  *  - DeepSeek API：api-docs.deepseek.com/zh-cn/quick_start/pricing/
- *  - 火山引擎 Agent/Coding Plan：volcengine.com/docs/82379/1925114（正文 JS 渲染，仅交叉验证）
+ *  - 火山方舟 Agent Plan：volcengine.com/docs/82379/2366394（档位）与 2658332（模型抵扣系数调整公告）
+ *  - 火山引擎 Coding Plan：volcengine.com/docs/82379/1925114（额度数值 JS 渲染未公布，价格以购买页为准）
+ *  - Moonshot Kimi：platform.kimi.com/docs/pricing/chat（按量计费，无订阅制）
+ *  - 百度千帆 Token Plan：cloud.baidu.com/product/codingplan.html（积分↔token 折算未公布，不预置比率）
  *  - 联通 / 移动：官方页无法程序化访问（超大 payload / WAF），模板仅建壳，待人工补全
  *
  * 维护约定：
@@ -50,8 +53,11 @@ class CodingPlanCatalog
             'aliyun' => self::aliyun(),
             'zhipu' => self::zhipu(),
             'volcengine' => self::volcengine(),
+            'volcengine-ark' => self::volcengineArk(),
             'deepseek' => self::deepseek(),
+            'moonshot' => self::moonshot(),
             'tencent' => self::tencent(),
+            'baidu' => self::baidu(),
             'unicom' => self::shell('unicom', '中国联通 Coding Plan', 1, '点', 'https://support.cucloud.cn/document/127/591/2357.html?id=2357&arcid=7015&lang=zh',
                 '官方页内嵌超大 payload 无法程序化抓取；请人工录入档位与抵扣规则，并配置 pricing_source_url 启用定时监测。'),
             'unicom-token' => self::shell('unicom-token', '中国联通 Token Plan', 2, '千token', 'https://support.cucloud.cn/document/127/591/2357.html?id=2357&arcid=7080&lang=zh',
@@ -181,9 +187,10 @@ class CodingPlanCatalog
             'unit_name' => '点',
             'docs_url' => 'https://www.volcengine.com/docs/82379/1925114',
             'verified_at' => '2026-09-11',
-            'notes' => 'Agent Plan（AFP 抵扣 + 超额后付费）与 Coding Plan 双产品线；官方页 JS 渲染无法核价，档位/系数需人工录入；存在「模型抵扣系数调整公告」，建议配置 pricing_source_url 定时监测。',
+            'notes' => 'Coding Plan 个人版 Lite/Pro 双档（官方套餐概览 2026-09-08 更新）；额度数值官方页未公布，以购买页为准。Agent Plan（AFP 抵扣）另见 volcengine-ark 模板。逐模型抵扣系数存在「模型抵扣系数调整公告」，建议配置 pricing_source_url 定时监测。',
             'tiers' => [
-                ['name' => 'Agent Plan · Small', 'price' => 9.9, 'price_note' => '¥9.9/月起（待核实）', 'period' => '月', 'quota' => null, 'quota_unit' => '点', 'quota_note' => '支持 Doubao/GLM/DeepSeek/Kimi/MiniMax', 'sort' => 10, 'status' => 0],
+                ['name' => 'Coding Plan · Lite', 'price' => null, 'price_note' => '价格以官网购买页为准', 'period' => '月', 'quota' => null, 'quota_unit' => '点', 'quota_note' => '支持 Doubao/GLM/DeepSeek/Kimi/MiniMax 系；5 小时与周限额周期刷新', 'sort' => 10, 'status' => 0],
+                ['name' => 'Coding Plan · Pro', 'price' => null, 'price_note' => '价格以官网购买页为准', 'period' => '月', 'quota' => null, 'quota_unit' => '点', 'quota_note' => '高强度开发档；5 小时与周限额周期刷新', 'sort' => 20, 'status' => 0],
             ],
             'ratios' => [
                 ['model' => 'doubao-', 'match_type' => 'prefix', 'cost_mode' => 'per_request', 'unit_cost' => 1, 'input_rate' => null, 'cached_rate' => null, 'output_rate' => null, 'sort' => 10, 'status' => 0],
@@ -212,10 +219,10 @@ class CodingPlanCatalog
             'name' => 'DeepSeek 开放平台 Token Plan',
             'plan_kind' => 2,
             'billing_mode' => 2,
-            'unit_name' => '千token',
+            'unit_name' => '元',
             'docs_url' => 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing/',
             'verified_at' => '2026-09-11',
-            'notes' => '纯 API 按量计费（无套餐档位）；高峰=周一至五 9:00-12:00、14:00-18:00，空闲全部减半；deepseek-v4-flash 等旧模型名自动路由到 deepseek-flash 并按 Flash 价计费。',
+            'notes' => '纯 API 按量计费（无套餐档位），折算单位=人民币元（unit_exchange_rate 设 1 元 = N 平台积分）；高峰=周一至五 9:00-12:00、14:00-18:00，空闲全部减半；deepseek-v4-flash 等旧模型名自动路由到 deepseek-flash 并按 Flash 价计费。',
             'tiers' => [],
             'ratios' => [
                 ['model' => 'deepseek-flash', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.002, 'cached_rate' => 0.0001, 'output_rate' => 0.008, 'sort' => 10, 'status' => 0],
@@ -257,6 +264,114 @@ class CodingPlanCatalog
                 ['name' => 'Hy · Standard', 'price' => 78, 'price_note' => '', 'period' => '月', 'quota' => 1560, 'quota_unit' => '积分/订阅月', 'quota_note' => '混元 Hy3/Hy4 专用', 'sort' => 60, 'status' => 1],
                 ['name' => 'Hy · Pro', 'price' => 238, 'price_note' => '', 'period' => '月', 'quota' => 4760, 'quota_unit' => '积分/订阅月', 'quota_note' => '混元 Hy3/Hy4 专用', 'sort' => 70, 'status' => 1],
                 ['name' => 'Hy · Max', 'price' => 468, 'price_note' => '', 'period' => '月', 'quota' => 9360, 'quota_unit' => '积分/订阅月', 'quota_note' => '混元 Hy3/Hy4 专用', 'sort' => 80, 'status' => 1],
+            ],
+            'ratios' => [],
+        ];
+    }
+
+    /**
+     * 火山方舟 Agent Plan（个人版 Small/Medium/Large/Max，AFP 统一计量）
+     *
+     * 官方口径要点（2026-09-11 抓取 docs/82379/2366394 与 2658332）：
+     *  - 四档月价 40/200/500/1000 元，月额度 2 万/10 万/25 万/50 万 AFP；
+     *    周 7000/35000/87500/175000，5 小时 2000/10000/25000/50000，日额度=月额度一半。
+     *  - AFP 抵扣公式（2026-09-01 起，输入不再分段）：AFP =（输入 token×输入系数 + 输出 token×输出系数）/ 10000。
+     *  - 官方逐模型输入/输出系数（÷10 换算为每千 token 存储口径）：
+     *    doubao-seed-2.0-mini 0.25；doubao-seed-2.0-lite、deepseek-v4-flash、doubao-embedding-vision 0.5；
+     *    doubao-seed-2.1-turbo、doubao-seed-evolving、minimax-m3 2.5；kimi-k2.7-code、glm-5.2（将下线）、glm-5.3 4.5；
+     *    deepseek-v4-pro 5.5；kimi-k3 10。AFP 无缓存折扣段（cached_rate=0，命中 token 仅按输入段计）。
+     *  - Auto 模式活动系数 0.5（至 2026-11-08，夜间大幅路由 kimi-k3）；glm-5.3-flash 折扣活动等以公告为准。
+     *  - 扣减语义为「按用量折算 AFP」，与阿里 Credits 同构归入 plan_kind=2。
+     */
+    private static function volcengineArk(): array
+    {
+        return [
+            'name' => '火山方舟 Agent Plan',
+            'plan_kind' => 2,
+            'billing_mode' => 2,
+            'unit_name' => 'AFP',
+            'docs_url' => 'https://www.volcengine.com/docs/82379/2366394',
+            'verified_at' => '2026-09-11',
+            'notes' => 'AFP =（输入×系数+输出×系数）/10000（2026-09-01 起输入不分段）；周/5小时/日限额随档位；支持超额后付费；Auto 模式活动系数 0.5 至 2026-11-08；glm-5.2 即将下线。',
+            'tiers' => [
+                ['name' => 'Agent Plan · Small', 'price' => 40, 'price_note' => '限时活动价 9.9 元/月起', 'period' => '月', 'quota' => 20000, 'quota_unit' => 'AFP', 'quota_note' => '周 7,000 / 5小时 2,000；轻量体验（不支持视频生成）', 'sort' => 10, 'status' => 1],
+                ['name' => 'Agent Plan · Medium', 'price' => 200, 'price_note' => '', 'period' => '月', 'quota' => 100000, 'quota_unit' => 'AFP', 'quota_note' => '周 35,000 / 5小时 10,000；1-2 个项目并行', 'sort' => 20, 'status' => 1],
+                ['name' => 'Agent Plan · Large', 'price' => 500, 'price_note' => '', 'period' => '月', 'quota' => 250000, 'quota_unit' => 'AFP', 'quota_note' => '周 87,500 / 5小时 25,000；支持视频生成', 'sort' => 30, 'status' => 1],
+                ['name' => 'Agent Plan · Max', 'price' => 1000, 'price_note' => '', 'period' => '月', 'quota' => 500000, 'quota_unit' => 'AFP', 'quota_note' => '周 175,000 / 5小时 50,000；支持视频生成', 'sort' => 40, 'status' => 1],
+            ],
+            'ratios' => [
+                ['model' => 'doubao-seed-2.0-mini', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.025, 'cached_rate' => 0, 'output_rate' => 0.025, 'sort' => 10, 'status' => 0],
+                ['model' => 'doubao-seed-2.0-lite', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.05, 'cached_rate' => 0, 'output_rate' => 0.05, 'sort' => 20, 'status' => 0],
+                ['model' => 'deepseek-v4-flash', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.05, 'cached_rate' => 0, 'output_rate' => 0.05, 'sort' => 30, 'status' => 0],
+                ['model' => 'doubao-seed-2.1-turbo', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.25, 'cached_rate' => 0, 'output_rate' => 0.25, 'sort' => 40, 'status' => 0],
+                ['model' => 'doubao-seed-evolving', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.25, 'cached_rate' => 0, 'output_rate' => 0.25, 'sort' => 50, 'status' => 0],
+                ['model' => 'minimax-m3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.25, 'cached_rate' => 0, 'output_rate' => 0.25, 'sort' => 60, 'status' => 0],
+                ['model' => 'kimi-k2.7-code', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.45, 'cached_rate' => 0, 'output_rate' => 0.45, 'sort' => 70, 'status' => 0],
+                ['model' => 'glm-5.2', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.45, 'cached_rate' => 0, 'output_rate' => 0.45, 'sort' => 80, 'status' => 0],
+                ['model' => 'glm-5.3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.45, 'cached_rate' => 0, 'output_rate' => 0.45, 'sort' => 90, 'status' => 0],
+                ['model' => 'deepseek-v4-pro', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.55, 'cached_rate' => 0, 'output_rate' => 0.55, 'sort' => 100, 'status' => 0],
+                ['model' => 'kimi-k3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 1.0, 'cached_rate' => 0, 'output_rate' => 1.0, 'sort' => 110, 'status' => 0],
+                ['model' => 'doubao-embedding-vision', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.05, 'cached_rate' => 0, 'output_rate' => 0.05, 'sort' => 120, 'status' => 0],
+                ['model' => 'auto', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.05, 'cached_rate' => 0, 'output_rate' => 0.05, 'sort' => 130, 'status' => 0],
+            ],
+        ];
+    }
+
+    /**
+     * Moonshot Kimi 开放平台（纯 API 按量，无订阅套餐）
+     *
+     * 官方口径要点（2026-09-11 抓取 platform.kimi.com/docs/pricing/chat）：
+     *  - kimi-k3：缓存命中 ¥2 / 未命中 ¥20 / 输出 ¥100（每百万 token，1M 上下文）；
+     *    kimi-k2.7-code：1.3 / 6.5 / 27；kimi-k2.7-code-highspeed：2.6 / 13 / 54；kimi-k2.6：1.1 / 6.5 / 27。
+     *  - 官方明确「按量计费模式、无订阅制方案」，故无套餐档位；unit_name 记「元」。
+     *  - 注意：引擎对缓存命中段按「输入 + 缓存」双计（保守取向），本模板 cached_rate 取官方命中价，
+     *    启用后实际命中扣费略高于官方口径，管理员如需精确可下调 input_rate。
+     */
+    private static function moonshot(): array
+    {
+        return [
+            'name' => 'Moonshot Kimi Token Plan',
+            'plan_kind' => 2,
+            'billing_mode' => 2,
+            'unit_name' => '元',
+            'docs_url' => 'https://platform.kimi.com/docs/pricing/chat',
+            'verified_at' => '2026-09-11',
+            'notes' => '纯 API 按量计费（官方无订阅制方案），折算单位=人民币元；Batch API 按 5 折；托管智能体/联网搜索另计。',
+            'tiers' => [],
+            'ratios' => [
+                ['model' => 'kimi-k3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 2.0, 'cached_rate' => 0.2, 'output_rate' => 10.0, 'sort' => 10, 'status' => 0],
+                ['model' => 'kimi-k2.7-code', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.65, 'cached_rate' => 0.13, 'output_rate' => 2.7, 'sort' => 20, 'status' => 0],
+                ['model' => 'kimi-k2.7-code-highspeed', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 1.3, 'cached_rate' => 0.26, 'output_rate' => 5.4, 'sort' => 30, 'status' => 0],
+                ['model' => 'kimi-k2.6', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.65, 'cached_rate' => 0.11, 'output_rate' => 2.7, 'sort' => 40, 'status' => 0],
+            ],
+        ];
+    }
+
+    /**
+     * 百度智能云千帆 Token Plan（个人版 Mini/Lite/Pro/Max，积分制）
+     *
+     * 官方口径要点（2026-09-11 抓取 cloud.baidu.com/product/codingplan.html）：
+     *  - 四档月价（原价）：Mini 9.9 元/1,400 积分、Lite 40/6,600、Pro 200/45,000、Max 600/165,000；
+     *    首购五折 4.9/19.9/99.9/299.9（每日 10 点限量秒杀）、到期续费专享 6 折。
+     *  - 积分制与 Token 制双轨并行；支持 GLM/DeepSeek/Kimi 等主流模型与 Cursor/Cline 等工具，
+     *    兼容 OpenAI 与 Anthropic 协议；夜间 21:00-次日 08:00 套餐内 Tokens 2 折起。
+     *  - 积分↔token 折算规则官方页未公布（以控制台用量详情为准），模板不预置比率 —— 防资损。
+     */
+    private static function baidu(): array
+    {
+        return [
+            'name' => '百度智能云千帆 Token Plan',
+            'plan_kind' => 2,
+            'billing_mode' => 2,
+            'unit_name' => '积分',
+            'docs_url' => 'https://cloud.baidu.com/product/codingplan.html',
+            'verified_at' => '2026-09-11',
+            'notes' => '积分制+Token 制双轨；夜间 21:00-次日 08:00 Tokens 2 折起；首购五折每日 10 点限量；续费焕新 6 折；积分↔token 折算以控制台用量详情为准。',
+            'tiers' => [
+                ['name' => '个人版 · Mini', 'price' => 9.9, 'price_note' => '首购五折 4.9（限量秒杀）', 'period' => '月', 'quota' => 1400, 'quota_unit' => '积分', 'quota_note' => '新手尝鲜，7 天限额已取消', 'sort' => 10, 'status' => 1],
+                ['name' => '个人版 · Lite', 'price' => 40, 'price_note' => '首购五折 19.9（限量秒杀）', 'period' => '月', 'quota' => 6600, 'quota_unit' => '积分', 'quota_note' => '日常开发，7 天限额已取消', 'sort' => 20, 'status' => 1],
+                ['name' => '个人版 · Pro', 'price' => 200, 'price_note' => '首购五折 99.9（限量秒杀）', 'period' => '月', 'quota' => 45000, 'quota_unit' => '积分', 'quota_note' => '高频开发', 'sort' => 30, 'status' => 1],
+                ['name' => '个人版 · Max', 'price' => 600, 'price_note' => '首购五折 299.9（限量秒杀）', 'period' => '月', 'quota' => 165000, 'quota_unit' => '积分', 'quota_note' => '重度开发', 'sort' => 40, 'status' => 1],
             ],
             'ratios' => [],
         ];

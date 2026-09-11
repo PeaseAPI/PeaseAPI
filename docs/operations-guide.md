@@ -134,8 +134,12 @@ php artisan db:seed --class=CodingPlanVendorSeeder --force
 ```
 
 - **国际订阅制 4 家**（anthropic / openai / google / alibaba）：seeder 写入并**默认启用**，每家带一条前缀兜底比率（1 请求 = 1 积分，Qwen 按千 token 折算），语义明确、可直接使用。
-- **国内 12 家**（火山引擎 / 联通 / 移动 / 智谱 / 阿里百炼 / 腾讯混元 / 百度千帆 / 火山方舟 / DeepSeek / Moonshot 等）：由迁移 `2026_09_11_000002_add_coding_plan_vendor_presets` 幂等预置，**默认停用 `status=0`**——预置内容只有「脚手架」：档位（tencent 8 档、aliyun 8 档、zhipu 5 档、volcengine 1 档）与 `unit_cost=1` 占位比率模板（联通/移动连模板都没有，需人工抄录档位）。
-- **启用前必须人工核对真实价目**（错误价格 = 资损）：在管理后台「模型折算比率」把占位值改为真实 `unit_cost` / 三段系数后再启用厂商与比率。
+- **国内 12 家**（火山引擎 / 联通 / 移动 / 智谱 / 阿里百炼 / 腾讯混元 / 百度千帆 / 火山方舟 / DeepSeek / Moonshot 等）：由迁移 `2026_09_11_000002_add_coding_plan_vendor_presets` 幂等预置，**默认停用 `status=0`**。
+- **官方价目已核对预置**（迁移 `000003/000004/000005` + 模板目录 `App\Services\CodingPlanCatalog`，2026-09-11 官方文档核对）：
+  - 档位：阿里云 8 档、腾讯 TokenHub 8 档、智谱 5 档、**火山方舟 Agent Plan 4 档（40/200/500/1000 元 → 2万/10万/25万/50万 AFP）**、**百度千帆 4 档（9.9/40/200/600 元 → 1400/6600/4.5万/16.5万 积分）**；火山 Coding Plan 仅 Lite/Pro 壳档（官方未公布额度）。
+  - 折算标准（比率行全部**停用**，管理员核对汇率后逐条启用）：智谱 glm-5.3/flash、阿里 qwen3.6-plus、**DeepSeek flash/v4-pro（高峰口径，单位=元）**、**Moonshot kimi-k3/k2.7-code(-highspeed)/k2.6（单位=元）**、**火山方舟 13 条官方 AFP 系数（doubao-mini 0.25 → kimi-k3 10，2026-09-01 起输入不分段，auto 活动系数 0.5 至 2026-11-08）**。
+  - 仍需人工补全：**腾讯混元逐模型积分系数**（官方「套餐内积分抵扣规则」页未定位到）、**百度千帆积分↔token 折算**（官方未公布）、**联通/移动全部档位与折算**（官方页 WAF/超大 payload 无法程序化访问，需人工抄录）。
+- **启用前必须人工核对**（错误价格 = 资损）：在管理后台「模型折算比率」确认 `unit_cost` / 三段系数与 `unit_exchange_rate`（供应商单位 → 平台积分；DeepSeek/Moonshot 的 1 单位 = 1 元）后再启用厂商与比率。
 - 启用后可用 `php artisan coding-plan:verify-ratios`（每 6 小时自动跑）做 stale 检测与定价源 diff；为厂商配置 `pricing_source_url`（结构化 JSON）可自动发现新增/变价/下架，变更只记录待确认，绝不自动改价。
 
 ---

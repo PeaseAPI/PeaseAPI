@@ -58,6 +58,7 @@ class CodingPlanCatalog
             'deepseek' => self::deepseek(),
             'moonshot' => self::moonshot(),
             'tencent' => self::tencent(),
+            'tencent-team' => self::tencentTeam(),
             'baidu' => self::baidu(),
             'unicom' => self::unicom(),
             'unicom-token' => self::unicomToken(),
@@ -239,8 +240,14 @@ class CodingPlanCatalog
      *  - 通用系列模型：tc-code-latest（Auto 路由）、deepseek-v4-flash-202605、deepseek-v4-pro-0813（原厂直供）、
      *    minimax-m2.7/m3、glm-5（2026-10-09 下线）、glm-5.1（2026-10-09 下线）、glm-5.2、glm-5.3、
      *    glm-5.3-flash、hy4-preview、kimi-k2.7-code、kimi-k3；Hy 系列：hy3（hy3-preview 自动路由）、hy4-preview。
-     *  - 2026-08-31 17:00 起调整为积分抵扣模式；逐模型积分系数见「套餐内积分抵扣规则」文档
-     *    （程序化抓取未定位到该页，模板不预置系数 —— 防资损，需管理员人工核对后录入）。
+     *  - 2026-08-31 17:00 起调整为积分抵扣模式；逐模型积分系数已核对（1823/133811，2026-09-10 更新）：
+     *    新逻辑模型（与档位无关）按「未命中输入/缓存命中/输出」三率积分价（积分/百万 tokens）：
+     *    glm-5.3 160/40/560、glm-5.3-flash 16/4.6/56、kimi-k3 400/40/2000、kimi-k2.7-code 130/26/540、
+     *    minimax-m3 42/8.4/168（输入>512k 翻倍为 84/16.8/336）、hy4-preview 120/6/360；
+     *    Auto（tc-code-latest）与旧逻辑模型（deepseek-v4-*、glm-5/5.1/5.2、minimax-m2.7）官方按档位统一价
+     *    （Lite 22.285/Standard 19.8/Pro 18.687/Max 8.43），模板取 Standard 口径 19.8 → 0.0198 积分/千 token；
+     *  - 限时活动（至 2026-09-30）：tc-code-latest 11/11/11、kimi-k2.7-code 65/270/13、minimax-m3 21/84/4.2、
+     *    hy4-preview 100/200/4、glm-5.3 136/476/34、kimi-k3 380/1900/38（95 折，9/4-9/30）；活动结束恢复刊例。
      *  - 限制：每主账号最多同时持有 2 个（通用+Hy 各 1）、同系列仅 1 档、仅升配、不退订、自然月有效、
      *    到期额度与 API Key 同时失效；套餐内模型库动态更新（新增/替换/下线以公告为准）。
      */
@@ -253,7 +260,7 @@ class CodingPlanCatalog
             'unit_name' => '积分',
             'docs_url' => 'https://cloud.tencent.com/document/product/1823/130060',
             'verified_at' => '2026-09-11',
-            'notes' => '积分抵扣模式（2026-08-31 起），逐模型系数需按官方「套餐内积分抵扣规则」人工核对；glm-5/glm-5.1 将于 2026-10-09 下线；自然月有效、仅升配、每主账号通用+Hy 各 1 个。',
+            'notes' => '积分抵扣规则已核对（1823/133811，2026-09-10 更新）：新逻辑模型三率积分价（积分/百万 tokens）glm-5.3 160/40/560、glm-5.3-flash 16/4.6/56、kimi-k3 400/40/2000、kimi-k2.7-code 130/26/540、minimax-m3 42/8.4/168（>512k 翻倍）、hy4-preview 120/6/360，已 ÷1000 存积分/千 token；Auto/旧逻辑模型按档位统一价（22.285/19.8/18.687/8.43），模板取 Standard 口径；限时活动（至 9/30）：tc-code-latest 11、kimi-k2.7-code 65/270/13、minimax-m3 21/84/4.2、hy4-preview 100/200/4、glm-5.3 136/476/34、kimi-k3 380/1900/38；glm-5/glm-5.1 2026-10-09 下线；不退订、仅升配。',
             'tiers' => [
                 ['name' => '通用 · Lite', 'price' => 39, 'price_note' => '', 'period' => '月', 'quota' => 780, 'quota_unit' => '积分/订阅月', 'quota_note' => '约 70 轮龙虾交互', 'sort' => 10, 'status' => 1],
                 ['name' => '通用 · Standard', 'price' => 99, 'price_note' => '', 'period' => '月', 'quota' => 1980, 'quota_unit' => '积分/订阅月', 'quota_note' => '约 200 轮龙虾交互', 'sort' => 20, 'status' => 1],
@@ -264,7 +271,86 @@ class CodingPlanCatalog
                 ['name' => 'Hy · Pro', 'price' => 238, 'price_note' => '', 'period' => '月', 'quota' => 4760, 'quota_unit' => '积分/订阅月', 'quota_note' => '混元 Hy3/Hy4 专用', 'sort' => 70, 'status' => 1],
                 ['name' => 'Hy · Max', 'price' => 468, 'price_note' => '', 'period' => '月', 'quota' => 9360, 'quota_unit' => '积分/订阅月', 'quota_note' => '混元 Hy3/Hy4 专用', 'sort' => 80, 'status' => 1],
             ],
-            'ratios' => [],
+            'ratios' => [
+                // 新逻辑模型（2026-08-31 起上架，与档位无关）：积分/千 token = 官方积分/百万 ÷ 1000
+                ['model' => 'glm-5.3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.16, 'cached_rate' => 0.04, 'output_rate' => 0.56, 'sort' => 10, 'status' => 0],
+                ['model' => 'glm-5.3-flash', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.016, 'cached_rate' => 0.0046, 'output_rate' => 0.056, 'sort' => 20, 'status' => 0],
+                ['model' => 'kimi-k3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.4, 'cached_rate' => 0.04, 'output_rate' => 2.0, 'sort' => 30, 'status' => 0],
+                ['model' => 'kimi-k2.7-code', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.13, 'cached_rate' => 0.026, 'output_rate' => 0.54, 'sort' => 40, 'status' => 0],
+                ['model' => 'minimax-m3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.042, 'cached_rate' => 0.0084, 'output_rate' => 0.168, 'sort' => 50, 'status' => 0],
+                ['model' => 'hy4-preview', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.12, 'cached_rate' => 0.006, 'output_rate' => 0.36, 'sort' => 60, 'status' => 0],
+                // Auto 路由（按档位同价 Lite 22.285/Standard 19.8/Pro 18.687/Max 8.43 → Standard 口径）
+                ['model' => 'tc-code-latest', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.0198, 'cached_rate' => 0.0198, 'output_rate' => 0.0198, 'sort' => 70, 'status' => 0],
+                // 旧逻辑模型（deepseek-v4-*、glm-5/5.1/5.2、minimax-m2.7）：官方未列逐模型价，预估表按档位统一价抵扣 ≈ Auto 档位价 → Standard 口径兜底
+                ['model' => 'deepseek-', 'match_type' => 'prefix', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.0198, 'cached_rate' => 0.0198, 'output_rate' => 0.0198, 'sort' => 80, 'status' => 0],
+                ['model' => 'glm-', 'match_type' => 'prefix', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.0198, 'cached_rate' => 0.0198, 'output_rate' => 0.0198, 'sort' => 90, 'status' => 0],
+                ['model' => 'minimax-', 'match_type' => 'prefix', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.0198, 'cached_rate' => 0.0198, 'output_rate' => 0.0198, 'sort' => 100, 'status' => 0],
+                ['model' => 'kimi-', 'match_type' => 'prefix', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.0198, 'cached_rate' => 0.0198, 'output_rate' => 0.0198, 'sort' => 110, 'status' => 0],
+                // Hy 系列（Hy Token Plan 套餐调用）：hy3 按档位同价 Lite 16/Standard 15.6/Pro 14.875/Max 14.4 → Standard 口径
+                ['model' => 'hy3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.0156, 'cached_rate' => 0.0156, 'output_rate' => 0.0156, 'sort' => 120, 'status' => 0],
+                ['model' => 'hy3-preview', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.0156, 'cached_rate' => 0.0156, 'output_rate' => 0.0156, 'sort' => 130, 'status' => 0],
+                // hy3-202608 为新逻辑差价（官方示例：Lite 档 18 万输入+1 万输出+82 万缓存 = 4.25 积分）
+                ['model' => 'hy3-202608', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.02, 'cached_rate' => 0.005, 'output_rate' => 0.08, 'sort' => 140, 'status' => 0],
+            ],
+        ];
+    }
+
+    /**
+     * 腾讯云 TokenHub Token Plan 企业版·专业套餐（自定义积分额度，积分计量）
+     *
+     * 官方口径要点（2026-09-11 抓取 product/1823/130659，2026-09-10 更新）：
+     *  - 专业套餐按月自定义购买积分额度（最低 5 万积分），刊例价 5 万积分 = 500 元/月 → 1 积分 = 0.01 元（官方明示）。
+     *  - 企业版积分抵扣价与个人版不同（广州区，命中缓存/未命中输入/输出，积分/百万 tokens）：
+     *    auto 50/324/1596、glm-5.3-flash 23/80/280、glm-5.3 200/800/2800、glm-5.2 200/800/2800、
+     *    glm-5 100/400/1800（输入 32k+：150/600/2200）、glm-5.1 130/600/2400（32k+：200/800/2800）、
+     *    glm-5-turbo 120/500/2200（32k+：180/700/2600）、kimi-k3 200/2000/10000、kimi-k2.7-code 130/650/2700、
+     *    kimi-k2.7-code-highspeed 260/1300/5400、kimi-k2.6 110/650/2700、minimax-m2.7 42/210/840、
+     *    minimax-m3 42/210/840（512k+：84/420/1680）、deepseek-v4-flash 20/100/200、deepseek-v4-pro 100/1200/2400；
+     *    DeepSeek V4 峰谷计费（模板取高峰价，空闲价约减半）：v4-flash-0731 高峰 10/300/900（空闲 5/150/450）、
+     *    v4-pro-0813 高峰 30/900/2700（空闲 15/450/1350）、原厂直供 v4-flash-202605 高峰 4/200/800（空闲 2/100/400）、
+     *    v4-pro-202606 高峰 30/900/2700（空闲 15/450/1350）、vision-exp 高峰 4/200/800（空闲 2/100/400）；
+     *    周末全天按空闲价；新加坡区另有差异（约 ±5%~25%），以控制台为准。
+     *  - 抵扣顺序：席位额度优先 → 共享积分包（先到期先扣）；计费周期末未用积分作废；不退订。
+     *  - 另有企业版「轻享套餐」：自定义 Token 资源池（最低 5,000 万 tokens），广州 100 元/月、新加坡 130 元/月，
+     *    输入/输出/缓存命中统一按实际 Token 1:1 抵扣（无逐模型系数，综合约 2 元/百万 tokens），不单独建模板。
+     *  - 模型库较个人版多出 glm-5/glm-5.1/glm-5-turbo（2026-10-09 下线）、kimi-k2.6、kimi-k2.7-code-highspeed 等。
+     */
+    private static function tencentTeam(): array
+    {
+        return [
+            'name' => '腾讯混元 Token Plan 企业版',
+            'plan_kind' => 2,
+            'billing_mode' => 2,
+            'unit_name' => '积分',
+            'docs_url' => 'https://cloud.tencent.com/document/product/1823/130659',
+            'verified_at' => '2026-09-11',
+            'notes' => '专业套餐自定义积分额度（≥5 万），刊例 5 万积分=500 元/月（1 积分=0.01 元官方明示）；系数取广州区、DeepSeek 取高峰价（空闲价与新加坡区差异见官方文档）；轻享套餐为自定义 Token 池（≥5,000 万 tokens，广州 100 元/月）1:1 抵扣；额度周期末作废；不退订。',
+            'tiers' => [
+                ['name' => '专业套餐 · 自定义积分', 'price' => 500, 'price_note' => '刊例：5 万积分/月起，支持按月自定义', 'period' => '月', 'quota' => 50000, 'quota_unit' => '积分/月', 'quota_note' => '最低 5 万积分；1 积分=0.01 元；周期末未用作废', 'sort' => 10, 'status' => 1],
+            ],
+            'ratios' => [
+                // 广州区积分价（命中缓存/未命中输入/输出，积分/百万 tokens ÷ 1000）；DeepSeek 系取高峰价
+                ['model' => 'auto', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.324, 'cached_rate' => 0.05, 'output_rate' => 1.596, 'sort' => 10, 'status' => 0],
+                ['model' => 'glm-5.3-flash', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.08, 'cached_rate' => 0.023, 'output_rate' => 0.28, 'sort' => 20, 'status' => 0],
+                ['model' => 'glm-5.3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.8, 'cached_rate' => 0.2, 'output_rate' => 2.8, 'sort' => 30, 'status' => 0],
+                ['model' => 'glm-5.2', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.8, 'cached_rate' => 0.2, 'output_rate' => 2.8, 'sort' => 40, 'status' => 0],
+                ['model' => 'glm-5', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.4, 'cached_rate' => 0.1, 'output_rate' => 1.8, 'sort' => 50, 'status' => 0],
+                ['model' => 'glm-5.1', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.6, 'cached_rate' => 0.13, 'output_rate' => 2.4, 'sort' => 60, 'status' => 0],
+                ['model' => 'glm-5-turbo', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.5, 'cached_rate' => 0.12, 'output_rate' => 2.2, 'sort' => 70, 'status' => 0],
+                ['model' => 'kimi-k3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 2.0, 'cached_rate' => 0.2, 'output_rate' => 10.0, 'sort' => 80, 'status' => 0],
+                ['model' => 'kimi-k2.7-code', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.65, 'cached_rate' => 0.13, 'output_rate' => 2.7, 'sort' => 90, 'status' => 0],
+                ['model' => 'kimi-k2.7-code-highspeed', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 1.3, 'cached_rate' => 0.26, 'output_rate' => 5.4, 'sort' => 100, 'status' => 0],
+                ['model' => 'kimi-k2.6', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.65, 'cached_rate' => 0.11, 'output_rate' => 2.7, 'sort' => 110, 'status' => 0],
+                ['model' => 'minimax-m2.7', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.21, 'cached_rate' => 0.042, 'output_rate' => 0.84, 'sort' => 120, 'status' => 0],
+                ['model' => 'minimax-m3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.21, 'cached_rate' => 0.042, 'output_rate' => 0.84, 'sort' => 130, 'status' => 0],
+                ['model' => 'deepseek-v4-flash', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.1, 'cached_rate' => 0.02, 'output_rate' => 0.2, 'sort' => 140, 'status' => 0],
+                ['model' => 'deepseek-v4-pro', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 1.2, 'cached_rate' => 0.1, 'output_rate' => 2.4, 'sort' => 150, 'status' => 0],
+                ['model' => 'deepseek-v4-flash-0731', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.3, 'cached_rate' => 0.01, 'output_rate' => 0.9, 'sort' => 160, 'status' => 0],
+                ['model' => 'deepseek-v4-pro-0813', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.9, 'cached_rate' => 0.03, 'output_rate' => 2.7, 'sort' => 170, 'status' => 0],
+                ['model' => 'deepseek-v4-flash-202605', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.2, 'cached_rate' => 0.004, 'output_rate' => 0.8, 'sort' => 180, 'status' => 0],
+                ['model' => 'deepseek-v4-pro-202606', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.9, 'cached_rate' => 0.03, 'output_rate' => 2.7, 'sort' => 190, 'status' => 0],
+                ['model' => 'deepseek/deepseek-v4-flash-vision-exp', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.2, 'cached_rate' => 0.004, 'output_rate' => 0.8, 'sort' => 200, 'status' => 0],
+            ],
         ];
     }
 
@@ -347,14 +433,16 @@ class CodingPlanCatalog
     }
 
     /**
-     * 百度智能云千帆 Token Plan（个人版 Mini/Lite/Pro/Max，积分制）
+     * 百度智能云千帆 Token Plan（个人版 Mini/Lite/Pro/Max，积分制 ⇄ Token 制双轨）
      *
-     * 官方口径要点（2026-09-11 抓取 cloud.baidu.com/product/codingplan.html）：
+     * 官方口径要点（2026-09-11 抓取 cloud.baidu.com/doc/qianfan/s/Dmrabu8b6，2026-09-10 更新）：
      *  - 四档月价（原价）：Mini 9.9 元/1,400 积分、Lite 40/6,600、Pro 200/45,000、Max 600/165,000；
      *    首购五折 4.9/19.9/99.9/299.9（每日 10 点限量秒杀）、到期续费专享 6 折。
-     *  - 积分制与 Token 制双轨并行；支持 GLM/DeepSeek/Kimi 等主流模型与 Cursor/Cline 等工具，
-     *    兼容 OpenAI 与 Anthropic 协议；夜间 21:00-次日 08:00 套餐内 Tokens 2 折起。
-     *  - 积分↔token 折算规则官方页未公布（以控制台用量详情为准），模板不预置比率 —— 防资损。
+     *  - 双轨同价额度：Token 制 1,000 万/4,200 万/2.3 亿/7 亿 tokens ⇄ 积分制 1,400/6,600/45,000/165,000 积分；
+     *    Token 制按实际消耗 Token 1:1 抵扣（不区分输入/输出/缓存）；deepseek-v4-pro-0813 按 1.8 倍抵扣（仅 Token 制）。
+     *  - 积分制「即将支持」：逐模型系数未公布，仅示例（V4-Pro 输入 853 tokens≈1 积分、缓存 10,240≈1、输出 427≈1）。
+     *  - 模型范围：deepseek-v4-pro（-0813）、deepseek-v4-flash（-0731，2026-09-29 下线）、glm-5.3/5.3-flash/5.2/5.1、
+     *    kimi-k2.6（2026-09-29 下线）；指定模型闲时低至 0.5 折；企业版（席位+共享积分包）价格未公布，暂不建模板。
      */
     private static function baidu(): array
     {
@@ -363,16 +451,22 @@ class CodingPlanCatalog
             'plan_kind' => 2,
             'billing_mode' => 2,
             'unit_name' => '积分',
-            'docs_url' => 'https://cloud.baidu.com/product/codingplan.html',
+            'docs_url' => 'https://cloud.baidu.com/doc/qianfan/s/Dmrabu8b6',
             'verified_at' => '2026-09-11',
-            'notes' => '积分制+Token 制双轨；夜间 21:00-次日 08:00 Tokens 2 折起；首购五折每日 10 点限量；续费焕新 6 折；积分↔token 折算以控制台用量详情为准。',
+            'notes' => '官方文档（2026-09-10）双轨同价额度：Token 制 1,000 万/4,200 万/2.3 亿/7 亿 tokens ⇄ 积分制 1,400/6,600/45,000/165,000 积分；Token 制 1:1 扣减（deepseek-v4-pro-0813 按 1.8 倍抵扣，仅 Token 制）；积分制「即将支持」（逐模型系数未公布，仅示例：V4-Pro 输入 853 tokens≈1 积分）；指定模型闲时低至 0.5 折；首购五折每日 10 点限量、续费焕新 6 折；企业版（席位+共享积分包）价格未公布。',
             'tiers' => [
-                ['name' => '个人版 · Mini', 'price' => 9.9, 'price_note' => '首购五折 4.9（限量秒杀）', 'period' => '月', 'quota' => 1400, 'quota_unit' => '积分', 'quota_note' => '新手尝鲜，7 天限额已取消', 'sort' => 10, 'status' => 1],
-                ['name' => '个人版 · Lite', 'price' => 40, 'price_note' => '首购五折 19.9（限量秒杀）', 'period' => '月', 'quota' => 6600, 'quota_unit' => '积分', 'quota_note' => '日常开发，7 天限额已取消', 'sort' => 20, 'status' => 1],
-                ['name' => '个人版 · Pro', 'price' => 200, 'price_note' => '首购五折 99.9（限量秒杀）', 'period' => '月', 'quota' => 45000, 'quota_unit' => '积分', 'quota_note' => '高频开发', 'sort' => 30, 'status' => 1],
-                ['name' => '个人版 · Max', 'price' => 600, 'price_note' => '首购五折 299.9（限量秒杀）', 'period' => '月', 'quota' => 165000, 'quota_unit' => '积分', 'quota_note' => '重度开发', 'sort' => 40, 'status' => 1],
+                ['name' => '个人版 · Mini', 'price' => 9.9, 'price_note' => '首购五折 4.9（限量秒杀）', 'period' => '月', 'quota' => 1400, 'quota_unit' => '积分', 'quota_note' => '双轨同价：Token 制额度 1,000 万 tokens/月', 'sort' => 10, 'status' => 1],
+                ['name' => '个人版 · Lite', 'price' => 40, 'price_note' => '首购五折 19.9（限量秒杀）', 'period' => '月', 'quota' => 6600, 'quota_unit' => '积分', 'quota_note' => '双轨同价：Token 制额度 4,200 万 tokens/月', 'sort' => 20, 'status' => 1],
+                ['name' => '个人版 · Pro', 'price' => 200, 'price_note' => '首购五折 99.9（限量秒杀）', 'period' => '月', 'quota' => 45000, 'quota_unit' => '积分', 'quota_note' => '双轨同价：Token 制额度 2.3 亿 tokens/月', 'sort' => 30, 'status' => 1],
+                ['name' => '个人版 · Max', 'price' => 600, 'price_note' => '首购五折 299.9（限量秒杀）', 'period' => '月', 'quota' => 165000, 'quota_unit' => '积分', 'quota_note' => '双轨同价：Token 制额度 7 亿 tokens/月', 'sort' => 40, 'status' => 1],
             ],
-            'ratios' => [],
+            'ratios' => [
+                // Token 制（当前生效）：按实际消耗 Token 1:1 抵扣，不区分输入/输出/缓存
+                ['model' => 'deepseek-v4-pro-0813', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1.8, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 10, 'status' => 0],
+                ['model' => 'deepseek-', 'match_type' => 'prefix', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 20, 'status' => 0],
+                ['model' => 'glm-', 'match_type' => 'prefix', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 30, 'status' => 0],
+                ['model' => 'kimi-', 'match_type' => 'prefix', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 40, 'status' => 0],
+            ],
         ];
     }
 

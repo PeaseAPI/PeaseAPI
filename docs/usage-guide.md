@@ -524,12 +524,17 @@ units = (输入 token × input_rate + 缓存命中 × cached_rate + 输出 token
   ```json
   [{"name": "夜间5折", "days": [1,2,3,4,5,6,7], "start": "22:00", "end": "08:00", "discount": 0.5}]
   ```
-  - `days`：ISO 周几 1–7（1=周一，省略=每天）；`start`/`end`："HH:MM"，**end < start 表示跨零点**（如夜间 22:00–08:00）；
+  - `days`：ISO 周几 1–7（1=周一，省略=每天）；`start`/`end`："HH:MM"，**end < start 表示跨零点**（如夜间 22:00–08:00），
+    跨零点窗口的凌晨部分按**当天** ISO 周几判定（如「周五 22:00 起的窗口」需配 `days:[5,6]` 才能覆盖周六凌晨）；
   - `discount`：折扣乘数（0.5=半价），服务端强制位于 (0,1)；规则按顺序匹配，首条命中生效；
+  - 窗口判定统一使用**北京时间**（`Asia/Shanghai`，与 `APP_TIMEZONE`/服务器时区解耦）——官方折扣时段均为北京时间口径，部署在任何时区都不错位；
   - 已预置官方窗口：**智谱** glm-5.3/flash（工作日 14:00–18:00 以外 5 折）、**DeepSeek** flash/v4-pro（高峰=周一至五 9:00–12:00、14:00–18:00，其余减半）；
     阿里云夜间 5 折指定模型（qwen3.8-max 等，模板未预置三率）由管理员录入行后在比率表配置；
   - 管理端「折算比率」表单可编辑窗口 JSON（列表有「时段」徽标），定价源条目携带 `time_discounts` 时官方调整折扣也会进入待确认变更（kind=`time_discounts`）；
-  - 计费流水 `meta` 快照记录 `time_discount`/`time_window`，可审计每笔是否打折。
+  - 计费流水 `meta` 快照记录 `time_discount`/`time_window`，可审计每笔是否打折；
+  - 回归自检：`php artisan coding-plan:test-time-discounts` 跑 28 项断言
+    （规范化边界/命中判定/时区解耦/calcUsage 集成），引擎集成部分在数据库事务内插入
+    `__selftest__` 临时行并回滚，零残留；断言失败时退出码 1，可挂监控或部署前校验。
 
 > 阿里云 Token Plan 与火山方舟 Agent Plan 分别以 Credits / AFP 统一计量，虽然按月订阅，但其扣减语义是
 > 「按用量折算 Credits/AFP」，因此归入 plan_kind=2（按量 Token Plan）、计数单位为 Credits/AFP；

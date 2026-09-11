@@ -64,6 +64,35 @@ import {
   type CodingPlanModelRatio,
 } from '../types'
 
+// 分时段折扣窗口 JSON 前端校验（仅提示，不阻断保存——服务端会最终规范化并丢弃非法条目）
+function validateTimeDiscountsJson(raw: string): string | null {
+  const text = raw.trim()
+  if (text === '' || text === 'null') return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return 'JSON 语法错误：请检查引号/逗号/方括号'
+  }
+  if (!Array.isArray(parsed)) return '顶层必须是数组 [...]'
+  for (let i = 0; i < parsed.length; i++) {
+    const w = parsed[i] as Record<string, unknown>
+    if (typeof w !== 'object' || w === null) {
+      return `第 ${i + 1} 条不是对象`
+    }
+    const discount = Number(w.discount)
+    if (!(discount > 0 && discount < 1)) {
+      return `第 ${i + 1} 条 discount 必须在 (0,1) 区间，如 0.5 = 五折`
+    }
+    for (const key of ['start', 'end'] as const) {
+      if (!/^\d{1,2}:\d{2}$/.test(String(w[key] ?? ''))) {
+        return `第 ${i + 1} 条 ${key} 需为 HH:MM 格式，如 22:00`
+      }
+    }
+  }
+  return null
+}
+
 type RatioForm = {
   vendor: string
   model: string
@@ -466,9 +495,14 @@ export function RatiosTab() {
                 onChange={(e) => set('time_discounts', e.target.value)}
                 placeholder={`[{"name":"工作日空闲(00-09点)","days":[1,2,3,4,5],"start":"00:00","end":"09:00","discount":0.5}]\n跨零点窗口 end<start，如夜间 22:00-08:00 写 start:"22:00"、end:"08:00"`}
               />
+              {(() => {
+                const err = validateTimeDiscountsJson(form.time_discounts)
+                return err ? <p className='text-destructive text-xs'>{err}</p> : null
+              })()}
               <p className='text-muted-foreground text-xs'>
-                按计费时刻自动命中折扣乘到消耗上（智谱非高峰 5 折、DeepSeek 空闲减半、阿里云
-                夜间 22:00-08:00 五折等官方口径）。留空 = 全时段原价。
+                按计费时刻自动命中折扣乘到消耗上，官方窗口为北京时间口径
+                （智谱非高峰 5 折、DeepSeek 空闲减半、阿里云夜间 22:00-08:00 五折等）。
+                留空 = 全时段原价。
               </p>
             </div>
           </div>

@@ -36,6 +36,13 @@ class CodingPlanModelRatio extends Model
     /** 计费口径：分段折算（输入/缓存命中/输出三段独立千 token 系数，如智谱 GLM、阿里云 Credits） */
     public const COST_PER_TOKEN_PARTS = 'per_token_parts';
 
+    /**
+     * 时段折扣判定的固定时区：官方折扣窗口均为北京时间口径
+     * （智谱/DeepSeek/阿里云官方文档均按 Asia/Shanghai 描述时段），
+     * 判定时显式换算，与 APP_TIMEZONE / 服务器时区解耦。
+     */
+    public const DISCOUNT_TIMEZONE = 'Asia/Shanghai';
+
     protected $table = 'coding_plan_model_ratios';
 
     public $timestamps = false;
@@ -88,6 +95,9 @@ class CodingPlanModelRatio extends Model
     /**
      * 计算时刻命中的时段折扣。
      *
+     * 窗口为官方北京时间口径：$at 允许任意时区（缺省取当前时刻），
+     * 内部统一换算到 Asia/Shanghai 后取周几与分钟判定。
+     *
      * @param  CarbonInterface|null  $at  计费时刻（缺省当前时间；引擎计费语义=请求完成时刻）
      * @return array{0: float, 1: array|null} [折扣乘数, 命中的窗口规则]；未配置/未命中 = [1.0, null]
      */
@@ -97,7 +107,7 @@ class CodingPlanModelRatio extends Model
             return [1.0, null];
         }
 
-        $at ??= Carbon::now();
+        $at = ($at ?? Carbon::now())->copy()->timezone(self::DISCOUNT_TIMEZONE);
         $day = (int) $at->dayOfWeekIso; // ISO 周几：1=周一 … 7=周日
         $minutes = ((int) $at->format('H')) * 60 + (int) $at->format('i');
 

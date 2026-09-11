@@ -448,6 +448,8 @@ class CodingPlanController extends Controller
             'input_rate' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'cached_rate' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'output_rate' => ['nullable', 'numeric', 'min:0', 'max:999999'],
+            // 分时段折扣窗口（智谱非高峰/DeepSeek 空闲等官方口径）：数组或 JSON 字符串，服务端规范化
+            'time_discounts' => ['nullable'],
             'status' => ['nullable', 'integer', 'in:0,1'],
             'sort' => ['nullable', 'integer', 'min:0'],
             'remark' => ['nullable', 'string', 'max:255'],
@@ -458,6 +460,9 @@ class CodingPlanController extends Controller
         $data['input_rate'] ??= 0;
         $data['cached_rate'] ??= 0;
         $data['output_rate'] ??= 0;
+        $data['time_discounts'] = array_key_exists('time_discounts', $data)
+            ? CodingPlanModelRatio::normalizeTimeDiscounts($data['time_discounts'])
+            : null;
         $data['status'] ??= 1;
         $data['sort'] ??= 0;
         $data['created_at'] = $data['updated_at'] = time();
@@ -497,10 +502,16 @@ class CodingPlanController extends Controller
             'input_rate' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'cached_rate' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'output_rate' => ['nullable', 'numeric', 'min:0', 'max:999999'],
+            // 分时段折扣窗口：数组或 JSON 字符串，服务端规范化（null 清空=全时段原价）
+            'time_discounts' => ['nullable'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
             'sort' => ['sometimes', 'integer', 'min:0'],
             'remark' => ['nullable', 'string', 'max:255'],
         ]);
+
+        if (array_key_exists('time_discounts', $data)) {
+            $data['time_discounts'] = CodingPlanModelRatio::normalizeTimeDiscounts($data['time_discounts']);
+        }
 
         $data['updated_at'] = time();
         $ratio->update($data);
@@ -622,7 +633,7 @@ class CodingPlanController extends Controller
         }
 
         $models = collect($template['ratios'])
-            ->map(fn (array $r) => [
+            ->map(fn (array $r) => array_filter([
                 'model' => $r['model'],
                 'match_type' => $r['match_type'],
                 'cost_mode' => $r['cost_mode'],
@@ -630,7 +641,9 @@ class CodingPlanController extends Controller
                 'input_rate' => (float) $r['input_rate'],
                 'cached_rate' => (float) $r['cached_rate'],
                 'output_rate' => (float) $r['output_rate'],
-            ])
+                // 分时段折扣窗口（智谱/DeepSeek 官方口径已预置，其余模板缺省不携带）
+                'time_discounts' => $r['time_discounts'] ?? null,
+            ], fn ($v) => $v !== null))
             ->values()
             ->all();
 

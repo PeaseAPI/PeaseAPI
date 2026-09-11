@@ -34,7 +34,8 @@ class PeaseInstall extends Command
     protected $signature = 'pease:install
                             {--force : 强制执行，跳过已安装检查}
                             {--skip-migrate : 跳过数据库迁移}
-                            {--skip-key : 跳过 APP_KEY 生成}';
+                            {--skip-key : 跳过 APP_KEY 生成}
+                            {--skip-cron : 跳过定时任务（crontab）自动配置}';
 
     /**
      * 命令描述
@@ -103,6 +104,10 @@ class PeaseInstall extends Command
         // 创建 storage 软链接
         $this->info('创建 storage 软链接...');
         $this->ensureStorageLink();
+
+        // 【8/8】自动创建计划任务（系统 crontab 注册 schedule:run，幂等可重跑）
+        $this->info('【8/8】配置定时任务（价格校对/额度重置/订单过期等计划任务）...');
+        $this->ensureSchedulerCron();
 
         $this->newLine();
         $this->info('✅ PeaseAPI 初始化完成！');
@@ -442,5 +447,99 @@ class PeaseInstall extends Command
             $this->warn('  未能自动创建 public/storage 软链接：'.$e->getMessage());
             $this->warn('  请手动在项目根目录执行 `php artisan storage:link` 或创建软链接');
         }
+    }
+
+    /**
+     * 【8/8】自动创建计划任务：把 Laravel 调度器（schedule:run）注册进系统 crontab。
+     *
+     * 覆盖所有计划任务（coding-plan:verify-ratios 价格校对、refresh-pricing、
+     * 额度重置、订单过期等 routes/console.php 注册项）。幂等设计：
+     *  - 以「# PeaseAPI scheduler」注释行为标记，已存在且内容一致则跳过；
+     *  - 已存在但项目路径/PHP 路径变化则原位替换；
+     *  - 通过临时文件 + `crontab <file>` 写回，不破坏既有任务行。
+     *
+     * 在禁用 proc_open/exec 的环境（宝塔默认配置）下自动降级为提示手动配置。
+     */
+    protected function ensureSchedulerCron(): void
+    {
+        if ($this->option('skip-cron')) {
+            $this->line('  <fg=gray>• 已按 --skip-cron 跳过，请手动配置：* * * * * cd '.base_path().' && php artisan schedule:run >> /dev/null 2>&1</>');
+
+            return;
+        }
+
+        // macOS 开发机不注册系统 crontab（crontab 写入可能阻塞，且部署目标为 Linux）；
+        // 本机调试请改用 `php artisan schedule:work`
+        if (PHP_OS_FAMILY === 'Darwin') {
+            $this->line('  <fg=gray>• macOS 开发环境跳过系统 crontab 注册，本机调试请运行 php artisan schedule:work</>');
+
+            return;
+        }
+
+        // 仅 Linux/Unix 生产环境自动写入（Windows 无 crontab，提示手动）
+        if (PHP_OS_FAMILY !== 'Linux') {
+            $this->warn('  当前系统（'.PHP_OS_FAMILY.'）无法自动注册计划任务，请手动配置：');
+            $this->line('  <fg=gray>* * * * * cd '.base_path().' && php artisan schedule:run >> /dev/null 2>&1</>');
+
+            return;
+        }
+
+        $cronLine = sprintf(
+            '* * * * * cd %s && %s artisan schedule:run >> /dev/null 2>&1 # PeaseAPI scheduler',
+            escapeshellarg(base_path()),
+            escapeshellarg(PHP_BINARY !== '' ? PHP_BINARY : 'php')
+        );
+
+        // 读取现有 crontab（无 crontab 时 exit 1 + 空输出 = 正常新建场景；timeout 防御 crond 异常时阻塞）
+        $existing = [];
+        $exitCode = 0;
+        exec('timeout 15 crontab -l 2>/dev/null', $existing, $exitCode);
+        if (in_array($exitCode, [124, 127], true)) {
+            $this->warn('  crontab 不可用（'.($exitCode === 124 ? '读取超时' : '命令缺失').'），无法自动注册计划任务');
+            $this->line('  <fg=gray>请手动执行 crontab -e 添加：'.$cronLine.'</>');
+
+            return;
+        }
+
+        // 过滤旧标记行（可能存在但路径已变）
+        $kept = [];
+        $markedLine = null;
+        foreach ($existing as $line) {
+            if (str_contains($line, '# PeaseAPI scheduler')) {
+                $markedLine = $line;
+
+                continue;
+            }
+            $kept[] = $line;
+        }
+
+        if ($markedLine !== null && trim($markedLine) === $cronLine) {
+            $this->line('  <fg=green>✓</> 计划任务已存在且配置一致（每分钟 schedule:run）');
+
+            return;
+        }
+
+        $kept[] = $cronLine;
+        $tmp = tempnam(sys_get_temp_dir(), 'pease-cron-');
+        if ($tmp === false) {
+            $this->warn('  无法创建临时文件，请手动配置 crontab');
+
+            return;
+        }
+        file_put_contents($tmp, implode("\n", $kept)."\n");
+
+        $writeOutput = [];
+        $writeCode = 0;
+        exec('timeout 15 crontab '.escapeshellarg($tmp).' 2>&1', $writeOutput, $writeCode);
+        unlink($tmp);
+
+        if ($writeCode !== 0) {
+            $this->warn('  crontab 写入失败（'.($writeCode === 124 ? '超时' : implode(' ', $writeOutput)).'），请手动配置：');
+            $this->line('  <fg=gray>'.$cronLine.'</>');
+
+            return;
+        }
+
+        $this->line('  <fg=green>✓</> 已'.($markedLine !== null ? '更新' : '创建').'系统计划任务（每分钟 schedule:run，覆盖价格校对/额度重置等）');
     }
 }

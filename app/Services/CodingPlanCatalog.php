@@ -43,6 +43,21 @@ class CodingPlanCatalog
 
     public const RATIO_REMARK_PREFIX = '官方折算标准';
 
+    /** 智谱官方非高峰窗口（工作日 14:00-18:00 以外 5 折；与迁移 000009 预置一致） */
+    public const TIME_WINDOWS_ZHIPU = [
+        ['name' => '工作日非高峰(00-14点)', 'days' => [1, 2, 3, 4, 5], 'start' => '00:00', 'end' => '14:00', 'discount' => 0.5],
+        ['name' => '工作日非高峰(18-24点)', 'days' => [1, 2, 3, 4, 5], 'start' => '18:00', 'end' => '24:00', 'discount' => 0.5],
+        ['name' => '周末全天', 'days' => [6, 7], 'start' => '00:00', 'end' => '24:00', 'discount' => 0.5],
+    ];
+
+    /** DeepSeek 官方空闲窗口（高峰=周一至五 9:00-12:00、14:00-18:00，其余减半） */
+    public const TIME_WINDOWS_DEEPSEEK = [
+        ['name' => '工作日空闲(00-09点)', 'days' => [1, 2, 3, 4, 5], 'start' => '00:00', 'end' => '09:00', 'discount' => 0.5],
+        ['name' => '工作日空闲(12-14点)', 'days' => [1, 2, 3, 4, 5], 'start' => '12:00', 'end' => '14:00', 'discount' => 0.5],
+        ['name' => '工作日空闲(18-24点)', 'days' => [1, 2, 3, 4, 5], 'start' => '18:00', 'end' => '24:00', 'discount' => 0.5],
+        ['name' => '周末全天', 'days' => [6, 7], 'start' => '00:00', 'end' => '24:00', 'discount' => 0.5],
+    ];
+
     /**
      * 官方模板：code => 模板定义
      *
@@ -94,7 +109,7 @@ class CodingPlanCatalog
             'unit_name' => 'Credits',
             'docs_url' => 'https://docs.bailian.console.aliyun.com/zh/model-studio/token-plan-personal-overview',
             'verified_at' => '2026-09-11',
-            'notes' => '夜间 22:00-08:00 指定模型五折；7 天滚动限额窗口内未用完不结转；升级按剩余时长折算补差；个人版仅限编程/智能体工具交互式使用。',
+            'notes' => '夜间 22:00-08:00 指定模型（qwen3.8-max / deepseek-v4-pro-0813 / deepseek-v4-flash-0731）五折；模板未预置这三行的三率，管理员按需录入后在比率行 time_discounts 配置窗口（22:00→08:00 跨零点写法）即可自动套折扣；7 天滚动限额窗口内未用完不结转；升级按剩余时长折算补差；个人版仅限编程/智能体工具交互式使用。',
             'tiers' => [
                 ['name' => '个人版 · Lite', 'price' => 39, 'price_note' => '限时价（原价 60）', 'period' => '月', 'quota' => 10000, 'quota_unit' => 'Credits', 'quota_note' => '每 7 天限额 2500', 'sort' => 10, 'status' => 1],
                 ['name' => '个人版 · Standard', 'price' => 139, 'price_note' => '限时价（原价 180）', 'period' => '月', 'quota' => 40000, 'quota_unit' => 'Credits', 'quota_note' => '每 7 天限额 10000', 'sort' => 20, 'status' => 1],
@@ -144,8 +159,8 @@ class CodingPlanCatalog
                 ['name' => '团队版 · 高级版（每席位）', 'price' => null, 'price_note' => '以官网为准（售前咨询）', 'period' => '月/席位', 'quota' => 35000, 'quota_unit' => '资源点/5小时', 'quota_note' => '每周 155000；2 席位起购', 'sort' => 50, 'status' => 1],
             ],
             'ratios' => [
-                ['model' => 'glm-5.3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.69, 'cached_rate' => 0.17, 'output_rate' => 2.4, 'sort' => 10, 'status' => 0],
-                ['model' => 'glm-5.3-flash', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.23, 'cached_rate' => 0.056, 'output_rate' => 0.8, 'sort' => 20, 'status' => 0],
+                ['model' => 'glm-5.3', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.69, 'cached_rate' => 0.17, 'output_rate' => 2.4, 'time_discounts' => self::TIME_WINDOWS_ZHIPU, 'sort' => 10, 'status' => 0],
+                ['model' => 'glm-5.3-flash', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.23, 'cached_rate' => 0.056, 'output_rate' => 0.8, 'time_discounts' => self::TIME_WINDOWS_ZHIPU, 'sort' => 20, 'status' => 0],
             ],
         ];
     }
@@ -208,8 +223,8 @@ class CodingPlanCatalog
             'notes' => '纯 API 按量计费（无套餐档位），折算单位=人民币元（unit_exchange_rate 设 1 元 = N 平台积分）；高峰=周一至五 9:00-12:00、14:00-18:00，空闲全部减半；deepseek-v4-flash 等旧模型名自动路由到 deepseek-flash 并按 Flash 价计费。',
             'tiers' => [],
             'ratios' => [
-                ['model' => 'deepseek-flash', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.002, 'cached_rate' => 0.0001, 'output_rate' => 0.008, 'sort' => 10, 'status' => 0],
-                ['model' => 'deepseek-v4-pro', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.009, 'cached_rate' => 0.0003, 'output_rate' => 0.027, 'sort' => 20, 'status' => 0],
+                ['model' => 'deepseek-flash', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.002, 'cached_rate' => 0.0001, 'output_rate' => 0.008, 'time_discounts' => self::TIME_WINDOWS_DEEPSEEK, 'sort' => 10, 'status' => 0],
+                ['model' => 'deepseek-v4-pro', 'match_type' => 'exact', 'cost_mode' => 'per_token_parts', 'unit_cost' => 1, 'input_rate' => 0.009, 'cached_rate' => 0.0003, 'output_rate' => 0.027, 'time_discounts' => self::TIME_WINDOWS_DEEPSEEK, 'sort' => 20, 'status' => 0],
             ],
         ];
     }
@@ -791,6 +806,9 @@ class CodingPlanCatalog
                     'input_rate' => $ratio['input_rate'],
                     'cached_rate' => $ratio['cached_rate'],
                     'output_rate' => $ratio['output_rate'],
+                    'time_discounts' => array_key_exists('time_discounts', $ratio) && is_array($ratio['time_discounts'])
+                        ? json_encode($ratio['time_discounts'], JSON_UNESCAPED_UNICODE)
+                        : null,
                     'status' => (int) $ratio['status'],
                     'sort' => (int) $ratio['sort'],
                     'remark' => $ratioRemark,
@@ -810,6 +828,9 @@ class CodingPlanCatalog
                     'input_rate' => $ratio['input_rate'],
                     'cached_rate' => $ratio['cached_rate'],
                     'output_rate' => $ratio['output_rate'],
+                    'time_discounts' => array_key_exists('time_discounts', $ratio) && is_array($ratio['time_discounts'])
+                        ? json_encode($ratio['time_discounts'], JSON_UNESCAPED_UNICODE)
+                        : null,
                     'sort' => (int) $ratio['sort'],
                     'remark' => $ratioRemark,
                     'updated_at' => $now,

@@ -475,7 +475,8 @@ class RelayInfo
             $cost['ratio'],
             $cost['units'],
             $cost['credits'],
-            $account->isCreditBilling() ? 'credit' : 'per_request'
+            $account->isCreditBilling() ? 'credit' : 'per_request',
+            $cost['time_window'] ?? null
         );
 
         // 2) 池计数 + 写流水

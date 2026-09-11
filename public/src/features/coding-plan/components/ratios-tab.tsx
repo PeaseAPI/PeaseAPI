@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -74,6 +75,8 @@ type RatioForm = {
   input_rate: string
   cached_rate: string
   output_rate: string
+  /** 分时段折扣窗口 JSON 文本（空=全时段原价） */
+  time_discounts: string
   status: string
   sort: string
   remark: string
@@ -88,6 +91,7 @@ const EMPTY: RatioForm = {
   input_rate: '',
   cached_rate: '',
   output_rate: '',
+  time_discounts: '',
   status: '1',
   sort: '0',
   remark: '',
@@ -120,6 +124,14 @@ export function RatiosTab() {
         input_rate: form.cost_mode === COST_PER_TOKEN_PARTS ? Number(form.input_rate || 0) : 0,
         cached_rate: form.cost_mode === COST_PER_TOKEN_PARTS ? Number(form.cached_rate || 0) : 0,
         output_rate: form.cost_mode === COST_PER_TOKEN_PARTS ? Number(form.output_rate || 0) : 0,
+        // 分时段折扣窗口：JSON 文本 → 数组（空/非法清空 = 全时段原价，服务端会再规范化）
+        time_discounts: (() => {
+          const raw = form.time_discounts.trim()
+          if (raw === '' || raw === 'null') return null
+          const parsed = JSON.parse(raw)
+          if (!Array.isArray(parsed)) throw new Error('时段折扣必须是窗口数组 JSON')
+          return parsed
+        })(),
         status: Number(form.status),
         sort: Number(form.sort || 0),
         remark: form.remark,
@@ -237,6 +249,20 @@ export function RatiosTab() {
                           待复核
                         </Badge>
                       )}
+                      {(r.time_discounts?.length ?? 0) > 0 && (
+                        <Badge
+                          variant='outline'
+                          className='border-sky-500/60 text-sky-500'
+                          title={r.time_discounts!
+                            .map(
+                              (w) =>
+                                `${w.name || '窗口'}：周${(w.days ?? [1, 2, 3, 4, 5, 6, 7]).join('/')} ${w.start}-${w.end} ×${w.discount}`,
+                            )
+                            .join('\n') + '\n（按计费时刻自动生效）'}
+                        >
+                          时段×{r.time_discounts!.length}
+                        </Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className='text-right'>
@@ -255,6 +281,9 @@ export function RatiosTab() {
                             input_rate: String(r.input_rate ?? ''),
                             cached_rate: String(r.cached_rate ?? ''),
                             output_rate: String(r.output_rate ?? ''),
+                            time_discounts: r.time_discounts
+                              ? JSON.stringify(r.time_discounts, null, 2)
+                              : '',
                             status: String(r.status ?? 1),
                             sort: String(r.sort ?? 0),
                             remark: r.remark ?? '',
@@ -427,6 +456,20 @@ export function RatiosTab() {
                   onChange={(e) => set('remark', e.target.value)}
                 />
               </div>
+            </div>
+            <div className='grid gap-1.5'>
+              <Label>分时段折扣窗口（可选，JSON 数组）</Label>
+              <Textarea
+                className='font-mono text-xs'
+                rows={4}
+                value={form.time_discounts}
+                onChange={(e) => set('time_discounts', e.target.value)}
+                placeholder={`[{"name":"工作日空闲(00-09点)","days":[1,2,3,4,5],"start":"00:00","end":"09:00","discount":0.5}]\n跨零点窗口 end<start，如夜间 22:00-08:00 写 start:"22:00"、end:"08:00"`}
+              />
+              <p className='text-muted-foreground text-xs'>
+                按计费时刻自动命中折扣乘到消耗上（智谱非高峰 5 折、DeepSeek 空闲减半、阿里云
+                夜间 22:00-08:00 五折等官方口径）。留空 = 全时段原价。
+              </p>
             </div>
           </div>
           <DialogFooter>

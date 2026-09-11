@@ -38,7 +38,9 @@ use Illuminate\Support\Facades\Schema;
  *   {"models":[{"model":"doubao-lite","unit_cost":0.5,"match_type":"exact"},
  *              {"model":"glm-5.3","cost_mode":"per_token_parts","input_rate":0.69,"cached_rate":0.17,"output_rate":2.4}]}
  *   或直接为数组；match_type 缺省 exact，unit_cost 与三段分段率均为数值的条目才参与比对，
- *   per_token_parts 条目以 input_rate/cached_rate/output_rate 为准（unit_cost 可省略）。
+ *   per_token_parts 条目以 input_rate/cached_rate/output_rate 为准（unit_cost 可省略）；
+ *   条目可选携带 time_discounts（分时段折扣窗口数组，见 CodingPlanModelRatio::normalizeTimeDiscounts），
+ *   窗口规范化结果与库内不一致时同样计入「待确认变更」（kind=time_discounts）。
  */
 class VerifyCodingPlanRatios extends Command
 {
@@ -239,6 +241,8 @@ class VerifyCodingPlanRatios extends Command
                 'input_rate' => $hasSplitRates ? (float) $entry['input_rate'] : null,
                 'cached_rate' => $hasSplitRates ? (float) $entry['cached_rate'] : null,
                 'output_rate' => $hasSplitRates ? (float) $entry['output_rate'] : null,
+                // 分时段折扣窗口（可选）：源提供时参与 diff（规范化失败视为未提供）
+                'time_discounts' => CodingPlanModelRatio::normalizeTimeDiscounts($entry['time_discounts'] ?? null),
             ];
         }
 
@@ -259,6 +263,22 @@ class VerifyCodingPlanRatios extends Command
 
                 continue;
             }
+
+            // 分时段折扣窗口 diff（与三率/单位成本独立比较；源窗口与库内不一致即待确认，
+            // 用于发现官方调整折扣时段/力度，如智谱非高峰 5 折、DeepSeek 空闲减半）
+            if ($item['time_discounts'] !== null) {
+                $fromWindows = is_array($existing->time_discounts) ? $existing->time_discounts : null;
+                if (json_encode($fromWindows) !== json_encode($item['time_discounts'])) {
+                    $changed[] = [
+                        'model' => $item['model'],
+                        'match_type' => $item['match_type'],
+                        'kind' => 'time_discounts',
+                        'from' => $fromWindows,
+                        'to' => $item['time_discounts'],
+                    ];
+                }
+            }
+
             // 分段口径：比对三段系数；其余口径：比对 unit_cost（容差 0.0001）
             if ($item['cost_mode'] === CodingPlanModelRatio::COST_PER_TOKEN_PARTS) {
                 $diff = max(

@@ -114,6 +114,16 @@ export interface CodingPlanVendor {
   accounts_active?: number
 }
 
+/** 分时段折扣窗口：days 为 ISO 周几 1-7（1=周一，空=每天），end<start 表示跨零点（如 22:00-08:00） */
+export interface TimeDiscountWindow {
+  name: string
+  days?: number[]
+  start: string
+  end: string
+  /** 折扣乘数（0.5=半价），引擎按计费时刻自动命中并乘到 units 上 */
+  discount: number
+}
+
 export interface CodingPlanModelRatio {
   id: number
   vendor: string
@@ -129,6 +139,8 @@ export interface CodingPlanModelRatio {
   input_rate?: number | string
   cached_rate?: number | string
   output_rate?: number | string
+  /** 分时段折扣窗口（智谱非高峰 5 折、DeepSeek 空闲减半等官方口径，null=全时段原价） */
+  time_discounts?: TimeDiscountWindow[] | null
   status: number
   sort: number
   remark?: string | null

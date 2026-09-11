@@ -147,9 +147,10 @@ class CodingPlanRatioService
      * 计算一次请求在账号池上的消耗。
      *
      * @param  int  $submits  本次请求消耗的提交次数（来自套餐 coding_submits_per_request）
-     * @return array{units: float, credits: float, ratio: ?CodingPlanModelRatio}
-     *                                                                           units:   供应商原生单位消耗
+     * @return array{units: float, credits: float, ratio: ?CodingPlanModelRatio, time_window: array|null}
+     *                                                                           units:   供应商原生单位消耗（已含时段折扣）
      *                                                                           credits: 折算后的平台积分
+     *                                                                           time_window: 命中的时段折扣窗口（null=原价）
      */
     public function calcUsage(
         CodingPlanAccount $account,
@@ -170,6 +171,7 @@ class CodingPlanRatioService
                 'units' => $units,
                 'credits' => $account->toCredits($units),
                 'ratio' => $ratio,
+                'time_window' => null,
             ];
         }
 
@@ -201,21 +203,33 @@ class CodingPlanRatioService
             $units = $unitCost * $submits;
         }
 
+        // 官方分时段折扣（智谱非高峰 5 折、DeepSeek 空闲减半、阿里云夜间 5 折等）：
+        // 按计费时刻（请求完成时刻）自动命中窗口，units 乘折扣乘数；未配置/未命中 = 原价
+        $timeWindow = null;
+        if ($ratio !== null) {
+            [$discount, $timeWindow] = $ratio->timeDiscountAt();
+            if ($discount != 1.0) {
+                $units *= $discount;
+            }
+        }
+
         $units = round($units, 4);
 
         return [
             'units' => $units,
             'credits' => $account->toCredits($units),
             'ratio' => $ratio,
+            'time_window' => $timeWindow,
         ];
     }
 
     /**
      * 比率快照（写入流水 meta，便于审计）。
      *
+     * @param  array|null  $timeWindow  命中的时段折扣窗口（calcUsage 返回的 time_window）
      * @return array<string, mixed>
      */
-    public function snapshot(?CodingPlanModelRatio $ratio, float $units, float $credits, string $billingMode): array
+    public function snapshot(?CodingPlanModelRatio $ratio, float $units, float $credits, string $billingMode, ?array $timeWindow = null): array
     {
         return [
             'billing_mode' => $billingMode,
@@ -227,6 +241,8 @@ class CodingPlanRatioService
             'input_rate' => $ratio?->input_rate,
             'cached_rate' => $ratio?->cached_rate,
             'output_rate' => $ratio?->output_rate,
+            'time_discount' => $timeWindow['discount'] ?? null,
+            'time_window' => $timeWindow['name'] ?? null,
             'units' => $units,
             'credits' => $credits,
         ];
@@ -275,6 +291,8 @@ class CodingPlanRatioService
             'input_rate' => (float) $r->input_rate,
             'cached_rate' => (float) $r->cached_rate,
             'output_rate' => (float) $r->output_rate,
+            // 分时段折扣窗口（智谱非高峰 5 折、DeepSeek 空闲减半等官方口径，null=全时段原价）
+            'time_discounts' => is_array($r->time_discounts) ? $r->time_discounts : null,
             // 超过核对窗口未人工复核（优惠活动期可能过时）
             'stale' => $r->updated_at > 0 && $r->updated_at < $staleBefore,
             'updated_at' => (int) $r->updated_at,

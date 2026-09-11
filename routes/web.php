@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Api\ChannelApiController;
 use App\Http\Controllers\Api\TokenApiController;
 use App\Http\Controllers\Api\UserApiController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocsController;
 use App\Http\Controllers\InstallController;
@@ -16,7 +17,6 @@ use App\Http\Controllers\RedemptionController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SystemInfoController;
 use App\Http\Controllers\WebAuthController;
-use App\Http\Controllers\AuthController;
 use App\Http\Middleware\AdminAuth;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +36,7 @@ Route::get('/install/step3', [InstallController::class, 'step3'])->name('install
 // Public content pages
 Route::view('/about', 'about')->name('about');
 Route::view('/pricing', 'pricing')->name('pricing');
+Route::view('/coding-plan', 'coding-plan')->name('coding-plan');
 Route::view('/rankings', 'rankings')->name('rankings');
 Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy');
 Route::view('/user-agreement', 'user-agreement')->name('user-agreement');

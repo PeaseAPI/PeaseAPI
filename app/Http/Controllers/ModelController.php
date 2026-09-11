@@ -26,7 +26,7 @@ class ModelController extends Controller
      */
     public function list(Request $request): JsonResponse
     {
-        $user = $request->attributes->get('user');
+        $user = $request->attributes->get('api_user') ?? $request->attributes->get('user');
         $token = $request->attributes->get('token');
 
         // 获取用户分组
@@ -74,7 +74,7 @@ class ModelController extends Controller
      */
     public function retrieve(Request $request, string $model): JsonResponse
     {
-        $user = $request->attributes->get('user');
+        $user = $request->attributes->get('api_user') ?? $request->attributes->get('user');
         $token = $request->attributes->get('token');
 
         $group = $this->getUserGroup($user, $token);

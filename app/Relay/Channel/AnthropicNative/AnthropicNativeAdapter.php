@@ -88,6 +88,10 @@ class AnthropicNativeAdapter extends BaseAdapter
             if (is_array($body) && isset($body['usage'])) {
                 $info->promptTokens = (int) ($body['usage']['input_tokens'] ?? 0);
                 $info->completionTokens = (int) ($body['usage']['output_tokens'] ?? 0);
+                $info->cachedTokens = min(
+                    max(0, (int) ($body['usage']['cache_read_input_tokens'] ?? 0)),
+                    max(0, $info->promptTokens)
+                );
             }
         }
     }
@@ -101,7 +105,7 @@ class AnthropicNativeAdapter extends BaseAdapter
             return;
         }
 
-                header('Content-Type: application/json');
+        header('Content-Type: application/json');
         http_response_code($info->responseStatus);
         echo $info->responseBody;
     }
@@ -113,7 +117,7 @@ class AnthropicNativeAdapter extends BaseAdapter
      *   event: message_start / content_block_start / content_block_delta /
      *          content_block_stop / message_delta / message_stop
      */
-    public function streamHandler(RelayInfo $info): void
+    public function streamHandler(RelayInfo $info, ?callable $callback = null): void
     {
         $url = $info->upstreamUrl;
         $headers = $this->buildRequestHeaders($info);
@@ -125,16 +129,47 @@ class AnthropicNativeAdapter extends BaseAdapter
 
         @ob_end_flush();
 
+        $buffer = ''; // SSE 行缓冲（跨 WRITEFUNCTION 分块的半行）
+
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($info->requestBody),
             CURLOPT_HTTPHEADER => $this->formatCurlHeaders($headers),
-            CURLOPT_WRITEFUNCTION => function ($curl, $data) use ($info) {
+            CURLOPT_WRITEFUNCTION => function ($curl, $data) use ($info, &$buffer) {
                 $info->recordFirstResponse();
                 echo $data;
                 flush();
+
+                // 原样透传的同时解析 usage 计费计数（message_start → 输入，message_delta → 输出）
+                $buffer .= $data;
+                $lines = explode("\n", $buffer);
+                $buffer = (string) array_pop($lines); // 保留最后一段可能不完整的行
+                foreach ($lines as $line) {
+                    $line = trim($line);
+                    if ($line === '' || ! str_starts_with($line, 'data:')) {
+                        continue;
+                    }
+                    $payload = trim(substr($line, 5));
+                    if ($payload === '' || $payload === '[DONE]') {
+                        continue;
+                    }
+                    $event = json_decode($payload, true);
+                    if (! is_array($event)) {
+                        continue;
+                    }
+                    if (($event['type'] ?? '') === 'message_start' && isset($event['message']['usage'])) {
+                        $usage = $event['message']['usage'];
+                        $info->promptTokens = (int) ($usage['input_tokens'] ?? 0);
+                        $info->cachedTokens = min(
+                            max(0, (int) ($usage['cache_read_input_tokens'] ?? 0)),
+                            max(0, $info->promptTokens)
+                        );
+                    } elseif (($event['type'] ?? '') === 'message_delta' && isset($event['usage']['output_tokens'])) {
+                        $info->completionTokens = (int) $event['usage']['output_tokens'];
+                    }
+                }
 
                 return strlen($data);
             },
@@ -233,4 +268,3 @@ class AnthropicNativeAdapter extends BaseAdapter
         return $result;
     }
 }
-

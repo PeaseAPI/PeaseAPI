@@ -55,21 +55,4 @@ class ChinaMobileAdapter extends BaseAdapter
         // 移动云响应格式与 OpenAI 兼容
         $this->formatOpenAICompatibleResponse($info);
     }
-
-    /**
-     * 错误处理 - 移动云错误格式
-     *
-     * 移动云错误响应格式:
-     * {
-     *   "error": {
-     *     "code": "xxx",
-     *     "message": "错误描述",
-     *     "requestId": "xxx"
-     *   }
-     * }
-     */
-    public function errorHandler(RelayInfo $info): void
-    {
-        parent::errorHandler($info);
-    }
 }

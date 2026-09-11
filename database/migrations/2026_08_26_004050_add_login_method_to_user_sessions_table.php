@@ -9,7 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-        public function up(): void
+    public function up(): void
     {
         Schema::table('user_sessions', function (Blueprint $table) {
             $table->string('login_method')->default('password')->after('user_id');

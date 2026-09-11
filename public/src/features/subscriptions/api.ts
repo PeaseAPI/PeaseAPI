@@ -36,7 +36,15 @@ import type {
 // Admin Plan Management
 // ============================================================================
 
-export async function getAdminPlans(): Promise<ApiResponse<PlanRecord[]>> {
+export async function getAdminPlans(): Promise<
+  ApiResponse<{
+    items: PlanRecord[]
+    total: number
+    per_page: number
+    current_page: number
+    last_page: number
+  }>
+> {
   const res = await api.get('/api/subscription/admin/plans')
   return res.data
 }
@@ -72,7 +80,15 @@ export async function patchPlanStatus(
 
 export async function getUserSubscriptions(
   userId: number
-): Promise<ApiResponse<UserSubscriptionRecord[]>> {
+): Promise<
+  ApiResponse<{
+    items: UserSubscriptionRecord[]
+    total: number
+    per_page: number
+    current_page: number
+    last_page: number
+  }>
+> {
   const res = await api.get(
     `/api/subscription/admin/users/${userId}/subscriptions`
   )
@@ -204,13 +220,6 @@ export async function paySubscriptionEpay(
 // ============================================================================
 // User Self Subscriptions
 // ============================================================================
-
-export async function getSelfSubscriptions(): Promise<
-  ApiResponse<UserSubscriptionRecord[]>
-> {
-  const res = await api.get('/api/subscription/self')
-  return res.data
-}
 
 export async function getSelfSubscriptionFull(): Promise<
   ApiResponse<SelfSubscriptionData>

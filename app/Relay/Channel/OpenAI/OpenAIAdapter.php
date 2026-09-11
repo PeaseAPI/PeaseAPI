@@ -19,7 +19,7 @@ class OpenAIAdapter extends BaseAdapter
 {
     protected string $name = 'openai';
 
-    protected int $apiType = ApiType::OpenAI;
+    protected int $apiType = ApiType::OPENAI->value;
 
     /** @var array<int, string> */
     protected array $supportedActions = [
@@ -110,7 +110,19 @@ class OpenAIAdapter extends BaseAdapter
             if (is_array($body) && isset($body['usage'])) {
                 $info->promptTokens = (int) ($body['usage']['prompt_tokens'] ?? 0);
                 $info->completionTokens = (int) ($body['usage']['completion_tokens'] ?? 0);
+                $this->extractCachedTokens($info, $body['usage']);
             }
+        }
+    }
+
+    /**
+     * 提取命中缓存的输入 token 数（计费按 CacheRatio 折扣）
+     */
+    private function extractCachedTokens(RelayInfo $info, array $usage): void
+    {
+        $details = $usage['prompt_tokens_details'] ?? null;
+        if (is_array($details) && isset($details['cached_tokens'])) {
+            $info->cachedTokens = min(max(0, (int) $details['cached_tokens']), max(0, $info->promptTokens));
         }
     }
 
@@ -125,19 +137,14 @@ class OpenAIAdapter extends BaseAdapter
             return;
         }
 
-        // 非流式：直接输出响应
-        $isJson = str_starts_with($info->responseBody, '{') || str_starts_with($info->responseBody, '[');
-
-        header('Content-Type: '.($isJson ? 'application/json' : 'text/plain'));
-        http_response_code($info->responseStatus);
-
-        echo $info->responseBody;
+        // 非流式：responseBody 已由 RelayHandler 返回、控制器统一输出
+        // （不再直接 echo/header，避免与 Symfony 响应管道冲突）
     }
 
     /**
      * 流式处理 (SSE)
      */
-    public function streamHandler(RelayInfo $info): void
+    public function streamHandler(RelayInfo $info, ?callable $callback = null): void
     {
         $url = $this->buildRequestUrl($info);
         $headers = $this->buildRequestHeaders($info);
@@ -152,16 +159,49 @@ class OpenAIAdapter extends BaseAdapter
         @ob_end_flush();
 
         // 使用 cURL 进行流式请求
+        $buffer = ''; // SSE 行缓冲（跨 WRITEFUNCTION 分块的半行）
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($info->requestBody),
             CURLOPT_HTTPHEADER => $this->formatCurlHeaders($headers),
-            CURLOPT_WRITEFUNCTION => function ($curl, $data) use ($info) {
+            CURLOPT_WRITEFUNCTION => function ($curl, $data) use ($info, &$buffer, $callback) {
                 $info->recordFirstResponse();
-                echo $data;
-                flush();
+
+                // 解析 SSE 中的 usage（上游对 stream_options.include_usage 的最终 chunk 返回），
+                // 否则流式请求的计费 token 恒为 0。
+                $buffer .= $data;
+                $lines = explode("\n", $buffer);
+                $buffer = array_pop($lines); // 保留最后一段可能不完整的行
+                foreach ($lines as $line) {
+                    $line = trim($line);
+                    if ($line === '' || ! str_starts_with($line, 'data:')) {
+                        continue;
+                    }
+                    $payload = trim(substr($line, 5));
+                    if ($payload === '' || $payload === '[DONE]') {
+                        continue;
+                    }
+                    $chunk = json_decode($payload, true);
+                    if (is_array($chunk) && isset($chunk['usage']) && is_array($chunk['usage'])) {
+                        if (isset($chunk['usage']['prompt_tokens'])) {
+                            $info->promptTokens = (int) $chunk['usage']['prompt_tokens'];
+                        }
+                        if (isset($chunk['usage']['completion_tokens'])) {
+                            $info->completionTokens = (int) $chunk['usage']['completion_tokens'];
+                        }
+                        // 缓存命中 token（计费按 CacheRatio 折扣）
+                        $this->extractCachedTokens($info, $chunk['usage']);
+                    }
+                }
+
+                if ($callback !== null) {
+                    ($callback)($data);
+                } else {
+                    echo $data;
+                    flush();
+                }
 
                 return strlen($data);
             },

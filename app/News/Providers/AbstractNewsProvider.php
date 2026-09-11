@@ -21,7 +21,7 @@ abstract class AbstractNewsProvider implements NewsProviderInterface
         $this->timeout = (int) config('pease-api.news.timeout', 30);
     }
 
-        /**
+    /**
      * 是否为纯新闻 Provider（默认 false，即通用搜索）
      *
      * 子类可覆盖返回 true 以标记为纯新闻端点

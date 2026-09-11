@@ -33,30 +33,42 @@ type ParseResult<T> =
   | { success: false; error: string; fallback: T }
 
 function parseOptionValueSafe<T>(
-  value: string,
+  value: unknown,
   defaultValue: T
 ): ParseResult<T> {
+  if (value === null || value === undefined) {
+    return { success: false, error: 'Missing value', fallback: defaultValue }
+  }
+
+  // 后端 OptionService::cast() 已把 BOOL/INT/FLOAT/JSON 键转成原生类型，
+  // 与默认值类型一致时直接采用，无需再做字符串解析
+  if (typeof value === typeof defaultValue) {
+    return { success: true, value: value as T }
+  }
+
+  const asString = typeof value === 'string' ? value : String(value)
+
   if (typeof defaultValue === 'boolean') {
     return {
       success: true,
-      value: (value === 'true' || value === '1') as T,
+      value: (asString === 'true' || asString === '1') as T,
     }
   }
 
   if (typeof defaultValue === 'number') {
-    const trimmed = value.trim()
-    if (trimmed === '') {
+    if (asString.trim() === '') {
       return {
         success: false,
         error: 'Empty string for number field',
         fallback: defaultValue,
       }
     }
-    const parsed = Number(trimmed)
+
+    const parsed = Number(asString.trim())
     if (Number.isNaN(parsed)) {
       return {
         success: false,
-        error: `Invalid number: "${value}"`,
+        error: `Invalid number: "${asString}"`,
         fallback: defaultValue,
       }
     }
@@ -65,7 +77,7 @@ function parseOptionValueSafe<T>(
 
   if (Array.isArray(defaultValue)) {
     try {
-      const parsed = JSON.parse(value)
+      const parsed = JSON.parse(asString)
       if (!Array.isArray(parsed)) {
         return {
           success: false,
@@ -96,32 +108,35 @@ function parseOptionValueSafe<T>(
     }
   }
 
-  return { success: true, value: value as T }
+  return { success: true, value: asString as T }
 }
 
 export function getOptionValue<
   T extends Record<string, string | number | boolean | unknown[]>,
->(options: Array<{ key: string; value: string }> | undefined, defaults: T): T {
+>(
+  options: Record<string, string | number | boolean | null | undefined> | undefined,
+  defaults: T
+): T {
   if (!options) return defaults
 
   const result = { ...defaults }
   const errors: Array<{ key: string; error: string }> = []
 
-  options.forEach((option) => {
-    if (option.key in defaults) {
-      const parseResult = parseOptionValueSafe(
-        option.value,
-        defaults[option.key as keyof T]
-      )
+  for (const key of Object.keys(defaults)) {
+    if (!(key in options)) continue
 
-      if (parseResult.success) {
-        result[option.key as keyof T] = parseResult.value as T[keyof T]
-      } else {
-        result[option.key as keyof T] = parseResult.fallback as T[keyof T]
-        errors.push({ key: option.key, error: parseResult.error })
-      }
+    const parseResult = parseOptionValueSafe(
+      options[key],
+      defaults[key as keyof T]
+    )
+
+    if (parseResult.success) {
+      result[key as keyof T] = parseResult.value as T[keyof T]
+    } else {
+      result[key as keyof T] = parseResult.fallback as T[keyof T]
+      errors.push({ key, error: parseResult.error })
     }
-  })
+  }
 
   if (errors.length > 0 && import.meta.env.DEV) {
     // eslint-disable-next-line no-console

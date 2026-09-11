@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import {
   ArrowRight,
@@ -34,6 +34,7 @@ import {
   ShieldCheck,
   TerminalSquare,
   Timer,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
@@ -47,6 +48,7 @@ import {
 } from '@/components/page-transition'
 import { Button } from '@/components/ui/button'
 import { IconBadge, type IconBadgeTone } from '@/components/ui/icon-badge'
+import { dismissAdminSetupGuide, getAdminSetupChecklist } from '../../api'
 import { fetchTokenKey, getApiKeys } from '@/features/keys/api'
 import type { ApiKey } from '@/features/keys/types'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
@@ -475,6 +477,24 @@ export function OverviewDashboard() {
   const remainQuota = Number(user?.quota ?? 0)
   const usedQuota = Number(user?.used_quota ?? 0)
   const isAdmin = Boolean(user?.role && user.role >= ROLE.ADMIN)
+  const queryClient = useQueryClient()
+
+  const adminChecklistQuery = useQuery({
+    queryKey: ['dashboard', 'overview', 'admin-setup-checklist'],
+    queryFn: getAdminSetupChecklist,
+    enabled: isAdmin,
+    staleTime: 30 * 1000,
+  })
+  const adminChecklist = isAdmin ? adminChecklistQuery.data?.data : undefined
+  // 管理员 checklist 就绪前不判定引导状态，避免已完成站点闪现引导卡片
+  const adminChecklistReady = !isAdmin || adminChecklistQuery.isFetched
+  const adminChannelReady =
+    adminChecklist?.steps.find((step) => step.key === 'channel')?.completed ??
+    false
+  const adminModelsReady =
+    adminChecklist?.steps.find((step) => step.key === 'model')?.completed ??
+    false
+  const adminGuideDismissed = adminChecklist?.dismissed ?? false
 
   const apiKeysQuery = useQuery({
     queryKey: ['dashboard', 'overview', 'api-keys'],
@@ -501,6 +521,26 @@ export function OverviewDashboard() {
 
   const startSteps = useMemo<StartStep[]>(
     () => [
+      // 管理员侧剩余设置步骤（渠道接入 / 模型可用）排在用户步骤之前：
+      // 登录后引导先保证「请求有出口、模型可调用」，再走密钥与余额流程
+      ...(isAdmin
+        ? ([
+            {
+              title: t('Add an upstream channel'),
+              description: t('Connect a provider so requests can be routed'),
+              to: '/channels',
+              icon: RadioTower,
+              completed: adminChannelReady,
+            },
+            {
+              title: t('Make models available'),
+              description: t('Verify abilities so your keys can call models'),
+              to: '/channels',
+              icon: ShieldCheck,
+              completed: adminModelsReady,
+            },
+          ] satisfies StartStep[])
+        : []),
       {
         title: t('Create API Key'),
         description: t('Create a key for your app or service'),
@@ -523,7 +563,16 @@ export function OverviewDashboard() {
         completed: requestCount > 0,
       },
     ],
-    [preferredKey, remainQuota, requestCount, t, usedQuota]
+    [
+      adminChannelReady,
+      adminModelsReady,
+      isAdmin,
+      preferredKey,
+      remainQuota,
+      requestCount,
+      t,
+      usedQuota,
+    ]
   )
 
   const quickActions = useMemo<QuickAction[]>(
@@ -606,16 +655,37 @@ export function OverviewDashboard() {
 
   const completedStepCount = startSteps.filter((step) => step.completed).length
   const setupComplete = completedStepCount === startSteps.length
-  const setupStatusReady = apiKeysQuery.isFetched && Boolean(user)
+  const setupStatusReady =
+    apiKeysQuery.isFetched && Boolean(user) && adminChecklistReady
+  // 跳过后不再自动展开（折叠卡片仍可手动展开；dismiss 状态存服务端 Option）
   const setupGuideExpanded =
-    manualSetupGuideExpanded ?? (setupStatusReady && !setupComplete)
+    manualSetupGuideExpanded ??
+    (setupStatusReady && !setupComplete && !adminGuideDismissed)
   const showLeftContentPanels = true
   const showContentPanels = true
+  const [guideDismissPending, setGuideDismissPending] = useState(false)
 
   const handleSetupGuideToggle = () => {
     const nextExpanded = !setupGuideExpanded
     setManualSetupGuideExpanded(nextExpanded)
     saveSetupGuideExpanded(nextExpanded)
+  }
+
+  const handleDismissSetupGuide = async () => {
+    // 先本地折叠（不阻塞 UI），请求失败再提示
+    setManualSetupGuideExpanded(false)
+    saveSetupGuideExpanded(false)
+    setGuideDismissPending(true)
+    try {
+      await dismissAdminSetupGuide(true)
+      queryClient.invalidateQueries({
+        queryKey: ['dashboard', 'overview', 'admin-setup-checklist'],
+      })
+    } catch {
+      toast.error(t('Failed to skip setup guide'))
+    } finally {
+      setGuideDismissPending(false)
+    }
   }
 
   return (
@@ -643,6 +713,17 @@ export function OverviewDashboard() {
                       </p>
                     </div>
                     <div className='flex flex-wrap items-center gap-2'>
+                      {isAdmin && !setupComplete && (
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          disabled={guideDismissPending}
+                          onClick={handleDismissSetupGuide}
+                        >
+                          <X data-icon='inline-start' />
+                          {t('Skip setup guide')}
+                        </Button>
+                      )}
                       <Button
                         variant='outline'
                         size='sm'

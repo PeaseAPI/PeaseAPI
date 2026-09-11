@@ -22,6 +22,11 @@ class Option extends Model
     protected $casts = [];
 
     /**
+     * Aggregate cache key holding the whole raw options map (see loadAll()).
+     */
+    public const AGGREGATE_CACHE_KEY = 'option:__all__';
+
+    /**
      * Get an option value by key with optional default.
      *
      * IMPORTANT: We must NOT cache `false` for missing keys, otherwise newly inserted
@@ -48,9 +53,14 @@ class Option extends Model
      */
     public static function set(string $key, mixed $value): void
     {
-        $stored = is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : (string) $value;
+        $stored = match (true) {
+            is_array($value) => json_encode($value, JSON_UNESCAPED_UNICODE),
+            is_bool($value) => $value ? 'true' : 'false',
+            default => (string) $value,
+        };
         static::updateOrCreate(['key' => $key], ['value' => $stored]);
         Cache::forget("option:{$key}");
+        Cache::forget(self::AGGREGATE_CACHE_KEY);
     }
 
     /**
@@ -58,7 +68,11 @@ class Option extends Model
      */
     public static function loadAll(): array
     {
-        return static::query()->pluck('value', 'key')->map(fn ($v) => self::castValue($v))->all();
+        // Aggregate cache: one store read replaces a full-table query per call.
+        // Stores RAW strings only; castValue runs per read (cheap, in-memory).
+        $stored = Cache::remember(self::AGGREGATE_CACHE_KEY, 60, fn () => static::query()->pluck('value', 'key')->all());
+
+        return array_map(fn ($v) => self::castValue($v), $stored);
     }
 
     /**
@@ -71,6 +85,8 @@ class Option extends Model
 
             return;
         }
+        // The aggregate map must be dropped on every store driver, not just Redis.
+        Cache::forget(self::AGGREGATE_CACHE_KEY);
         try {
             $cache = Cache::getStore();
             if (method_exists($cache, 'getRedis')) {

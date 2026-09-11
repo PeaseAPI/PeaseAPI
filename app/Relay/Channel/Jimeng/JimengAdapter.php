@@ -16,9 +16,9 @@ class JimengAdapter extends BaseAdapter
 {
     protected function getBaseUri(RelayInfo $info): string
     {
-        $channel = $info->getChannel();
+        $channel = $info->channel;
 
-        return rtrim($channel->base_url ?: 'https://jimeng.jianying.com', '/');
+        return rtrim($channel?->base_url ?: 'https://jimeng.jianying.com', '/');
     }
 
     protected function getRequestUrl(RelayInfo $info): string
@@ -26,26 +26,15 @@ class JimengAdapter extends BaseAdapter
         return $this->getBaseUri($info).'/';
     }
 
-    protected function formatRequest(RelayInfo $info): void
+    public function formatRequest(RelayInfo $info): void
     {
         $body = $info->getRequestBody() ?? [];
         $info->setRequestBody($body);
     }
 
-    protected function formatResponse(RelayInfo $info): void
+    public function formatResponse(RelayInfo $info): void
     {
         // 即梦响应格式透传
-    }
-
-    protected function buildHeaders(RelayInfo $info): array
-    {
-        $channel = $info->getChannel();
-        $apiKey = $channel->key;
-
-        return [
-            'Content-Type' => 'application/json',
-            'Authorization' => 'Bearer '.$apiKey,
-        ];
     }
 
     public function supports(int $relayMode): bool

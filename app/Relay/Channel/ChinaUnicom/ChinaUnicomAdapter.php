@@ -53,12 +53,4 @@ class ChinaUnicomAdapter extends BaseAdapter
     {
         $this->formatOpenAICompatibleResponse($info);
     }
-
-    /**
-     * 错误处理 - 联通云错误格式
-     */
-    public function errorHandler(RelayInfo $info): void
-    {
-        parent::errorHandler($info);
-    }
 }

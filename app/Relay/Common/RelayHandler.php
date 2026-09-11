@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Relay\Common;
 
 use App\Enums\ChannelType;
-use App\Relay\Channel\AWS\AWSAdapter;
+use App\Models\Channel;
 use App\Relay\Channel\AnthropicNative\AnthropicNativeAdapter;
+use App\Relay\Channel\AWS\AWSAdapter;
 use App\Relay\Channel\ChannelAdapterInterface;
 use App\Relay\Channel\Claude\ClaudeAdapter;
 use App\Relay\Channel\Gemini\GeminiAdapter;
@@ -14,8 +15,11 @@ use App\Relay\Channel\OpenAI\OpenAIAdapter;
 use App\Relay\Channel\Vertex\VertexAdapter;
 use App\Relay\Constant\RelayMode;
 use App\Relay\Constant\RelayProtocol;
+use App\Services\BillingService;
+use App\Services\LogService;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Relay 核心处理器
@@ -26,6 +30,18 @@ class RelayHandler
     protected ?RelayInfo $info = null;
 
     protected ?ChannelAdapterInterface $adapter = null;
+
+    /**
+     * 渠道由控制器直接赋值而未走 setChannel 时，补齐 base_url / api_key / apiType 等
+     */
+    protected function ensureChannelInitialized(): void
+    {
+        if ($this->info !== null
+            && $this->info->channel instanceof Channel
+            && $this->info->channelId === 0) {
+            $this->info->setChannel($this->info->channel);
+        }
+    }
 
     public function __construct(?RelayInfo $info = null)
     {
@@ -40,6 +56,7 @@ class RelayHandler
     public function handle(RelayInfo $info): array|string
     {
         $this->info = $info;
+        $this->ensureChannelInitialized();
 
         try {
             $this->selectAdapter();
@@ -63,6 +80,9 @@ class RelayHandler
                     );
                 }
 
+                // 上游失败：退回请求前预扣额度
+                $this->refundPreConsumed();
+
                 return $this->info->responseBody;
             }
 
@@ -71,6 +91,9 @@ class RelayHandler
 
             // 记录 Coding Plan 使用（成功）
             $this->info->recordCodingPlanUsage(true);
+
+            // 记录消费日志（成功，非流式）
+            $this->logConsume();
 
             return $this->info->responseBody;
         } catch (Exception $e) {
@@ -83,6 +106,9 @@ class RelayHandler
             if ($this->info && $this->info->codingPlanAccount !== null) {
                 $this->info->recordCodingPlanUsage(false, 'exception: '.$e->getMessage());
             }
+
+            // 异常：退回请求前预扣额度
+            $this->refundPreConsumed();
 
             $this->info->responseStatus = 500;
 
@@ -99,6 +125,7 @@ class RelayHandler
     public function handleStream(RelayInfo $info, callable $callback): void
     {
         $this->info = $info;
+        $this->ensureChannelInitialized();
 
         try {
             $this->selectAdapter();
@@ -110,8 +137,18 @@ class RelayHandler
             $this->adapter->formatRequest($this->info);
             $this->adapter->streamHandler($this->info, $callback);
 
+            if ($this->isError()) {
+                // 上游失败：退回请求前预扣额度，不计费不记消费日志
+                $this->refundPreConsumed();
+
+                return;
+            }
+
             // 流式完成后记录 Coding Plan 使用（成功）
             $this->info->recordCodingPlanUsage(true);
+
+            // 记录消费日志（成功，流式）
+            $this->logConsume();
 
         } catch (Exception $e) {
             Log::error('流式 Relay 处理失败', [
@@ -124,12 +161,62 @@ class RelayHandler
                 $this->info->recordCodingPlanUsage(false, 'stream_exception: '.$e->getMessage());
             }
 
+            // 异常：退回请求前预扣额度
+            $this->refundPreConsumed();
+
             $callback('data: '.json_encode([
                 'error' => [
                     'message' => $e->getMessage(),
                     'type' => 'server_error',
                 ],
             ])."\n\n");
+        }
+    }
+
+    /**
+     * 成功转发后计费扣除并记录消费日志（任一失败不影响主流程）
+     */
+    protected function logConsume(): void
+    {
+        if ($this->info === null) {
+            return;
+        }
+
+        // 计费扣除（对标 new-api PostConsumeQuota；失败仅记错误，不回滚响应）。
+        // 无论计费成功与否都结算预扣：退回请求前预扣额度，净扣费 = 实际计费。
+        try {
+            app(BillingService::class)->postConsume($this->info);
+        } catch (Throwable $e) {
+            Log::error('Relay 计费扣除失败', [
+                'error' => $e->getMessage(),
+                'user_id' => $this->info->userId,
+                'model' => $this->info->modelName,
+            ]);
+        } finally {
+            $this->refundPreConsumed();
+        }
+
+        // 消费日志（quota 取 $info->quota 计费结果；内部已有 try/catch）
+        app(LogService::class)->recordConsumeLog($this->info);
+    }
+
+    /**
+     * 退回请求前预扣额度（任一失败不影响主流程）
+     */
+    protected function refundPreConsumed(): void
+    {
+        if ($this->info === null || $this->info->preConsumedQuota <= 0) {
+            return;
+        }
+
+        try {
+            app(BillingService::class)->refundPreConsumed($this->info);
+        } catch (Throwable $e) {
+            Log::error('Relay 预扣退款失败', [
+                'error' => $e->getMessage(),
+                'user_id' => $this->info->userId,
+                'pre_consumed' => $this->info->preConsumedQuota,
+            ]);
         }
     }
 

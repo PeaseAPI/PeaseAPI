@@ -23,7 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { SectionPageLayout } from '@/components/layout'
 
 import { useSystemOptions, getOptionValue } from '../hooks/use-system-options'
-import type { SystemOption } from '../types'
+import type { SystemOptionValue } from '../types'
 import { SettingsPageProvider } from './settings-page-context'
 
 type SettingsPageProps<
@@ -46,7 +46,7 @@ type SettingsPageProps<
   loadingMessage?: string
   resolveSettings?: (
     settings: TSettings,
-    raw: SystemOption[] | undefined
+    raw: Record<string, SystemOptionValue> | undefined
   ) => TSettings
 }
 

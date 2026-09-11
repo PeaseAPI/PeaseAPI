@@ -28,10 +28,15 @@ class UserApiController extends Controller
 
         // Mask news keys for security (show only last 4 chars)
         $maskKey = function ($key) {
-            if (empty($key)) return '';
+            if (empty($key)) {
+                return '';
+            }
             $len = strlen($key);
-            if ($len <= 4) return str_repeat('*', $len);
-            return str_repeat('*', $len - 4) . substr($key, -4);
+            if ($len <= 4) {
+                return str_repeat('*', $len);
+            }
+
+            return str_repeat('*', $len - 4).substr($key, -4);
         };
 
         $newsKeys = $setting['news_keys'] ?? [];
@@ -333,7 +338,7 @@ class UserApiController extends Controller
     }
 
     /**
-          * Update current user's news API keys (stored in user.setting JSON)
+     * Update current user's news API keys (stored in user.setting JSON)
      */
     public function updateNewsKeys(Request $request)
     {
@@ -359,10 +364,15 @@ class UserApiController extends Controller
 
         // Mask helper - same format as UserController (show only last 4 chars)
         $maskKey = function ($key) {
-            if (empty($key)) return '';
+            if (empty($key)) {
+                return '';
+            }
             $len = strlen($key);
-            if ($len <= 4) return str_repeat('*', $len);
-            return str_repeat('*', $len - 4) . substr($key, -4);
+            if ($len <= 4) {
+                return str_repeat('*', $len);
+            }
+
+            return str_repeat('*', $len - 4).substr($key, -4);
         };
 
         // Smart update: only overwrite if the submitted value is a new plaintext key

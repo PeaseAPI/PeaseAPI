@@ -75,7 +75,7 @@ class ApiRateLimit
         }
 
         // 使用用户 ID
-        $userId = $request->attributes->get('api_user_id', 0);
+        $userId = (int) $request->attributes->get('user_id', 0);
         if ($userId) {
             return "user:{$userId}";
         }
@@ -108,6 +108,8 @@ class ApiRateLimit
         $key = "rate_limit:{$key}";
         $current = (int) cache()->get($key, 0);
         cache()->put($key, $current + 1, $decaySeconds);
+        // 记录过期时间戳（file/array 驱动无 ttl()，跨驱动兼容）
+        cache()->put("rate_limit_expires:{$key}", time() + $decaySeconds, $decaySeconds);
     }
 
     /**
@@ -121,12 +123,12 @@ class ApiRateLimit
     }
 
     /**
-     * 获取可用时间戳
+     * 获取可用时间戳（跨缓存驱动兼容，不依赖 Redis 专有 ttl()）
      */
     protected function availableAt(string $key): int
     {
-        $ttl = cache()->ttl("rate_limit:{$key}");
+        $expires = cache()->get("rate_limit_expires:rate_limit:{$key}");
 
-        return $ttl > 0 ? time() + $ttl : time() + 60;
+        return is_int($expires) && $expires > time() ? $expires : time() + 60;
     }
 }

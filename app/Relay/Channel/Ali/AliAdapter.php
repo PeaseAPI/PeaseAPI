@@ -105,7 +105,7 @@ class AliAdapter extends BaseAdapter
     /**
      * 流式处理 (SSE)
      */
-    public function streamHandler(RelayInfo $info): void
+    public function streamHandler(RelayInfo $info, ?callable $callback = null): void
     {
         $url = $this->buildRequestUrl($info);
         $headers = $this->buildRequestHeaders($info);

@@ -27,10 +27,10 @@ abstract class TaskAdapter extends BaseAdapter implements ChannelAdapterInterfac
      */
     public function submitTask(RelayInfo $info): array
     {
-        $channel = $info->getChannel();
+        $channel = $info->channel;
         $baseUrl = rtrim($channel->base_url ?? '', '/');
         $url = $this->buildSubmitUrl($baseUrl, $info);
-        $headers = $this->buildHeaders($info);
+        $headers = $this->buildRequestHeaders($info);
         $body = $this->buildRequestBody($info);
 
         $response = Http::withHeaders($headers)
@@ -45,11 +45,11 @@ abstract class TaskAdapter extends BaseAdapter implements ChannelAdapterInterfac
      */
     public function fetchTask(RelayInfo $info): array
     {
-        $channel = $info->getChannel();
+        $channel = $info->channel;
         $baseUrl = rtrim($channel->base_url ?? '', '/');
         $taskId = $info->getParam('task_id', '');
         $url = $this->buildFetchUrl($baseUrl, $taskId, $info);
-        $headers = $this->buildHeaders($info);
+        $headers = $this->buildRequestHeaders($info);
 
         $response = Http::withHeaders($headers)
             ->timeout(30)
@@ -140,9 +140,9 @@ abstract class TaskAdapter extends BaseAdapter implements ChannelAdapterInterfac
     /**
      * 构建请求头
      */
-    protected function buildHeaders(RelayInfo $info): array
+    protected function buildRequestHeaders(RelayInfo $info): array
     {
-        $channel = $info->getChannel();
+        $channel = $info->channel;
         $apiKey = $this->getApiKey($channel);
 
         return [
@@ -198,7 +198,7 @@ abstract class TaskAdapter extends BaseAdapter implements ChannelAdapterInterfac
         $info->setResponseBody(json_encode($data));
     }
 
-    public function streamHandler(RelayInfo $info): void
+    public function streamHandler(RelayInfo $info, ?callable $callback = null): void
     {
         // Task 不支持流式
     }

@@ -1,44 +1,84 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Models\Pricing;
 use App\Models\TopUp;
+use App\Services\OptionService;
 use App\Services\PaymentService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 class PaymentController extends Controller
 {
-    public function pricings()
+    /**
+     * 模型价格表（pricings 表：model_name+group 主键，RefreshPricing 维护）
+     * GET /web-api/pricings
+     *
+     * 注：历史实现误将本表当作充值套餐（where enabled），导致 SQL 500（无 enabled 列）。
+     */
+    public function pricings(): JsonResponse
     {
-        return response()->json(Pricing::where('enabled', true)->orderBy('sort_order')->get());
+        $rows = Pricing::query()
+            ->orderBy('sort_order')
+            ->orderBy('model_name')
+            ->get();
+
+        return response()->json($rows);
     }
 
-    public function createCheckout(Request $request, PaymentService $paymentService)
+    /**
+     * Stripe Checkout 下单（按额度数量计价：money = amount × Price）
+     * POST /web-api/payment/checkout
+     */
+    public function createCheckout(Request $request, PaymentService $paymentService): JsonResponse
     {
-        $request->validate(['pricing_id' => 'required|exists:pricings,id']);
-        $pricing = Pricing::findOrFail($request->pricing_id);
-        $result = $paymentService->createStripeCheckout($request->user(), $pricing);
+        $validated = $request->validate([
+            'amount' => 'required|integer|min:1',
+        ]);
+
+        $amount = (int) $validated['amount'];
+        $price = (float) OptionService::get('Price', 0.01);
+        $money = round($amount * $price, 2);
+
+        try {
+            $result = $paymentService->createStripeCheckout($request->user(), $amount, $money);
+        } catch (Throwable $e) {
+            return $this->error($e->getMessage(), 400);
+        }
 
         return response()->json($result);
     }
 
-    public function stripeWebhook(Request $request, PaymentService $paymentService)
+    /**
+     * Stripe Webhook（验签 + 幂等入账）
+     * POST /api/stripe/webhook
+     */
+    public function stripeWebhook(Request $request, PaymentService $paymentService): JsonResponse
     {
-        $payload = $request->all();
         try {
-            $topUp = $paymentService->handleStripeWebhook($payload);
-
-            return response()->json(['success' => true]);
-        } catch (\Exception $e) {
+            $paymentService->handleStripeWebhook(
+                $request->getContent(),
+                (string) $request->header('Stripe-Signature', '')
+            );
+        } catch (Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 400);
         }
+
+        return response()->json(['success' => true]);
     }
 
-    public function topUpHistory(Request $request)
+    /**
+     * 充值订单历史
+     * GET /web-api/payment/history
+     */
+    public function topUpHistory(Request $request): JsonResponse
     {
         $query = TopUp::where('user_id', $request->user()->id);
 
-        return response()->json($query->orderBy('created_time', 'desc')->paginate(20));
+        return response()->json($query->orderBy('created_at', 'desc')->paginate(20));
     }
 }

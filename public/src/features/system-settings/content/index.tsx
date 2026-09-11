@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { SettingsPage } from '../components/settings-page'
-import type { ContentSettings, SystemOption } from '../types'
+import type { ContentSettings, SystemOptionValue } from '../types'
 import {
   CONTENT_DEFAULT_SECTION,
   getContentSectionContent,
@@ -47,11 +47,16 @@ const defaultContentSettings: ContentSettings = {
 
 function resolveContentSettings(
   settings: ContentSettings,
-  raw: SystemOption[] | undefined
+  raw: Record<string, SystemOptionValue> | undefined
 ): ContentSettings {
-  if (!raw || raw.length === 0) return settings
+  if (!raw || Object.keys(raw).length === 0) return settings
 
-  const optionMap = new Map(raw.map((item) => [item.key, item.value]))
+  const optionMap = new Map(
+    Object.entries(raw).map(([key, value]) => [
+      key,
+      value == null ? '' : String(value),
+    ])
+  )
   const next = { ...settings }
 
   const legacyMap = [

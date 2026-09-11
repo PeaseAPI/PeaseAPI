@@ -28,7 +28,7 @@ class NewsApiProvider extends AbstractNewsProvider
         return ChannelType::NEWS_API;
     }
 
-        public function isNewsOnly(): bool
+    public function isNewsOnly(): bool
     {
         return true;
     }

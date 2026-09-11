@@ -42,7 +42,7 @@ class NewsService
         protected LogService $logService,
     ) {}
 
-        /**
+    /**
      * 执行新闻搜索（仅使用新闻类 Provider）
      *
      * @return array<string, mixed>
@@ -91,7 +91,7 @@ class NewsService
         $userGroup = (string) $request->attributes->get('user_group', 'default');
         $requestId = (string) Str::uuid();
 
-                [$provider, $channel] = $this->selectProviderAndChannel($searchRequest->provider, $userGroup, $mode);
+        [$provider, $channel] = $this->selectProviderAndChannel($searchRequest->provider, $userGroup, $mode);
 
         if (! $provider || ! $channel) {
             return [
@@ -160,7 +160,7 @@ class NewsService
      *
      * @return array{0: ?NewsProviderInterface, 1: ?Channel}
      */
-        protected function selectProviderAndChannel(?string $providerKey, string $userGroup, string $mode = 'news'): array
+    protected function selectProviderAndChannel(?string $providerKey, string $userGroup, string $mode = 'news'): array
     {
         if ($providerKey) {
             $provider = $this->registry->get($providerKey);

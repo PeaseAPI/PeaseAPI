@@ -49,10 +49,10 @@ class VolcengineAdapter extends BaseAdapter
     {
         // 火山引擎需要添加 "ark-" 前缀到模型名称
         // 例如: doubao-lite -> ark-doubao-lite
-        if (isset($info->request['model'])) {
-            $model = $info->request['model'];
+        if (isset($info->requestBody['model'])) {
+            $model = $info->requestBody['model'];
             if (! str_starts_with($model, 'ark-')) {
-                $info->request['model'] = 'ark-'.$model;
+                $info->requestBody['model'] = 'ark-'.$model;
             }
         }
 
@@ -84,8 +84,4 @@ class VolcengineAdapter extends BaseAdapter
      *   }
      * }
      */
-    public function errorHandler(RelayInfo $info): void
-    {
-        parent::errorHandler($info);
-    }
 }

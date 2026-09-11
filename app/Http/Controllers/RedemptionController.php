@@ -123,7 +123,11 @@ class RedemptionController extends Controller
         DB::beginTransaction();
         try {
             for ($i = 0; $i < $batchSize; $i++) {
-                $redemptions[] = $this->createRedemption($baseData, $now);
+                // 每行独立生成 key（避免批量插入时唯一键冲突）
+                $redemptions[] = $this->createRedemption(
+                    array_merge($baseData, ['key' => $this->generateKey()]),
+                    $now
+                );
             }
             DB::commit();
         } catch (\Throwable $e) {
@@ -263,6 +267,42 @@ class RedemptionController extends Controller
             'quota' => $result->quota,
             'balance' => $user->quota,
         ]);
+    }
+
+    /**
+     * 我的兑换记录（用户）
+     */
+    public function myRedemptions(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $page = max(1, (int) $request->input('p', 1));
+        $size = min(100, max(1, (int) $request->input('size', 10)));
+
+        $query = Redemption::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('id');
+
+        $total = (clone $query)->count();
+        $items = $query->forPage($page, $size)->get()->values();
+
+        return response()->json([
+            'success' => true,
+            'message' => '',
+            'data' => [
+                'items' => $items,
+                'total' => $total,
+                'page' => $page,
+                'page_size' => $size,
+            ],
+        ]);
+    }
+
+    /**
+     * 批量创建（管理员）- routes/api.php POST /api/redemption/batch 引用
+     */
+    public function batchCreate(Request $request): JsonResponse
+    {
+        return $this->store($request);
     }
 
     /**

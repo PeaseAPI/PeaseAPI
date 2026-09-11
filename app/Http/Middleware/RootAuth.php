@@ -23,7 +23,7 @@ class RootAuth
             return $this->unauthorizedResponse($request, '账户已被禁用');
         }
 
-        if ($user->role < UserRole::ROOT) {
+        if ((int) $user->role < UserRole::ROOT->value) {
             return $this->unauthorizedResponse($request, '需要Root权限');
         }
 

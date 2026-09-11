@@ -5,9 +5,13 @@ return [
     'theme' => env('PEASE_API_THEME', 'default'),
     'session_secret' => env('PEASE_API_SESSION_SECRET', 'change-me'),
     'sync_frequency' => env('PEASE_API_SYNC_FREQUENCY', 60),
+    'task_poll_frequency' => env('PEASE_API_TASK_POLL_FREQUENCY', 5),
     'memory_cache_enabled' => env('PEASE_API_MEMORY_CACHE_ENABLED', true),
     'batch_update_enabled' => env('PEASE_API_BATCH_UPDATE_ENABLED', false),
     'batch_update_interval' => env('PEASE_API_BATCH_UPDATE_INTERVAL', 5),
+
+    // perf_metrics 保留天数（每日 05:00 清理，见 routes/console.php）
+    'perf_metrics_retention_days' => (int) env('PERF_METRICS_RETENTION_DAYS', 30),
     'default_group' => 'default',
     'pre_consumed_quota' => 500,
     'channel_update_frequency' => env('CHANNEL_UPDATE_FREQUENCY', 60),
@@ -35,6 +39,8 @@ return [
         'stripe' => ['enabled' => false, 'secret_key' => '', 'webhook_secret' => ''],
         'creem' => ['enabled' => false, 'api_key' => ''],
         'waffo' => ['enabled' => false, 'api_key' => ''],
+        // 待支付订单超时取消窗口（分钟），0/负数 = 关闭超时取消
+        'order_timeout_minutes' => (int) env('PEASE_API_ORDER_TIMEOUT_MINUTES', 1440),
     ],
     'analytics' => [
         'umami' => ['enabled' => false, 'website_id' => '', 'script_url' => 'https://analytics.umami.is/script.js'],

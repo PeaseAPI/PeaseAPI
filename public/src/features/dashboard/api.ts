@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { api } from '@/lib/api'
 
 import type {
+  AdminSetupChecklist,
   FlowQuotaDataItem,
   QuotaDataItem,
   UptimeGroupResult,
@@ -88,6 +89,27 @@ export async function getFlowQuotaDates(
 export async function getUptimeStatus() {
   const res = await api.get<{ success: boolean; data: UptimeGroupResult[] }>(
     '/api/uptime/status'
+  )
+  return res.data
+}
+
+// ----------------------------------------------------------------------------
+// Admin Setup Guide (onboarding checklist)
+// ----------------------------------------------------------------------------
+
+// Aggregated admin onboarding state: remaining setup steps + dismiss flag
+export async function getAdminSetupChecklist() {
+  const res = await api.get<{
+    success: boolean
+    data: AdminSetupChecklist
+  }>('/api/admin/setup-checklist')
+  return res.data
+}
+
+// Dismiss (or reopen) the admin setup guide; persisted server-side
+export async function dismissAdminSetupGuide(dismiss: boolean) {
+  const res = await api.post<{ success: boolean }>(
+    `/api/admin/setup-checklist/${dismiss ? 'dismiss' : 'reopen'}`
   )
   return res.data
 }

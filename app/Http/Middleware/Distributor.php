@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Models\Ability;
 use App\Models\Channel;
+use App\Services\ChannelAffinityService;
+use App\Services\ChannelSelectService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,11 +24,34 @@ use Symfony\Component\HttpFoundation\Response;
 class Distributor
 {
     /**
+     * 渠道亲和性（affinity）记录使用解析后的分组，避免读到恒缺省的 using_group。
+     */
+    protected function resolveUsingGroup(Request $request): string
+    {
+        // 0. 上游已显式解析的分组（R12 契约：尊重预设的 using_group 属性）
+        $preset = $request->attributes->get('using_group');
+        if (is_string($preset) && $preset !== '') {
+            return $preset;
+        }
+
+        // 1. Token 自带分组优先（new-api 语义：令牌级分组覆盖）
+        $token = $request->attributes->get('token');
+        if ($token && ! empty($token->group)) {
+            return (string) $token->group;
+        }
+
+        // 2. TokenAuth 注入的用户分组
+        $userGroup = (string) $request->attributes->get('user_group', '');
+
+        return $userGroup !== '' ? $userGroup : 'default';
+    }
+
+    /**
      * 处理请求
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // 1. 获取模型名称和分组
+        // 1. 获取模型名称
         $modelRequest = $this->getModelRequest($request);
 
         if ($modelRequest['model'] === '') {
@@ -60,15 +84,15 @@ class Distributor
             }
         }
 
-        // 3. 获取用户分组
-        $usingGroup = $request->attributes->get('using_group', 'default');
+        // 3. 解析用户分组（token group → user group → default；忽略请求体注入的 group）
+        $usingGroup = $this->resolveUsingGroup($request);
 
         // 4. 尝试从渠道亲和性缓存获取
         $channel = $this->getChannelFromAffinity($request, $modelRequest['model'], $usingGroup);
 
-        // 5. 如果没有 affinity 渠道，进行正常选择
+        // 5. 如果没有 affinity 渠道，进行正常选择（按 model+group 查 abilities）
         if (! $channel) {
-            $channel = $this->selectChannel($modelRequest['model'], $usingGroup, $request->path());
+            $channel = app(ChannelSelectService::class)->pickChannel($modelRequest['model'], $usingGroup);
         }
 
         // 6. 如果仍未找到渠道
@@ -89,9 +113,27 @@ class Distributor
 
         // 7. 将选中的渠道存入请求属性
         $request->attributes->set('selected_channel', $channel);
-        $request->attributes->set('using_group', $modelRequest['group'] ?: $usingGroup);
+        $request->attributes->set('using_group', $usingGroup);
 
-        return $next($request);
+        $response = $next($request);
+
+        // 8. 转发成功后记录渠道亲和（仅 ChannelAffinityEnabled 开启时生效）。
+        //    RelayHandler 无重试循环，selected_channel 即实际使用的渠道。
+        if ($response->getStatusCode() < 400) {
+            $userId = (int) $request->attributes->get('user_id', 0);
+            $finalChannel = $request->attributes->get('selected_channel');
+
+            if ($userId > 0 && $finalChannel instanceof Channel) {
+                ChannelAffinityService::record(
+                    $userId,
+                    $finalChannel->id,
+                    $usingGroup,
+                    $modelRequest['model']
+                );
+            }
+        }
+
+        return $response;
     }
 
     /**
@@ -133,8 +175,8 @@ class Distributor
      */
     protected function getChannelFromAffinity(Request $request, string $model, string $usingGroup): ?Channel
     {
-        $affinityKey = "channel_affinity:{$request->attributes->get('api_user_id', 0)}:{$usingGroup}:{$model}";
-        $preferredChannelId = cache()->get($affinityKey);
+        $userId = (int) $request->attributes->get('user_id', 0);
+        $preferredChannelId = ChannelAffinityService::preferredChannelId($userId, $usingGroup, $model);
 
         if (! $preferredChannelId) {
             return null;
@@ -152,60 +194,6 @@ class Distributor
         }
 
         return $channel;
-    }
-
-    /**
-     * 选择渠道 (对标 CacheGetRandomSatisfiedChannel)
-     */
-    protected function selectChannel(string $model, string $group, string $requestPath): ?Channel
-    {
-        // 获取支持该模型的渠道
-        $ability = Ability::where('name', $this->getAbilityNameByPath($requestPath))
-            ->where('enabled', true)
-            ->first();
-
-        if (! $ability) {
-            return null;
-        }
-
-        // 查询启用的渠道
-        $query = Channel::whereHas('abilities', function ($q) use ($ability) {
-            $q->where('ability_id', $ability->id)
-                ->where('enabled', true);
-        })->where('status', 1);
-
-        // 按优先级和权重排序
-        $channels = $query->orderBy('priority', 'desc')
-            ->orderByRaw('RAND()')
-            ->get();
-
-        // 这里可以添加更多选择逻辑 (如健康检查、响应时间等)
-        return $channels->first();
-    }
-
-    /**
-     * 根据请求路径获取能力名称
-     */
-    protected function getAbilityNameByPath(string $path): string
-    {
-        $abilityMap = [
-            '/v1/chat/completions' => 'chat.completions',
-            '/v1/completions' => 'completions',
-            '/v1/embeddings' => 'embeddings',
-            '/v1/images/generations' => 'images.generations',
-            '/v1/audio/transcriptions' => 'audio.transcriptions',
-            '/v1/rerank' => 'rerank',
-            '/v1/messages' => 'claude.messages',
-            '/v1/responses' => 'responses',
-        ];
-
-        foreach ($abilityMap as $pattern => $ability) {
-            if (str_starts_with($path, $pattern)) {
-                return $ability;
-            }
-        }
-
-        return 'chat.completions';
     }
 
     /**

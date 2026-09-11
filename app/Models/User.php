@@ -91,11 +91,6 @@ class User extends Authenticatable
         return $this->hasMany(TopUp::class, 'user_id');
     }
 
-    public function subscriptions()
-    {
-        return $this->hasMany(UserSubscription::class, 'user_id');
-    }
-
     public function isAdmin()
     {
         return $this->role >= 10;

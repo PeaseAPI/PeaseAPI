@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Subscription;
+use App\Models\SubscriptionOrder;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\OptionService;
+use App\Services\SubscriptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -22,7 +24,8 @@ class SubscriptionController extends Controller
      */
     public function plans(): JsonResponse
     {
-        $plans = SubscriptionPlan::getActivePlans();
+        $plans = SubscriptionPlan::getActivePlans()
+            ->map(fn (SubscriptionPlan $plan) => ['plan' => $plan->toArray()]);
 
         return $this->success($plans);
     }
@@ -80,17 +83,29 @@ class SubscriptionController extends Controller
             return $this->error('订阅计划不存在');
         }
 
-        $price = (float) $plan->price;
-        $quotaCost = (int) ($price * 500000); // 1元 = 500000 quota（示例换算）
-        if ($user->quota < $quotaCost) {
+        // 与前端余额预估一致：QuotaPerUnit 统一换算 + 向上取整
+        $quotaCost = SubscriptionService::quotaCost($plan);
+        if ($quotaCost > 0 && $user->quota < $quotaCost) {
             return $this->error('余额不足');
         }
 
-        DB::transaction(function () use ($user, $plan, $quotaCost): void {
-            $user->quota -= $quotaCost;
-            $user->save();
-            $this->createSubscription($user, $plan, 'balance');
-        });
+        try {
+            DB::transaction(function () use ($user, $plan, $quotaCost): void {
+                // 0 元计划免扣费；否则原子条件扣减，避免并发请求下读-改-写把余额扣成负数
+                if ($quotaCost > 0) {
+                    $affected = User::where('id', $user->id)
+                        ->where('quota', '>=', $quotaCost)
+                        ->decrement('quota', $quotaCost);
+                    if ($affected === 0) {
+                        throw new \RuntimeException('余额不足');
+                    }
+                }
+
+                SubscriptionService::activateSubscription($user, $plan, 'balance');
+            });
+        } catch (\RuntimeException $e) {
+            return $this->error($e->getMessage());
+        }
 
         return $this->success();
     }
@@ -106,13 +121,70 @@ class SubscriptionController extends Controller
             return $this->error('订阅计划不存在');
         }
 
+        $epayId = OptionService::get('EpayId');
+        $epayKey = OptionService::get('EpayKey');
+        $epayUrl = OptionService::get('EpayUrl', OptionService::get('PayAddress', ''));
+        if (! $epayId || ! $epayKey) {
+            return $this->error('易支付未配置，请在后台系统设置 > 支付配置中填写易支付商户ID和密钥');
+        }
+        if (! $epayUrl) {
+            return $this->error('易支付网关地址未配置，请在后台系统设置 > 支付配置中填写易支付网关地址');
+        }
+
+        $paymentType = (string) $request->input('payment_method', 'alipay');
+        $allowedTypes = ['alipay', 'wxpay', 'qqpay', 'bank'];
+        if (! in_array($paymentType, $allowedTypes, true)) {
+            return $this->error('不支持的支付方式，可选: alipay(支付宝), wxpay(微信), qqpay(QQ), bank(网银)');
+        }
+
+        $money = round((float) $plan->price, 2);
+        if ($money <= 0) {
+            return $this->error('计划价格异常');
+        }
+
         $tradeNo = 'SE'.date('YmdHis').Str::random(8);
 
+        // 订单落库：回调凭 trade_no 履约（见 TopUpController::epayNotify 的 SE 分流）
+        SubscriptionOrder::create([
+            'user_id' => $request->user()->id,
+            'plan_id' => $plan->id,
+            'trade_no' => $tradeNo,
+            'amount' => $money,
+            'currency' => $plan->currency ?: 'CNY',
+            'status' => 0,
+            'payment_method' => 'epay_'.$paymentType,
+            'payment_provider' => 'epay',
+            'period_start' => 0,
+            'period_end' => 0,
+            'created_at' => time(),
+        ]);
+
+        // 构造易支付提交参数（签名口径与充值一致：ksort + 非空拼接 + 商户密钥 MD5）
+        $params = [
+            'pid' => $epayId,
+            'type' => $paymentType,
+            'out_trade_no' => $tradeNo,
+            'notify_url' => url('/api/user/epay/notify'),
+            'return_url' => url('/wallet'),
+            'name' => '订阅 '.$plan->name,
+            'money' => sprintf('%.2f', $money),
+            'sign_type' => 'MD5',
+        ];
+        ksort($params);
+        $signStr = '';
+        foreach ($params as $k => $v) {
+            if ($v !== '') {
+                $signStr .= $k.'='.$v.'&';
+            }
+        }
+        $signStr = rtrim($signStr, '&').$epayKey;
+        $params['sign'] = md5($signStr);
+
+        // 前端把 data.url 作为表单 action，其余字段作为隐藏域 POST 提交
         return $this->success([
             'trade_no' => $tradeNo,
-            'money' => (float) $plan->price,
-            'plan_id' => $plan->id,
-            'plan_name' => $plan->name,
+            'url' => rtrim((string) $epayUrl, '/').'/submit.php',
+            ...$params,
         ]);
     }
 
@@ -127,14 +199,8 @@ class SubscriptionController extends Controller
             return $this->error('订阅计划不存在');
         }
 
-        $tradeNo = 'SS'.date('YmdHis').Str::random(8);
-
-        return $this->success([
-            'trade_no' => $tradeNo,
-            'client_secret' => '',
-            'amount' => (int) ((float) $plan->price * 100),
-            'currency' => strtolower($plan->currency ?: 'usd'),
-        ]);
+        // Stripe 通道尚未接入：不做虚假下单，明确告知可用渠道
+        return $this->error('Stripe 订阅支付暂未开通，请使用余额支付或易支付');
     }
 
     /**
@@ -148,9 +214,8 @@ class SubscriptionController extends Controller
             return $this->error('订阅计划不存在');
         }
 
-        $tradeNo = 'SC'.date('YmdHis').Str::random(8);
-
-        return $this->success(['trade_no' => $tradeNo]);
+        // Creem 通道尚未接入：不做虚假下单，明确告知可用渠道
+        return $this->error('Creem 订阅支付暂未开通，请使用余额支付或易支付');
     }
 
     /**
@@ -164,9 +229,8 @@ class SubscriptionController extends Controller
             return $this->error('订阅计划不存在');
         }
 
-        $tradeNo = 'SW'.date('YmdHis').Str::random(8);
-
-        return $this->success(['trade_no' => $tradeNo]);
+        // Waffo-Pancake 通道尚未接入：不做虚假下单，明确告知可用渠道
+        return $this->error('Waffo-Pancake 订阅支付暂未开通，请使用余额支付或易支付');
     }
 
     /**
@@ -181,9 +245,10 @@ class SubscriptionController extends Controller
             ->where('status', 1)
             ->first();
 
+        $perUnit = SubscriptionService::quotaPerUnit();
         $hardLimitUsd = $subscription
-            ? round((float) ($subscription->quota / 500000), 2)
-            : round((float) ($user->quota / 500000), 2);
+            ? round((float) $subscription->quota / $perUnit, 2)
+            : round((float) $user->quota / $perUnit, 2);
 
         return response()->json([
             'object' => 'billing_subscription',
@@ -209,8 +274,13 @@ class SubscriptionController extends Controller
             $query->orderBy('sort');
         }
         $query->orderBy('id');
-        /** @var LengthAwarePaginator $plans */
+        /** @var LengthAwarePaginator<int, SubscriptionPlan> $plans */
         $plans = $query->paginate((int) $request->input('per_page', 20));
+
+        // 与前端 PlanRecord = { plan: {...} } 的消费约定对齐
+        $plans->getCollection()->transform(
+            fn (SubscriptionPlan $plan) => ['plan' => $plan->toArray()]
+        );
 
         return $this->paginate($plans);
     }
@@ -317,6 +387,11 @@ class SubscriptionController extends Controller
         $subscriptions = Subscription::with('plan')->where('user_id', $id)
             ->orderByDesc('id')->paginate((int) $request->input('per_page', 20));
 
+        // 与前端 UserSubscriptionRecord = { subscription: {...} } 的消费约定对齐
+        $subscriptions->getCollection()->transform(
+            fn (Subscription $subscription) => ['subscription' => $subscription->toArray()]
+        );
+
         return $this->paginate($subscriptions);
     }
 
@@ -400,42 +475,7 @@ class SubscriptionController extends Controller
 
     private function createSubscription(User $user, SubscriptionPlan $plan, string $method): Subscription
     {
-        $now = time();
-        $periodEnd = $this->calcPeriodEnd($plan, $now);
-
-        return DB::transaction(function () use ($user, $plan, $method, $now, $periodEnd): Subscription {
-            // 失效旧订阅
-            Subscription::where('user_id', $user->id)->where('status', 1)->update([
-                'status' => 0,
-                'updated_at' => $now,
-            ]);
-
-            return Subscription::create([
-                'user_id' => $user->id,
-                'plan_id' => $plan->id,
-                'status' => 1,
-                'period_start' => $now,
-                'period_end' => $periodEnd,
-                'quota' => $plan->quota,
-                'used_quota' => 0,
-                'payment_method' => $method,
-                'trade_no' => '',
-                'auto_renew' => 0,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-        });
-    }
-
-    private function calcPeriodEnd(SubscriptionPlan $plan, int $now): int
-    {
-        $duration = max(1, (int) $plan->duration);
-
-        return match ($plan->duration_unit) {
-            'day' => strtotime("+{$duration} days", $now),
-            'year' => strtotime("+{$duration} years", $now),
-            default => strtotime("+{$duration} months", $now),
-        };
+        return SubscriptionService::activateSubscription($user, $plan, $method);
     }
 
     private function validatePlan(Request $request): array

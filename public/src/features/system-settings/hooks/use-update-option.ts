@@ -28,9 +28,17 @@ const STATUS_RELATED_KEYS = [
   'HeaderNavModules',
   'SidebarModulesAdmin',
   'Notice',
+  'SystemName',
+  'SystemLogo',
+  'SystemFooter',
+  'Footer',
+  'Logo',
   'LogConsumeEnabled',
   'QuotaPerUnit',
-  'USDExchangeRate',
+  'UsdExchangeRate',
+  'QuotaDisplayType',
+  'CustomCurrencySymbol',
+  'CustomCurrencyExchangeRate',
   'DisplayInCurrencyEnabled',
   'DisplayTokenStatEnabled',
   'general_setting.quota_display_type',
@@ -58,7 +66,16 @@ export function useUpdateOption() {
           }
         }
 
-        toast.success(i18next.t('Setting updated successfully'))
+        // 后端 isKnown 未识别的键会被跳过（响应仍为 success），
+        // 必须显式警告，避免"保存成功"假象
+        const skipped = data.data?.skipped ?? []
+        if (skipped.length > 0) {
+          toast.warning(
+            `${i18next.t('Some settings were skipped by the backend')}: ${skipped.join(', ')}`
+          )
+        } else {
+          toast.success(i18next.t('Setting updated successfully'))
+        }
       } else {
         toast.error(data.message || i18next.t('Failed to update setting'))
       }

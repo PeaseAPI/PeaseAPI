@@ -109,6 +109,10 @@ class Token extends Model
 
     /**
      * Check if model is allowed for this token
+     *
+     * model_limits 支持两种存储格式（历史数据 + new-api 逗号串）：
+     *  - JSON 对象/数组（如 {"gpt-4o":true} 或 ["gpt-4o"]）
+     *  - 逗号分隔字符串（如 "gpt-4o,claude-3-5-sonnet"，new-api 风格）
      */
     public function isModelAllowed(string $model): bool
     {
@@ -116,23 +120,48 @@ class Token extends Model
             return true;
         }
 
-        $limits = json_decode($this->model_limits, true);
-        if (! $limits || ! is_array($limits)) {
+        $raw = trim((string) $this->model_limits);
+
+        // JSON 格式（对象或数组）
+        if (str_starts_with($raw, '{') || str_starts_with($raw, '[')) {
+            $limits = json_decode($raw, true);
+            if (is_array($limits)) {
+                // 对象：键为模型名（支持通配符后缀）
+                if (! array_is_list($limits)) {
+                    if (isset($limits[$model])) {
+                        return $limits[$model] === true || $limits[$model] > 0;
+                    }
+                    foreach ($limits as $pattern => $allowed) {
+                        if (str_ends_with((string) $pattern, '*')
+                            && str_starts_with($model, rtrim((string) $pattern, '*'))) {
+                            return $allowed === true || $allowed > 0;
+                        }
+                    }
+                } else {
+                    // 数组：精确或前缀匹配
+                    if (in_array($model, $limits, true)) {
+                        return true;
+                    }
+                    foreach ($limits as $pattern) {
+                        if (str_ends_with((string) $pattern, '*')
+                            && str_starts_with($model, rtrim((string) $pattern, '*'))) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        // 逗号分隔（new-api 风格）
+        $allowed = array_filter(array_map('trim', explode(',', $raw)));
+        if (in_array($model, $allowed, true)) {
             return true;
         }
-
-        // Check exact match
-        if (isset($limits[$model])) {
-            return $limits[$model] === true || $limits[$model] > 0;
-        }
-
-        // Check prefix match (e.g., "gpt-4*" matches "gpt-4o")
-        foreach ($limits as $pattern => $allowed) {
-            if (str_ends_with($pattern, '*')) {
-                $prefix = rtrim($pattern, '*');
-                if (str_starts_with($model, $prefix)) {
-                    return $allowed === true || $allowed > 0;
-                }
+        foreach ($allowed as $pattern) {
+            if (str_ends_with($pattern, '*') && str_starts_with($model, rtrim($pattern, '*'))) {
+                return true;
             }
         }
 

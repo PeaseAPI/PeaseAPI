@@ -16,17 +16,16 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-export type SystemOption = {
-  key: string
-  value: string
-}
-
-export type SystemOptionKey = string
+/**
+ * 后端 GET /api/option/ 返回扁平键值对象，
+ * 值已经过 OptionService::cast()（BOOL/INT/FLOAT/JSON 键转为原生类型）
+ */
+export type SystemOptionValue = string | number | boolean | null
 
 export type SystemOptionsResponse = {
   success: boolean
-  message: string
-  data: SystemOption[]
+  message?: string
+  data: Record<string, SystemOptionValue>
 }
 
 export type UpdateOptionRequest = {
@@ -37,6 +36,10 @@ export type UpdateOptionRequest = {
 export type UpdateOptionResponse = {
   success: boolean
   message: string
+  data?: {
+    updated: string[]
+    skipped: string[]
+  }
 }
 
 export type ConfirmPaymentComplianceResponse = {

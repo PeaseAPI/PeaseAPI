@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Models\Option;
 use App\Models\PerfMetric;
+use App\Services\OptionService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -59,7 +59,7 @@ class Stats
     protected function collectMetrics(Request $request, int $latencyMs, float $endTime): void
     {
         // 检查是否启用性能指标
-        $enabled = Option::get('PerformanceMetricEnabled', false);
+        $enabled = OptionService::get('PerformanceMetricEnabled', false);
         if (! $enabled) {
             return;
         }

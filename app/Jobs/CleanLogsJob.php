@@ -19,6 +19,8 @@ class CleanLogsJob implements ShouldQueue
 
     public function handle(): void
     {
-        $count = Log::where('created_at', '<', now()->subDays($this->days))->delete();
+        // created_at 为 int 时间戳列，必须传整数边界（传 Carbon 会被 MySQL 前缀转数字导致静默 no-op）
+        $cutoff = now()->subDays($this->days)->getTimestamp();
+        $count = Log::where('created_at', '<', $cutoff)->delete();
     }
 }

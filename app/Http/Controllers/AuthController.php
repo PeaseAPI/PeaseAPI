@@ -94,13 +94,13 @@ class AuthController extends Controller
             'login_method' => $session->login_method ?? 'password',
             'ip' => $session->ip,
             'user_agent' => $session->user_agent,
-            'created_at' => $createdAt instanceof \Carbon\Carbon
+            'created_at' => $createdAt instanceof Carbon
                 ? $createdAt->timestamp
                 : (int) $createdAt,
-            'last_active_at' => $updatedAt instanceof \Carbon\Carbon
+            'last_active_at' => $updatedAt instanceof Carbon
                 ? $updatedAt->timestamp
                 : (int) ($updatedAt ?? time()),
-            'expires_at' => $expiresAt instanceof \Carbon\Carbon
+            'expires_at' => $expiresAt instanceof Carbon
                 ? $expiresAt->timestamp
                 : (int) $expiresAt,
         ];
@@ -115,7 +115,7 @@ class AuthController extends Controller
     private function formatAuthBundle(User $user, UserSession $session): array
     {
         $expiresAt = $session->expires_at;
-        $expiresTimestamp = $expiresAt instanceof \Carbon\Carbon
+        $expiresTimestamp = $expiresAt instanceof Carbon
             ? $expiresAt->timestamp
             : (int) $expiresAt;
 
@@ -153,7 +153,7 @@ class AuthController extends Controller
         }
 
         $rules = [
-            'username' => 'required|string|min:3|max:32|regex:/^[a-zA-Z0-9_]+$/',
+            'username' => 'required|string|min:3|max:32|regex:/^[a-zA-Z0-9_]+$/|unique:users,username',
             'password' => 'required|string|min:8|max:64',
         ];
 
@@ -212,6 +212,7 @@ class AuthController extends Controller
                 'aff_code' => strtoupper(Str::random(8)),
                 'inviter_id' => $inviterId,
                 'created_time' => time(),
+                'created_at' => time(), // users.created_at NOT NULL（无默认值）
                 'last_login_at' => time(),
             ]);
 
@@ -343,7 +344,7 @@ class AuthController extends Controller
             $twoFA->update(['backup_codes' => json_encode($backupCodes)]);
         }
 
-            Cache::forget('2fa_pending:'.$request->input('flow_token'));
+        Cache::forget('2fa_pending:'.$request->input('flow_token'));
 
         $user = User::findOrFail($userId);
         $session = $this->authService->createSession($user, $request->ip(), $request->userAgent(), '2fa');

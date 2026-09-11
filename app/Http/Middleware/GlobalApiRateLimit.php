@@ -51,7 +51,7 @@ class GlobalApiRateLimit
             return 'api:'.md5(substr($apiKey, 7, 32));
         }
 
-        $userId = $request->attributes->get('api_user_id', 0);
+        $userId = (int) $request->attributes->get('user_id', 0);
         if ($userId) {
             return "user:{$userId}";
         }

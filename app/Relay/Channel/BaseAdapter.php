@@ -11,6 +11,28 @@ use App\Relay\Common\RelayInfo;
  */
 abstract class BaseAdapter implements ChannelAdapterInterface
 {
+    protected string $name = 'base';
+
+    protected int $apiType = 0;
+
+    /** @var array<int, string> */
+    protected array $supportedActions = [];
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getApiType(): int
+    {
+        return $this->apiType;
+    }
+
+    public function getSupportedActions(): array
+    {
+        return $this->supportedActions;
+    }
+
     public function formatRequest(RelayInfo $info): void
     {
         // 默认实现
@@ -31,7 +53,7 @@ abstract class BaseAdapter implements ChannelAdapterInterface
         // 默认实现
     }
 
-    public function streamHandler(RelayInfo $info, callable $callback): void
+    public function streamHandler(RelayInfo $info, ?callable $callback = null): void
     {
         // 默认实现
     }

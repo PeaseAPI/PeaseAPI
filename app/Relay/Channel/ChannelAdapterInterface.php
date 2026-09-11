@@ -52,69 +52,10 @@ interface ChannelAdapterInterface
     /**
      * 流式处理 (SSE)
      */
-    public function streamHandler(RelayInfo $info): void;
+    public function streamHandler(RelayInfo $info, ?callable $callback = null): void;
 
     /**
      * 错误处理
      */
     public function errorHandler(RelayInfo $info): void;
-}
-
-/**
- * 通用渠道适配器抽象类（提供默认实现）
- * 对标 new-api relay/channel/adapter.go
- */
-abstract class BaseAdapter implements ChannelAdapterInterface
-{
-    protected string $name = 'base';
-
-    protected int $apiType = 0;
-
-    /** @var array<int, string> */
-    protected array $supportedActions = [];
-
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    public function getApiType(): int
-    {
-        return $this->apiType;
-    }
-
-    public function getSupportedActions(): array
-    {
-        return $this->supportedActions;
-    }
-
-    public function formatRequest(RelayInfo $info): void
-    {
-        // 默认实现
-    }
-
-    public function doRequest(RelayInfo $info): void
-    {
-        // 默认实现
-    }
-
-    public function formatResponse(RelayInfo $info): void
-    {
-        // 默认实现
-    }
-
-    public function doResponse(RelayInfo $info): void
-    {
-        // 默认实现
-    }
-
-    public function streamHandler(RelayInfo $info): void
-    {
-        // 默认实现
-    }
-
-    public function errorHandler(RelayInfo $info): void
-    {
-        // 默认实现
-    }
 }

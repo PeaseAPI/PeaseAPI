@@ -53,7 +53,7 @@ class NewsController extends Controller
         );
     }
 
-        /**
+    /**
      * 可用新闻 Provider 列表（仅新闻类，排除搜索 Provider）
      */
     public function providers(): JsonResponse

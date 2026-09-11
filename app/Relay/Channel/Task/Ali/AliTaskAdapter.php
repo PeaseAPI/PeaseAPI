@@ -29,9 +29,9 @@ class AliTaskAdapter extends TaskAdapter
         return $info->getRequestBody() ?? [];
     }
 
-    protected function buildHeaders(RelayInfo $info): array
+    protected function buildRequestHeaders(RelayInfo $info): array
     {
-        $channel = $info->getChannel();
+        $channel = $info->channel;
         $apiKey = $this->getApiKey($channel);
 
         return [

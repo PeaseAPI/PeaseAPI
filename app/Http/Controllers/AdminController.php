@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Ability;
 use App\Models\Channel;
 use App\Models\Log;
 use App\Models\Token;
@@ -10,6 +11,7 @@ use App\Services\OptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class AdminController extends Controller
 {
@@ -27,7 +29,8 @@ class AdminController extends Controller
             'total_used_quota' => User::sum('used_quota'),
         ];
 
-        $recentLogs = Log::with(['user', 'token', 'channel'])
+        // logs 表为冗余设计（username/token_name/channel_name 落库），无关联可加载
+        $recentLogs = Log::query()
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
@@ -82,7 +85,8 @@ class AdminController extends Controller
      */
     public function status(): JsonResponse
     {
-        $public = OptionService::loadPublic();
+        // 缓存键 'public_options'：update() 保存后失效（60s 兜底，与 Option 单键缓存同口径）
+        $public = Cache::remember('public_options', 60, fn () => OptionService::loadPublic());
         $data = [];
 
         // ---- System ----
@@ -147,37 +151,37 @@ class AdminController extends Controller
         // ---- Notice (PascalCase) ----
         $data['Notice'] = $public['Notice'] ?? '';
 
-                // ---- API Base URL ----
+        // ---- API Base URL ----
         $data['server_address'] = $public['ServerAddress'] ?? '';
 
-                // ---- API Protocol Endpoints (auto-generated for user dashboard) ----
+        // ---- API Protocol Endpoints (auto-generated for user dashboard) ----
         $serverAddress = rtrim($data['server_address'], '/');
         $data['api_protocol_endpoints'] = [
             [
                 'key' => 'openai',
                 'label' => 'OpenAI Compatible',
-                'endpoint' => $serverAddress ? $serverAddress . '/v1' : '',
+                'endpoint' => $serverAddress ? $serverAddress.'/v1' : '',
                 'description' => 'OpenAI-compatible chat completions API',
                 'protocol' => 'OpenAI',
             ],
             [
                 'key' => 'anthropic',
                 'label' => 'Anthropic Claude',
-                'endpoint' => $serverAddress ? $serverAddress . '/v1' : '',
+                'endpoint' => $serverAddress ? $serverAddress.'/v1' : '',
                 'description' => 'Anthropic Claude API (compatible endpoint)',
                 'protocol' => 'Anthropic',
             ],
             [
                 'key' => 'news',
                 'label' => 'News',
-                'endpoint' => $serverAddress ? $serverAddress . '/news' : '',
+                'endpoint' => $serverAddress ? $serverAddress.'/news' : '',
                 'description' => 'News aggregation API (NewsAPI etc.)',
                 'protocol' => 'News',
             ],
             [
                 'key' => 'search',
                 'label' => 'Search',
-                'endpoint' => $serverAddress ? $serverAddress . '/search' : '',
+                'endpoint' => $serverAddress ? $serverAddress.'/search' : '',
                 'description' => 'Web search API (Tavily, Exa, Brave Search, Google CSE)',
                 'protocol' => 'Search',
             ],
@@ -198,6 +202,56 @@ class AdminController extends Controller
             'message' => '',
             'data' => $data,
         ]);
+    }
+
+    /**
+     * GET /api/admin/setup-checklist — 管理员设置引导状态
+     *
+     * 登录后 dashboard 的「设置引导教程」数据源：聚合管理员侧剩余设置步骤的
+     * 完成度（启用渠道 / 可用模型），并返回引导是否已被跳过（存 Option）。
+     * 一次请求返回全部状态，避免前端多发探测请求。
+     */
+    public function setupChecklist(): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'steps' => [
+                    [
+                        'key' => 'channel',
+                        // 已存在启用状态的渠道：新站点接入上游后才算完成
+                        'completed' => Channel::where('status', 1)->exists(),
+                    ],
+                    [
+                        'key' => 'model',
+                        // abilities 表有启用模型：渠道启用后由能力表重建生成
+                        'completed' => Ability::query()->where('enabled', 1)->exists(),
+                    ],
+                ],
+                // Option::castValue 会把 'true'/'false' 反序列化为布尔，这里统一收敛为 bool
+                'dismissed' => (bool) OptionService::get('AdminSetupGuideDismissed', false),
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/admin/setup-checklist/dismiss — 跳过设置引导（不再自动弹出）
+     */
+    public function dismissSetupGuide(): JsonResponse
+    {
+        OptionService::set('AdminSetupGuideDismissed', 'true');
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * POST /api/admin/setup-checklist/reopen — 重新开启设置引导
+     */
+    public function reopenSetupGuide(): JsonResponse
+    {
+        OptionService::set('AdminSetupGuideDismissed', 'false');
+
+        return response()->json(['success' => true]);
     }
 
     /**

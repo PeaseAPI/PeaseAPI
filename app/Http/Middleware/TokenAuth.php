@@ -121,6 +121,7 @@ class TokenAuth
         $rateLimitKey = 'token:'.$token->id;
         if (RateLimiter::tooManyAttempts($rateLimitKey, $this->maxRequestsPerMinute)) {
             $seconds = RateLimiter::availableIn($rateLimitKey);
+
             return response()->json([
                 'success' => false,
                 'error' => [

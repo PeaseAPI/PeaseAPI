@@ -241,7 +241,7 @@ class MidjourneyService
      */
     public function proxyImage(string $imageId): ?string
     {
-        $mj = Midjourney::where('image_id', $imageId)->first();
+        $mj = Midjourney::where('mj_id', $imageId)->first();
 
         if (! $mj || empty($mj->image_url)) {
             return null;

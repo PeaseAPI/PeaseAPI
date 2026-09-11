@@ -8,9 +8,15 @@ use App\Enums\ApiType;
 use App\Enums\ChannelType;
 use App\Models\Channel;
 use App\Models\CodingPlanAccount;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
 use App\Models\Token;
 use App\Models\User;
+use App\Relay\Constant\RelayFormat;
+use App\Relay\Constant\RelayProtocol;
 use App\Services\CodingPlanPoolService;
+use App\Services\CodingPlanRatioService;
+use App\Services\OptionService;
 use Illuminate\Http\Request;
 
 /**
@@ -76,15 +82,20 @@ class RelayInfo
 
     public bool $supportStreamOptions = false;
 
-        // 请求信息
+    /** 请求信息 */
     public string $relayMode = '';
 
-    public int $relayFormat = 0;
+    /**
+     * 入站请求格式
+     *
+     * @see RelayFormat
+     */
+    public string $relayFormat = '';
 
     /**
      * 入站请求协议类型
      *
-     * @see \App\Relay\Constant\RelayProtocol
+     * @see RelayProtocol
      */
     public string $relayProtocol = 'openai';
 
@@ -115,6 +126,9 @@ class RelayInfo
     public int $promptTokens = 0;
 
     public int $completionTokens = 0;
+
+    /** 命中缓存的输入 token 数（OpenAI prompt_tokens_details.cached_tokens / Claude cache_read_input_tokens） */
+    public int $cachedTokens = 0;
 
     public int $estimatePromptTokens = 0;
 
@@ -198,6 +212,57 @@ class RelayInfo
 
     public int $codingSubmitsPerRequest = 1;
 
+    /** 用户当前有效的 Coding Plan 订阅（若中转前校验通过） */
+    public ?Subscription $codingPlanSubscription = null;
+
+    /** 用户 Coding Plan 订阅对应的套餐 */
+    public ?SubscriptionPlan $codingPlanPlan = null;
+
+    /** 本次请求的折算结果（units/credits/ratio），请求完成后填充 */
+    public array $codingPlanCost = [];
+
+    /**
+     * 从请求属性补齐身份信息
+     *
+     * TokenAuth 中间件已将 token / api_user 放入 request attributes，
+     * RelayController 手工构造 RelayInfo 时调用本方法注入用户身份，
+     * 保证计费、Coding Plan 订阅校验与流水归属正确。
+     */
+    public function hydrateFromRequest(Request $request): void
+    {
+        $token = $request->attributes->get('token');
+        $user = $request->attributes->get('api_user');
+
+        if ($user instanceof User) {
+            $this->user = $user;
+            $this->userId = (int) $user->id;
+            $this->userGroup = $user->group ?: 'default';
+        }
+
+        if ($token instanceof Token) {
+            $this->tokenId = (int) $token->id;
+            $this->tokenKey = $token->key;
+            $this->tokenGroup = $token->group ?: $this->userGroup;
+            $this->tokenUnlimited = (bool) $token->unlimited_quota;
+        }
+
+        // 渠道由控制器直接赋值时，同步初始化 base_url / api_key / apiType 等
+        // （否则上游请求会以空凭证与相对 URI 发出）
+        if ($this->channel instanceof Channel && $this->channelId === 0) {
+            $this->setChannel($this->channel);
+        }
+
+        if ($this->ip === '') {
+            $this->ip = $request->ip() ?: '';
+        }
+        if ($this->startTime === 0.0) {
+            $this->startTime = microtime(true);
+        }
+        if ($this->requestId === '') {
+            $this->requestId = uniqid('req_', true);
+        }
+    }
+
     /**
      * 从请求创建 RelayInfo
      */
@@ -248,12 +313,14 @@ class RelayInfo
     /**
      * 应用 Coding Plan 账号池凭证
      *
-     * 检测当前渠道是否关联了 Coding Plan 账号池，若是则从池中选取一个可用账号，
-     * 用账号的 api_key / base_url 覆盖当前凭证。若池中全部耗尽则抛出异常。
+     * 检测当前渠道是否关联了 Coding Plan 账号池，若是则：
+     *  1) 校验用户的 Coding Plan 订阅（按厂商匹配套餐，受 CodingPlanRequireSubscription 开关控制）
+     *  2) 预检订阅余量（coding_quota，0 表示不限）
+     *  3) 从池中选取一个可用账号，用账号的 api_key / base_url 覆盖当前凭证
      *
      * 应在 setChannel 之后、实际发起上游请求之前调用。
      *
-     * @throws \RuntimeException 账号池全部耗尽时
+     * @throws \RuntimeException 订阅校验失败或账号池全部耗尽时
      */
     public function applyCodingPlanAccount(): void
     {
@@ -273,8 +340,13 @@ class RelayInfo
         $vendor = $firstAccount->vendor;
         $this->codingVendor = $vendor;
 
+        // 1) 用户订阅校验 + 每次请求提交数（来自套餐）
+        $this->resolveCodingPlanSubscription($vendor);
+
         /** @var CodingPlanPoolService $pool */
         $pool = app(CodingPlanPoolService::class);
+
+        // 2) 从池中选号
         $account = $pool->pickAccount($vendor);
 
         if ($account === null) {
@@ -283,7 +355,7 @@ class RelayInfo
             );
         }
 
-        // 用账号池凭证覆盖渠道凭证
+        // 3) 用账号池凭证覆盖渠道凭证
         $plainKey = $account->getApiKeyPlain();
         if ($plainKey !== null && $plainKey !== '') {
             $this->apiKey = $plainKey;
@@ -297,10 +369,82 @@ class RelayInfo
     }
 
     /**
-     * 记录 Coding Plan 账号池的使用次数
+     * 校验用户针对指定厂商的 Coding Plan 订阅
      *
-     * 在上游请求完成后调用（成功或失败均记录）。若上游返回配额超限类错误，
-     * 会将账号标记为耗尽，下次请求自动切换到同供应商的其他账号。
+     * - OptionService 开关 CodingPlanRequireSubscription（默认 false，保持向后兼容）：
+     *   开启后未订阅/未认证的请求将直接拒绝
+     * - 校验通过时记录订阅与套餐，并从套餐读取 coding_submits_per_request
+     *   （修复此前恒为 1 的问题）
+     *
+     * @throws \RuntimeException
+     */
+    protected function resolveCodingPlanSubscription(string $vendor): void
+    {
+        $requireSubscription = (bool) OptionService::get('CodingPlanRequireSubscription', false);
+
+        if ($this->user === null || $this->userId <= 0) {
+            if ($requireSubscription) {
+                throw new \RuntimeException(
+                    'Coding plan relay requires an authenticated user with an active subscription'
+                );
+            }
+
+            return;
+        }
+
+        $now = time();
+
+        /** @var Subscription|null $subscription */
+        $subscription = Subscription::query()
+            ->join('subscription_plans', 'subscription_plans.id', '=', 'subscriptions.plan_id')
+            ->where('subscriptions.user_id', $this->userId)
+            ->where('subscriptions.status', 1)
+            ->where('subscription_plans.plan_type', 'coding_plan')
+            ->where('subscription_plans.coding_vendor', $vendor)
+            ->where(function ($q) use ($now) {
+                $q->where('subscriptions.period_end', 0)->orWhere('subscriptions.period_end', '>', $now);
+            })
+            ->select('subscriptions.*')
+            ->orderByDesc('subscriptions.id')
+            ->first();
+
+        if ($subscription === null) {
+            if ($requireSubscription) {
+                throw new \RuntimeException(
+                    "No active Coding Plan subscription for vendor: {$vendor}. Please subscribe first."
+                );
+            }
+
+            return;
+        }
+
+        $plan = $subscription->plan;
+        if (! $plan instanceof SubscriptionPlan || ! $plan->isCodingPlan()) {
+            return;
+        }
+
+        // 订阅余量预检（coding_quota=0 表示不限，仅受账号池约束）
+        // 注意：coding_plan 套餐的 used_quota 单位为「平台积分」
+        if ((int) $plan->coding_quota > 0 && (int) $subscription->used_quota >= (int) $plan->coding_quota) {
+            throw new \RuntimeException(
+                'Your Coding Plan subscription quota has been exhausted. Please renew or upgrade.'
+            );
+        }
+
+        // 每次请求的提交数来自套餐（此前恒为 1）
+        $this->codingSubmitsPerRequest = max(1, (int) $plan->coding_submits_per_request);
+        $this->codingPlanSubscription = $subscription;
+        $this->codingPlanPlan = $plan;
+    }
+
+    /**
+     * 记录 Coding Plan 账号池的使用消耗
+     *
+     * 在上游请求完成后调用（成功或失败均记录）。处理流程：
+     *  1. 按账号计费模式 + 模型折算比率表计算本次消耗（原生单位 + 平台积分）
+     *  2. 池计数：仅成功请求计入（失败/上游配额错误不消耗配额）
+     *  3. 用户订阅扣减：按平台积分扣减 subscriptions.used_quota（向上取整）
+     *  4. 若上游返回配额超限类错误，将账号标记为耗尽，下次请求自动切换
      *
      * @param  bool  $success  请求是否成功
      * @param  string|null  $error  错误信息（失败时填写）
@@ -311,24 +455,64 @@ class RelayInfo
             return;
         }
 
+        $account = $this->codingPlanAccount;
+
+        /** @var CodingPlanRatioService $ratioService */
+        $ratioService = app(CodingPlanRatioService::class);
+
+        // 1) 按折算比率计算本次消耗（分段口径需缓存命中 token 数）
+        $cost = $ratioService->calcUsage(
+            $account,
+            $this->modelName,
+            $this->promptTokens,
+            $this->completionTokens,
+            $this->codingSubmitsPerRequest,
+            $this->cachedTokens
+        );
+        $this->codingPlanCost = $cost;
+
+        $snapshot = $ratioService->snapshot(
+            $cost['ratio'],
+            $cost['units'],
+            $cost['credits'],
+            $account->isCreditBilling() ? 'credit' : 'per_request'
+        );
+
+        // 2) 池计数 + 写流水
         /** @var CodingPlanPoolService $pool */
         $pool = app(CodingPlanPoolService::class);
 
         $pool->recordUsage(
-            $this->codingPlanAccount,
-            $this->codingSubmitsPerRequest,
+            $account,
+            $cost['units'],
             [
                 'user_id' => $this->userId,
                 'channel_id' => $this->channelId,
                 'model' => $this->modelName,
                 'request_id' => $this->requestId,
                 'prompt_tokens' => $this->promptTokens,
+                'cached_tokens' => $this->cachedTokens,
                 'completion_tokens' => $this->completionTokens,
                 'total_tokens' => $this->promptTokens + $this->completionTokens,
+                'credits' => $cost['credits'],
+                'count' => $account->isCreditBilling() ? 0 : $cost['units'],
+                'meta' => $snapshot,
             ],
             $success,
             $error
         );
+
+        // 3) 用户订阅扣减（平台积分，向上取整；仅成功请求）
+        if ($success && $this->codingPlanSubscription !== null && $cost['credits'] > 0) {
+            $credits = (int) ceil($cost['credits']);
+            if ($credits > 0) {
+                Subscription::query()
+                    ->where('id', $this->codingPlanSubscription->id)
+                    ->where('status', 1)
+                    ->increment('used_quota', $credits);
+                $this->codingPlanSubscription->used_quota = (int) $this->codingPlanSubscription->used_quota + $credits;
+            }
+        }
     }
 
     /**
@@ -340,20 +524,22 @@ class RelayInfo
             return false;
         }
 
-        // HTTP 429 或 402 通常是配额/鉴权问题
+        // HTTP 429（限速/配额）或 402（需付费）是明确的配额类信号
         if ($this->responseStatus === 429 || $this->responseStatus === 402) {
             return true;
         }
 
-        // 检查响应体中的错误关键词
+        // 其余状态码（含 400）必须响应体明确出现配额类关键词才判为配额耗尽：
+        // 裸词 "exceeded"/"insufficient" 会把「maximum context length exceeded」
+        // 之类的 400 上下文超限误判为配额耗尽，导致健康账号被错误停用一个窗口
         $body = strtolower($this->responseBody);
-        if (str_contains($body, 'quota') || str_contains($body, 'rate limit')
-            || str_contains($body, 'exceeded') || str_contains($body, 'insufficient')
-            || str_contains($body, 'limit reached')) {
-            return true;
-        }
 
-        return false;
+        return str_contains($body, 'quota')
+            || str_contains($body, 'rate limit')
+            || str_contains($body, 'usage limit')
+            || str_contains($body, 'limit reached')
+            || str_contains($body, 'insufficient_quota')
+            || str_contains($body, 'billing');
     }
 
     /**
@@ -516,5 +702,81 @@ class RelayInfo
     public function getUseTime(): float
     {
         return round((microtime(true) - $this->startTime) * 1000, 2);
+    }
+
+    // ============================================
+    // 请求/响应数据访问器（Task 异步任务适配器族使用）
+    // ============================================
+
+    /** 适配器产出的数据（doRequest → doResponse 传递） */
+    public mixed $responseData = null;
+
+    /** 处理错误（errorHandler 使用） */
+    public ?array $error = null;
+
+    /**
+     * 获取请求体
+     *
+     * @return array<string, mixed>
+     */
+    public function getRequestBody(): array
+    {
+        return $this->requestBody;
+    }
+
+    /**
+     * 覆写请求体
+     *
+     * @param  array<string, mixed>  $body
+     */
+    public function setRequestBody(array $body): void
+    {
+        $this->requestBody = $body;
+    }
+
+    /**
+     * 获取请求参数（请求体优先，query 兜底）
+     */
+    public function getParam(string $key, mixed $default = null): mixed
+    {
+        if (array_key_exists($key, $this->requestBody)) {
+            return $this->requestBody[$key];
+        }
+
+        return $this->request?->query($key, $default) ?? $default;
+    }
+
+    /**
+     * 覆写响应体
+     */
+    public function setResponseBody(string $body): void
+    {
+        $this->responseBody = $body;
+    }
+
+    /**
+     * 设置适配器产出数据
+     */
+    public function setResponseData(mixed $data): void
+    {
+        $this->responseData = $data;
+    }
+
+    /**
+     * 获取适配器产出数据
+     */
+    public function getResponseData(): mixed
+    {
+        return $this->responseData;
+    }
+
+    /**
+     * 获取处理错误
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getError(): ?array
+    {
+        return $this->error;
     }
 }

@@ -13,7 +13,7 @@ class RelayService
 {
     public function relay(Token $token, string $abilityName, array $payload, ?string $requestId = null): array
     {
-        $ability = Ability::where('name', $abilityName)->where('enabled', true)->first();
+        $ability = Ability::where('model', $abilityName)->where('enabled', true)->orderByDesc('priority')->first();
         if (! $ability) {
             return ['success' => false, 'error' => __('Ability not found or disabled'), 'status' => 404];
         }
@@ -87,18 +87,19 @@ class RelayService
 
         Log::create([
             'user_id' => $token->user_id,
+            'created_at' => time(),
+            'type' => Log::TYPE_CONSUME,
             'token_id' => $token->id,
+            'token_name' => (string) ($token->name ?? ''),
             'channel_id' => $channel->id,
-            'ability_id' => $ability->id,
-            'type' => $ability->api_type,
-            'model' => $data['model'] ?? '',
-            'prompt_tokens' => $usage['prompt_tokens'] ?? 0,
-            'completion_tokens' => $usage['completion_tokens'] ?? 0,
-            'quota' => ($usage['prompt_tokens'] ?? 0) + ($usage['completion_tokens'] ?? 0),
+            'channel_name' => (string) ($channel->name ?? ''),
+            'model_name' => (string) ($data['model'] ?? ''),
+            'prompt_tokens' => (int) ($usage['prompt_tokens'] ?? 0),
+            'completion_tokens' => (int) ($usage['completion_tokens'] ?? 0),
+            'quota' => (int) (($usage['prompt_tokens'] ?? 0) + ($usage['completion_tokens'] ?? 0)),
             'request_id' => $requestId ?? uniqid(),
-            'ip' => request()->ip(),
-            'detail' => json_encode($data),
-            'created_time' => time(),
+            'ip' => (string) request()->ip(),
+            'other' => json_encode($data),
         ]);
     }
 }

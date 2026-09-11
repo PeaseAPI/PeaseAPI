@@ -40,6 +40,14 @@ trait OpenAICompatibleTrait
      */
     public function formatRequest(RelayInfo $info): void
     {
+        $this->formatOpenAICompatibleRequest($info);
+    }
+
+    /**
+     * 标准 OpenAI 兼容请求格式化（供自定义 formatRequest 的适配器委托复用）
+     */
+    protected function formatOpenAICompatibleRequest(RelayInfo $info): void
+    {
         $body = $info->requestBody;
 
         // 应用参数覆盖
@@ -102,12 +110,32 @@ trait OpenAICompatibleTrait
      */
     public function formatResponse(RelayInfo $info): void
     {
+        $this->formatOpenAICompatibleResponse($info);
+    }
+
+    /**
+     * 标准 OpenAI 兼容响应格式化（供自定义 formatResponse 的适配器委托复用）
+     */
+    protected function formatOpenAICompatibleResponse(RelayInfo $info): void
+    {
         if (! $info->isStream) {
             $body = json_decode($info->responseBody, true);
             if (is_array($body) && isset($body['usage'])) {
                 $info->promptTokens = (int) ($body['usage']['prompt_tokens'] ?? 0);
                 $info->completionTokens = (int) ($body['usage']['completion_tokens'] ?? 0);
+                $this->extractCachedTokens($info, $body['usage']);
             }
+        }
+    }
+
+    /**
+     * 提取命中缓存的输入 token 数（计费按 CacheRatio 折扣）
+     */
+    private function extractCachedTokens(RelayInfo $info, array $usage): void
+    {
+        $details = $usage['prompt_tokens_details'] ?? null;
+        if (is_array($details) && isset($details['cached_tokens'])) {
+            $info->cachedTokens = min(max(0, (int) $details['cached_tokens']), max(0, $info->promptTokens));
         }
     }
 
@@ -130,7 +158,7 @@ trait OpenAICompatibleTrait
     /**
      * 流式处理 (SSE)
      */
-    public function streamHandler(RelayInfo $info): void
+    public function streamHandler(RelayInfo $info, ?callable $callback = null): void
     {
         $url = $this->buildRequestUrl($info);
         $headers = $this->buildRequestHeaders($info);
@@ -166,6 +194,8 @@ trait OpenAICompatibleTrait
 
     /**
      * 错误处理（OpenAI 标准错误格式）
+     * 不直接 echo/header：由 RelayHandler 返回 responseBody、控制器统一输出，
+     * 保证 HTTP 状态码与响应体唯一（Symfony/FPM 下 raw header 会与响应管道冲突）。
      */
     public function errorHandler(RelayInfo $info): void
     {
@@ -183,18 +213,15 @@ trait OpenAICompatibleTrait
             ?? $errorBody['type']
             ?? 'upstream_error';
 
-        $response = [
+        $info->responseStatus = $statusCode;
+        $info->responseBody = json_encode([
             'error' => [
                 'message' => $errorMessage,
                 'type' => $errorType,
                 'code' => $errorCode,
                 'param' => null,
             ],
-        ];
-
-        http_response_code($statusCode);
-        header('Content-Type: application/json');
-        echo json_encode($response);
+        ]);
     }
 
     /**

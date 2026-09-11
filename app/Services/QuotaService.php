@@ -130,13 +130,14 @@ class QuotaService
     {
         $user->increment('quota', $amount);
 
-        // 记录充值日志
+        // 记录充值类日志（签到/兑换均走 QuotaService::addQuota）
         Log::create([
             'user_id' => $user->id,
-            'type' => $source === 'top_up' ? 1 : 2, // 1=充值, 2=兑换
+            'created_at' => time(),
+            'type' => Log::TYPE_TOPUP,
             'content' => "{$source}: +{$amount}",
+            'username' => (string) $user->username,
             'quota' => $amount,
-            'created_time' => time(),
         ]);
 
         return true;

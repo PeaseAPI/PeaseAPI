@@ -38,6 +38,7 @@ import { Route as AuthenticatedApiInfoIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedApiInfoNewsKeysRouteImport } from './routes/_authenticated/api-info/news-keys'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
 import { Route as AuthenticatedChatChatIdRouteImport } from './routes/_authenticated/chat/$chatId'
+import { Route as AuthenticatedCodingPlanIndexRouteImport } from './routes/_authenticated/coding-plan/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedDashboardSectionRouteImport } from './routes/_authenticated/dashboard/$section'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
@@ -217,6 +218,12 @@ const AuthenticatedChatChatIdRoute = AuthenticatedChatChatIdRouteImport.update({
   path: '/chat/$chatId',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCodingPlanIndexRoute =
+  AuthenticatedCodingPlanIndexRouteImport.update({
+    id: '/coding-plan/',
+    path: '/coding-plan/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardIndexRoute =
   AuthenticatedDashboardIndexRouteImport.update({
     id: '/dashboard/',
@@ -433,6 +440,7 @@ export interface FileRoutesByFullPath {
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/api-info/': typeof AuthenticatedApiInfoIndexRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
+  '/coding-plan/': typeof AuthenticatedCodingPlanIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/keys/': typeof AuthenticatedKeysIndexRoute
   '/models/': typeof AuthenticatedModelsIndexRoute
@@ -492,6 +500,7 @@ export interface FileRoutesByTo {
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/api-info': typeof AuthenticatedApiInfoIndexRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
+  '/coding-plan': typeof AuthenticatedCodingPlanIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/keys': typeof AuthenticatedKeysIndexRoute
   '/models': typeof AuthenticatedModelsIndexRoute
@@ -555,6 +564,7 @@ export interface FileRoutesById {
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/_authenticated/api-info/': typeof AuthenticatedApiInfoIndexRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
+  '/_authenticated/coding-plan/': typeof AuthenticatedCodingPlanIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/keys/': typeof AuthenticatedKeysIndexRoute
   '/_authenticated/models/': typeof AuthenticatedModelsIndexRoute
@@ -617,6 +627,7 @@ export interface FileRouteTypes {
     | '/usage-logs/$section'
     | '/api-info/'
     | '/channels/'
+    | '/coding-plan/'
     | '/dashboard/'
     | '/keys/'
     | '/models/'
@@ -676,6 +687,7 @@ export interface FileRouteTypes {
     | '/usage-logs/$section'
     | '/api-info'
     | '/channels'
+    | '/coding-plan'
     | '/dashboard'
     | '/keys'
     | '/models'
@@ -738,6 +750,7 @@ export interface FileRouteTypes {
     | '/_authenticated/usage-logs/$section'
     | '/_authenticated/api-info/'
     | '/_authenticated/channels/'
+    | '/_authenticated/coding-plan/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/keys/'
     | '/_authenticated/models/'
@@ -989,6 +1002,13 @@ declare module '@tanstack/react-router' {
       path: '/chat/$chatId'
       fullPath: '/chat/$chatId'
       preLoaderRoute: typeof AuthenticatedChatChatIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/coding-plan/': {
+      id: '/_authenticated/coding-plan/'
+      path: '/coding-plan'
+      fullPath: '/coding-plan/'
+      preLoaderRoute: typeof AuthenticatedCodingPlanIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard/': {
@@ -1305,6 +1325,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
   AuthenticatedApiInfoIndexRoute: typeof AuthenticatedApiInfoIndexRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
+  AuthenticatedCodingPlanIndexRoute: typeof AuthenticatedCodingPlanIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedKeysIndexRoute: typeof AuthenticatedKeysIndexRoute
   AuthenticatedModelsIndexRoute: typeof AuthenticatedModelsIndexRoute
@@ -1330,6 +1351,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedUsageLogsSectionRoute: AuthenticatedUsageLogsSectionRoute,
   AuthenticatedApiInfoIndexRoute: AuthenticatedApiInfoIndexRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
+  AuthenticatedCodingPlanIndexRoute: AuthenticatedCodingPlanIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedKeysIndexRoute: AuthenticatedKeysIndexRoute,
   AuthenticatedModelsIndexRoute: AuthenticatedModelsIndexRoute,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\Option;
+use App\Services\OptionService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -86,10 +88,10 @@ class PeaseInstall extends Command
         } else {
             $this->info('【6/7】已跳过数据库迁移');
         }
-                $this->newLine();
+        $this->newLine();
 
         // 【7/7】写入默认系统配置
-        $this->info("【7/7】写入默认系统配置...");
+        $this->info('【7/7】写入默认系统配置...');
         $this->seedDefaultOptions();
         $this->newLine();
 
@@ -322,7 +324,7 @@ class PeaseInstall extends Command
         }
     }
 
-        /**
+    /**
      * Seed default option values into the database so that the
      * /api/status endpoint returns a complete response even on a
      * fresh installation (no manual admin-panel toggling needed).
@@ -330,16 +332,16 @@ class PeaseInstall extends Command
     protected function seedDefaultOptions(): void
     {
         try {
-            $defaults = \App\Services\OptionService::DEFAULTS;
+            $defaults = OptionService::DEFAULTS;
             $seeded = 0;
 
             foreach ($defaults as $key => $value) {
                 // Only insert if the key does not already exist
-                if (! \App\Models\Option::where('key', $key)->exists()) {
+                if (! Option::where('key', $key)->exists()) {
                     $stored = is_array($value)
                         ? json_encode($value, JSON_UNESCAPED_UNICODE)
                         : (string) $value;
-                    \App\Models\Option::create(['key' => $key, 'value' => $stored]);
+                    Option::create(['key' => $key, 'value' => $stored]);
                     $seeded++;
                 }
             }
@@ -351,7 +353,7 @@ class PeaseInstall extends Command
             }
 
             // Clear option cache so the new values are visible immediately
-            \App\Models\Option::clearCache();
+            Option::clearCache();
         } catch (\Exception $e) {
             $this->warn('  默认配置写入失败：'.$e->getMessage());
             $this->line('  <fg=gray>可稍后在管理面板中手动配置</>');

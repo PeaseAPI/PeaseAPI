@@ -61,13 +61,18 @@ class OptionController extends Controller
      */
     public function pricing(): JsonResponse
     {
-        $public = OptionService::loadPublic();
-        $pricing = [];
-        foreach (['ModelRatio', 'GroupRatio', 'CompletionRatio', 'ModelPrice', 'CacheRatio'] as $key) {
-            $pricing[$key] = $public[$key] ?? [];
-        }
-        $pricing['DisplayInCurrencyEnabled'] = $public['DisplayInCurrencyEnabled'] ?? true;
-        $pricing['DisplayTokenStatEnabled'] = $public['DisplayTokenStatEnabled'] ?? true;
+        // 缓存键 'pricing'：update()/resetModelRatio() 保存后失效（见 docs/settings-reference.md 缓存一节）
+        $pricing = Cache::remember('pricing', 300, function () {
+            $public = OptionService::loadPublic();
+            $data = [];
+            foreach (['ModelRatio', 'GroupRatio', 'CompletionRatio', 'ModelPrice', 'CacheRatio'] as $key) {
+                $data[$key] = $public[$key] ?? [];
+            }
+            $data['DisplayInCurrencyEnabled'] = $public['DisplayInCurrencyEnabled'] ?? true;
+            $data['DisplayTokenStatEnabled'] = $public['DisplayTokenStatEnabled'] ?? true;
+
+            return $data;
+        });
 
         return response()->json(['success' => true, 'data' => $pricing]);
     }
@@ -82,12 +87,10 @@ class OptionController extends Controller
     public function index(): JsonResponse
     {
         $all = OptionService::loadAll();
-        // Mask secret keys
-        foreach (OptionService::SECRET_KEYS as $key) {
-            if (! empty($all[$key])) {
-                $all[$key] = '******';
-            } else {
-                $all[$key] = '';
+        // Mask secret keys (including alias names of secret keys, e.g. GitHubClientSecret)
+        foreach (array_keys($all) as $key) {
+            if (OptionService::isSecret(OptionService::canonicalKey($key))) {
+                $all[$key] = ! empty($all[$key]) ? '******' : '';
             }
         }
 
@@ -114,8 +117,8 @@ class OptionController extends Controller
             if (! is_string($key) || $key === '') {
                 continue;
             }
-            // Skip masked secrets
-            if (OptionService::isSecret($key) && ($value === '******' || $value === '')) {
+            // Skip masked secrets (resolve aliases first, e.g. GitHubClientSecret)
+            if (OptionService::isSecret(OptionService::canonicalKey($key)) && ($value === '******' || $value === '')) {
                 $skipped[] = $key;
 
                 continue;
@@ -126,8 +129,14 @@ class OptionController extends Controller
 
                 continue;
             }
-            OptionService::set($key, $value);
-            $updated[] = $key;
+            try {
+                OptionService::set($key, $value);
+                $updated[] = $key;
+            } catch (\InvalidArgumentException $e) {
+                // e.g. invalid JSON for a ratio map — surface per-key instead of failing the whole batch
+                Log::warning('OptionController.update: invalid value rejected', ['key' => $key, 'error' => $e->getMessage()]);
+                $skipped[] = $key.' ('.$e->getMessage().')';
+            }
         }
 
         // Clear caches so changes take effect immediately
@@ -137,9 +146,15 @@ class OptionController extends Controller
 
         // Support both HTML form submission (redirect back) and AJAX (JSON)
         if ($request->expectsJson() || $request->isXmlHttpRequest()) {
+            $message = __('Options updated');
+            if (! empty($skipped)) {
+                // 透出被跳过的键，避免"保存成功"假象（前端会 toast 警告）
+                $message .= ' ('.__('skipped: :keys', ['keys' => implode(', ', $skipped)]).')';
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => __('Options updated'),
+                'message' => $message,
                 'data' => ['updated' => $updated, 'skipped' => $skipped],
             ]);
         }
@@ -152,76 +167,130 @@ class OptionController extends Controller
      */
     public function paymentCompliance(Request $request): JsonResponse
     {
-        $acknowledged = (bool) $request->input('acknowledged', false);
+        // 兼容两种载荷：acknowledged=true（文档 / new-api 风格）与 confirmed=true（管理前端 system-settings/api.ts）
+        $acknowledged = $request->boolean('acknowledged') || $request->boolean('confirmed');
         if (! $acknowledged) {
             return response()->json(['success' => false, 'message' => __('Acknowledgement required')], 400);
         }
         OptionService::set('PaymentComplianceAcknowledged', true);
-        OptionService::set('PaymentComplianceAcknowledgedAt', time());
+        $acknowledgedAt = time();
+        OptionService::set('PaymentComplianceAcknowledgedAt', $acknowledgedAt);
 
-        return response()->json(['success' => true, 'message' => __('Payment compliance acknowledged')]);
+        return response()->json([
+            'success' => true,
+            'message' => __('Payment compliance acknowledged'),
+            'data' => [
+                'acknowledged_at' => $acknowledgedAt,
+                'terms_version' => 'v1',
+            ],
+        ]);
     }
 
     /**
      * GET /option/channel_affinity_cache - 渠道亲和缓存统计（Root）
+     *
+     * 亲和键由 Distributor 在转发成功后经 ChannelAffinityService 写入：
+     * channel_affinity:{user_id}:{group}:{model}，值渠道 ID，TTL=ChannelAffinityExpireMinutes 分钟。
+     * 响应形状对齐管理前端 CacheStats（total/unknown/by_rule_name/cache_capacity/cache_algo）；
+     * 规则型亲和引擎上线前所有键无规则归属（unknown=total，by_rule_name 空）。
      */
     public function affinityCacheStat(): JsonResponse
     {
+        $capacity = (int) OptionService::get('channel_affinity_setting.max_entries', 0);
+
         if (! OptionService::get('ChannelAffinityEnabled', false)) {
-            return response()->json(['success' => true, 'data' => ['enabled' => false, 'count' => 0]]);
+            return response()->json([
+                'success' => true,
+                'data' => $this->affinityStatsData(0, $capacity, false),
+            ]);
         }
 
         $redis = $this->redis();
         if ($redis === null) {
-            return response()->json(['success' => true, 'data' => ['enabled' => true, 'count' => 0, 'error' => __('Redis unavailable')]]);
+            return response()->json(['success' => true, 'data' => array_merge(
+                $this->affinityStatsData(0, $capacity, true),
+                ['cache_store' => config('cache.default'), 'error' => __('Redis unavailable')]
+            )]);
         }
 
-        $prefix = config('pease-api.cache_prefix', 'pease:').'affinity:';
+        $prefix = config('cache.prefix', '').':channel_affinity:';
         try {
-            $keys = $redis->keys($prefix.'*');
-            $count = is_array($keys) ? count($keys) : 0;
+            $keys = $this->scanKeys($redis, $prefix);
             $samples = [];
-            foreach (array_slice((array) $keys, 0, 10) as $key) {
+            foreach (array_slice($keys, 0, 10) as $key) {
                 $shortKey = str_starts_with($key, $prefix) ? substr($key, strlen($prefix)) : $key;
                 $samples[$shortKey] = $redis->ttl($key);
             }
 
+            $data = $this->affinityStatsData(count($keys), $capacity, true);
+            $data['expire_minutes'] = OptionService::get('ChannelAffinityExpireMinutes', 60);
+            $data['samples'] = $samples;
+
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'enabled' => true,
-                    'count' => $count,
-                    'expire_minutes' => OptionService::get('ChannelAffinityExpireMinutes', 60),
-                    'samples' => $samples,
-                ],
+                'data' => $data,
             ]);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => true,
-                'data' => ['enabled' => true, 'count' => 0, 'error' => $e->getMessage()],
+                'data' => array_merge(
+                    $this->affinityStatsData(0, $capacity, true),
+                    ['error' => $e->getMessage()]
+                ),
             ]);
         }
     }
 
     /**
-     * DELETE /option/channel_affinity_cache - 清除渠道亲和缓存（Root）
+     * 亲和统计公共形状（对齐前端 CacheStats；count 为兼容旧字段保留）
      */
-    public function clearAffinityCache(): JsonResponse
+    private function affinityStatsData(int $total, int $capacity, bool $enabled): array
     {
-        $redis = $this->redis();
-        if ($redis === null) {
-            return response()->json(['success' => true, 'data' => ['deleted' => 0, 'error' => __('Redis unavailable')]]);
+        return [
+            'enabled' => $enabled,
+            'total' => $total,
+            'count' => $total,
+            'unknown' => $total,
+            'by_rule_name' => [],
+            'cache_capacity' => $capacity,
+            'cache_algo' => 'ttl',
+        ];
+    }
+
+    /**
+     * DELETE /option/channel_affinity_cache - 清除渠道亲和缓存（Root）
+     *
+     * 支持 ?all=true 全清，或 ?rule_name=1:default:gpt-4 清除单个亲和键。
+     */
+    public function clearAffinityCache(Request $request): JsonResponse
+    {
+        if ($request->filled('rule_name')) {
+            $ruleName = trim((string) $request->input('rule_name'));
+            if ($ruleName !== '') {
+                Cache::forget('channel_affinity:'.$ruleName);
+
+                return response()->json(['success' => true, 'data' => ['deleted' => 1]]);
+            }
         }
 
-        $prefix = config('pease-api.cache_prefix', 'pease:').'affinity:';
+        $redis = $this->redis();
+        if ($redis === null) {
+            return response()->json(['success' => true, 'data' => [
+                'deleted' => 0,
+                'cache_store' => config('cache.default'),
+                'error' => __('Redis unavailable'),
+            ]]);
+        }
+
+        $prefix = config('cache.prefix', '').':channel_affinity:';
         try {
-            $keys = $redis->keys($prefix.'*');
+            $keys = $this->scanKeys($redis, $prefix);
             $deleted = 0;
-            if (is_array($keys) && ! empty($keys)) {
+            if (! empty($keys)) {
                 $deleted = $redis->del($keys);
             }
 
-            return response()->json(['success' => true, 'data' => ['deleted' => $deleted]]);
+            return response()->json(['success' => true, 'data' => ['deleted' => (int) $deleted]]);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -348,30 +417,36 @@ class OptionController extends Controller
     }
 
     /**
-     * Get Redis connection (graceful fallback when Redis unavailable).
+     * Get Redis connection (null when the cache store is not Redis or Redis is unavailable).
      */
     private function redis(): mixed
     {
-        try {
-            return app('redis');
-        } catch (\Throwable $e) {
-            return new class
-            {
-                public function keys($pattern)
-                {
-                    return [];
-                }
-
-                public function ttl($key)
-                {
-                    return -2;
-                }
-
-                public function del($keys)
-                {
-                    return 0;
-                }
-            };
+        $store = (string) config('cache.default');
+        if ((string) config("cache.stores.{$store}.driver") !== 'redis') {
+            return null;
         }
+
+        try {
+            return app('redis')->connection();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Enumerate redis keys by prefix using SCAN (non-blocking, unlike KEYS).
+     */
+    private function scanKeys($redis, string $prefix): array
+    {
+        $keys = [];
+        $cursor = null;
+        do {
+            [$cursor, $batch] = $redis->scan($cursor ?? 0, ['match' => "{$prefix}*", 'count' => 200]);
+            foreach ((array) $batch as $key) {
+                $keys[] = $key;
+            }
+        } while (! empty($cursor) && (int) $cursor !== 0);
+
+        return $keys;
     }
 }

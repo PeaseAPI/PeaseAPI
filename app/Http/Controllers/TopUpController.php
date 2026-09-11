@@ -6,6 +6,8 @@ use App\Models\TopUp;
 use App\Models\User;
 use App\Services\AlipayService;
 use App\Services\OptionService;
+use App\Services\PaymentService;
+use App\Services\SubscriptionService;
 use App\Services\WechatPayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -91,6 +93,9 @@ class TopUpController extends Controller
             'alipay_enabled' => (bool) OptionService::get('AlipayEnabled'),
             'top_up_link' => OptionService::get('TopUpLink', ''),
             'payment_methods' => $paymentMethods,
+            // 支付合规状态（前台钱包据此锁定邀请奖励等入口，见 docs/operations-guide.md §2.4）
+            'payment_compliance_confirmed' => (bool) OptionService::get('PaymentComplianceAcknowledged', false),
+            'payment_compliance_terms_version' => 'v1',
         ]);
     }
 
@@ -264,6 +269,13 @@ class TopUpController extends Controller
             return response('fail');
         }
 
+        // 订阅订单（SE 前缀）走订阅履约，避免误入充值订单匹配
+        if (str_starts_with((string) $tradeNo, 'SE')) {
+            SubscriptionService::fulfillOrder((string) $tradeNo);
+
+            return response('success');
+        }
+
         $this->completeTopUp($tradeNo, (float) $money, $request->input('trade_no', ''));
 
         return response('success');
@@ -328,25 +340,23 @@ class TopUpController extends Controller
     }
 
     /**
-     * Stripe Webhook
+     * Stripe Webhook（验签 + 幂等入账）
      * POST /api/stripe/webhook
+     *
+     * 委托 PaymentService::handleStripeWebhook：Stripe-Signature 验签
+     * （StripeWebhookSecret 未配置时拒绝处理），条件更新抢占幂等入账。
      */
-    public function stripeWebhook(Request $request)
+    public function stripeWebhook(Request $request, PaymentService $paymentService)
     {
-        $payload = $request->getContent();
-        $event = json_decode($payload, true);
-        if (! $event || ! isset($event['type'])) {
-            return response('invalid', 400);
-        }
+        try {
+            $paymentService->handleStripeWebhook(
+                $request->getContent(),
+                (string) $request->header('Stripe-Signature', '')
+            );
+        } catch (\Throwable $e) {
+            Log::warning('stripe webhook rejected', ['err' => $e->getMessage()]);
 
-        if ($event['type'] === 'checkout.session.completed' || $event['type'] === 'payment_intent.succeeded') {
-            $data = $event['data']['object'] ?? [];
-            $tradeNo = $data['client_reference_id'] ?? ($data['metadata']['trade_no'] ?? '');
-            $money = ($data['amount_total'] ?? 0) / 100;
-            $paymentId = $data['id'] ?? '';
-            if ($tradeNo) {
-                $this->completeTopUp($tradeNo, (float) $money, $paymentId);
-            }
+            return response($e->getMessage(), 400);
         }
 
         return response('success');
@@ -384,13 +394,30 @@ class TopUpController extends Controller
     }
 
     /**
-     * Creem Webhook
+     * Creem Webhook（HMAC-SHA256 验签 + 幂等入账）
      * POST /api/creem/webhook
+     *
+     * Creem-Signature 头 = hex(HMAC-SHA256(rawBody, CreemWebhookSecret))；
+     * 密钥未配置时拒绝处理（对齐 Stripe 语义，防伪造回调免费入账）。
      */
     public function creemWebhook(Request $request)
     {
-        $payload = $request->getContent();
-        $event = json_decode($payload, true);
+        $secret = trim((string) OptionService::get('CreemWebhookSecret', ''));
+        if ($secret === '') {
+            Log::warning('creem webhook rejected: secret not configured');
+
+            return response('creem webhook secret not configured', 400);
+        }
+
+        $signature = (string) $request->header('creem-signature', '');
+        $expected = hash_hmac('sha256', $request->getContent(), $secret);
+        if ($signature === '' || ! hash_equals($expected, $signature)) {
+            Log::warning('creem webhook sign error');
+
+            return response('invalid signature', 400);
+        }
+
+        $event = json_decode($request->getContent(), true);
         if (! $event || ! isset($event['event_type'])) {
             return response('invalid', 400);
         }
@@ -456,13 +483,30 @@ class TopUpController extends Controller
     }
 
     /**
-     * Waffo Webhook
-     * POST /api/waffo/webhook
+     * Waffo Webhook（HMAC-SHA256 验签 + 幂等入账）
+     * POST /api/waffo/webhook | /api/waffo-pancake/webhook/{env}
+     *
+     * X-Signature 头 = hex(HMAC-SHA256(rawBody, WaffoPancakeWebhookSecret))；
+     * 密钥未配置时拒绝处理（对齐 Stripe 语义，防伪造回调免费入账）。
      */
     public function waffoWebhook(Request $request)
     {
-        $payload = $request->getContent();
-        $event = json_decode($payload, true);
+        $secret = trim((string) OptionService::get('WaffoPancakeWebhookSecret', ''));
+        if ($secret === '') {
+            Log::warning('waffo webhook rejected: secret not configured');
+
+            return response('waffo webhook secret not configured', 400);
+        }
+
+        $signature = (string) ($request->header('x-signature') ?? $request->header('X-Signature') ?? '');
+        $expected = hash_hmac('sha256', $request->getContent(), $secret);
+        if ($signature === '' || ! hash_equals($expected, $signature)) {
+            Log::warning('waffo webhook sign error');
+
+            return response('invalid signature', 400);
+        }
+
+        $event = json_decode($request->getContent(), true);
         if (! $event) {
             return response('invalid', 400);
         }
@@ -498,28 +542,40 @@ class TopUpController extends Controller
 
     /**
      * 完成充值订单（幂等）
+     *
+     * 条件 UPDATE 抢占（status 0/2 → 1）保证并发/重复回调只入账一次；
+     * 已取消（超时）的订单收到网关有效支付回调时同样入账——支付事实以网关回调为准。
      */
     private function completeTopUp(string $tradeNo, float $money, string $paymentId = ''): void
     {
-        $topUp = TopUp::where('trade_no', $tradeNo)->lockForUpdate()->first();
-        if (! $topUp || $topUp->status === 1) {
-            return;
-        }
+        $amount = 0;
 
-        DB::transaction(function () use ($topUp, $paymentId) {
-            $topUp->status = 1;
-            $topUp->payment_id = $paymentId;
-            $topUp->updated_at = time();
-            $topUp->save();
+        DB::transaction(function () use ($tradeNo, $paymentId, &$amount): void {
+            // 条件更新作为并发锁（0=pending / 2=cancelled 均可履约）
+            $claimed = TopUp::where('trade_no', $tradeNo)
+                ->whereIn('status', [0, 2])
+                ->update(['status' => 1, 'payment_id' => $paymentId, 'updated_at' => time()]);
+            if ($claimed === 0) {
+                return; // 已被其他回调处理或订单不存在
+            }
+
+            $topUp = TopUp::where('trade_no', $tradeNo)->first();
+            if (! $topUp) {
+                return;
+            }
+            $amount = (int) $topUp->amount;
 
             $user = User::find($topUp->user_id);
             if ($user) {
-                $user->quota += $topUp->amount;
-                $user->save();
+                $user->increment('quota', (int) $topUp->amount);
             }
         });
 
-        Log::info('topup completed', ['trade_no' => $tradeNo, 'amount' => $topUp->amount]);
+        if ($amount === 0) {
+            return; // no-op（重复回调/订单不存在）
+        }
+
+        Log::info('topup completed', ['trade_no' => $tradeNo, 'amount' => $amount]);
     }
 
     private function requireAdmin(Request $request): void

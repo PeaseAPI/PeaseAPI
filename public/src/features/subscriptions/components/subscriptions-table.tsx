@@ -35,7 +35,7 @@ export function SubscriptionsTable() {
     queryKey: ['admin-subscription-plans', refreshTrigger],
     queryFn: async () => {
       const result = await getAdminPlans()
-      return result.data || []
+      return result.data?.items ?? []
     },
     placeholderData: (prev) => prev,
   })

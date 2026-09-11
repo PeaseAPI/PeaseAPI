@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\Option;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -53,6 +54,8 @@ class DeploymentController extends Controller
                     ['key' => $optionKey],
                     ['value' => is_bool($value) ? ($value ? 'true' : 'false') : (string) $value],
                 );
+                Cache::forget("option:{$optionKey}");
+                Cache::forget(Option::AGGREGATE_CACHE_KEY);
             }
         }
 

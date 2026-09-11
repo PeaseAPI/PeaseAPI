@@ -12,13 +12,12 @@ use App\Http\Controllers\InstallController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\MidjourneyController;
 use App\Http\Controllers\ModelController;
-use App\Http\Controllers\OAuthController;
-use App\Http\Middleware\UserAuth;
 use App\Http\Controllers\NewsController;
-use App\Http\Controllers\SearchController;
+use App\Http\Controllers\OAuthController;
 use App\Http\Controllers\OptionController;
 use App\Http\Controllers\RedemptionController;
 use App\Http\Controllers\RelayController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SunoController;
 use App\Http\Controllers\SystemInfoController;
@@ -32,8 +31,14 @@ use App\Http\Controllers\VideoController;
 use App\Http\Controllers\WebAuthController;
 use App\Http\Middleware\AdminAuth;
 use App\Http\Middleware\ApiRateLimit;
+use App\Http\Middleware\DecompressRequest;
+use App\Http\Middleware\Distributor;
+use App\Http\Middleware\ModelRateLimit;
 use App\Http\Middleware\RootAuth;
+use App\Http\Middleware\Stats;
+use App\Http\Middleware\SystemPerformanceCheck;
 use App\Http\Middleware\TokenAuth;
+use App\Http\Middleware\UserAuth;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -65,6 +70,9 @@ Route::get('/about', [OptionController::class, 'about']);
 Route::get('/home_page_content', [OptionController::class, 'homePageContent']);
 Route::get('/pricing', [OptionController::class, 'pricing']);
 
+// Public Coding Plan deduction offers (vendors + model ratios + last verification)
+Route::get('/coding_plan/offers', [CodingPlanController::class, 'publicOffers']);
+
 // Public Subscription Plans
 Route::get('/subscription/plans', [SubscriptionController::class, 'plans']);
 
@@ -91,7 +99,6 @@ Route::post('/oauth/wechat/bind', [OAuthController::class, 'bindWeChat']);
 Route::get('/oauth/telegram/login', [OAuthController::class, 'redirectToTelegram']);
 Route::post('/oauth/telegram/bind/start', [OAuthController::class, 'startTelegramBind']);
 Route::get('/oauth/telegram/bind/{flow_token}', [OAuthController::class, 'finishTelegramBind']);
-Route::post('/oauth/email/bind', [OAuthController::class, 'bindEmail']);
 
 // Payment Webhooks (no auth)
 Route::post('/stripe/webhook', [TopUpController::class, 'stripeWebhook']);
@@ -124,7 +131,7 @@ Route::middleware(UserAuth::class)->group(function () {
     Route::get('/user/self', [UserController::class, 'self']);
     Route::put('/user/self', [UserController::class, 'updateSelf']);
     Route::delete('/user/self', [UserController::class, 'deleteSelf']);
-        Route::get('/user/self/groups', [UserController::class, 'groups']);
+    Route::get('/user/self/groups', [UserController::class, 'groups']);
     Route::put('/user/news-keys', [UserController::class, 'updateNewsKeys']);
     Route::get('/user/models', [ModelController::class, 'userModels']);
     Route::get('/user/groups', [UserController::class, 'userGroups']);
@@ -147,7 +154,7 @@ Route::middleware(UserAuth::class)->group(function () {
     Route::post('/user/passkey/login/begin', [WebAuthController::class, 'loginBegin']);
     Route::post('/user/passkey/login/finish', [WebAuthController::class, 'loginFinish']);
 
-        // 2FA (management endpoints — 2fa login verify is outside this group)
+    // 2FA (management endpoints — 2fa login verify is outside this group)
     Route::get('/user/2fa/status', [AuthController::class, 'twoFactorStatus']);
     Route::post('/user/2fa/setup', [AuthController::class, 'setupTwoFactor']);
     Route::post('/user/2fa/enable', [AuthController::class, 'enableTwoFactor']);
@@ -198,9 +205,12 @@ Route::middleware(UserAuth::class)->group(function () {
     // Tokens (self)
     Route::get('/token/', [TokenController::class, 'selfTokens']);
     Route::post('/token/', [TokenController::class, 'store']);
+    Route::get('/token/search', [TokenController::class, 'search']);
+    Route::put('/token/', [TokenController::class, 'update']); // id 在请求体（SPA 契约）
     Route::get('/token/{id}', [TokenController::class, 'show']);
     Route::put('/token/{id}', [TokenController::class, 'update']);
     Route::delete('/token/{id}', [TokenController::class, 'destroy']);
+    Route::delete('/token/{id}/', [TokenController::class, 'destroy']); // SPA 尾斜杠
     Route::post('/token/{id}/key', [TokenController::class, 'revealKey']);
     Route::post('/token/batch', [TokenController::class, 'batchDelete']);
     Route::post('/token/batch/keys', [TokenController::class, 'batchGetKeys']);
@@ -223,6 +233,9 @@ Route::middleware(UserAuth::class)->group(function () {
     // Redemptions
     Route::post('/redemption/', [RedemptionController::class, 'redeem']);
     Route::get('/redemption/', [RedemptionController::class, 'myRedemptions']);
+
+    // 邮箱绑定（登录态操作：$request->user() 依赖 UserAuth 写入）
+    Route::post('/oauth/email/bind', [OAuthController::class, 'bindEmail']);
 });
 
 // ============================================
@@ -230,6 +243,11 @@ Route::middleware(UserAuth::class)->group(function () {
 // ============================================
 
 Route::middleware([UserAuth::class, AdminAuth::class])->group(function () {
+    // Admin setup guide (onboarding checklist)
+    Route::get('/admin/setup-checklist', [AdminController::class, 'setupChecklist']);
+    Route::post('/admin/setup-checklist/dismiss', [AdminController::class, 'dismissSetupGuide']);
+    Route::post('/admin/setup-checklist/reopen', [AdminController::class, 'reopenSetupGuide']);
+
     // Users (Admin)
     Route::get('/user/', [UserController::class, 'index']);
     Route::get('/user/search', [UserController::class, 'search']);
@@ -400,6 +418,28 @@ Route::middleware([UserAuth::class, AdminAuth::class])->group(function () {
     Route::delete('/coding_plan/accounts/{id}', [CodingPlanController::class, 'destroyAccount']);
     Route::post('/coding_plan/accounts/{id}/reset_usage', [CodingPlanController::class, 'resetUsage']);
     Route::get('/coding_plan/accounts/{id}/usage', [CodingPlanController::class, 'accountUsage']);
+    // Coding Plan Vendors (Admin)
+    Route::get('/coding_plan/vendors', [CodingPlanController::class, 'vendors']);
+    Route::post('/coding_plan/vendors', [CodingPlanController::class, 'storeVendor']);
+    Route::put('/coding_plan/vendors/{id}', [CodingPlanController::class, 'updateVendor']);
+    Route::delete('/coding_plan/vendors/{id}', [CodingPlanController::class, 'destroyVendor']);
+    // Coding Plan Model Ratios (Admin)
+    Route::get('/coding_plan/ratios', [CodingPlanController::class, 'ratios']);
+    Route::post('/coding_plan/ratios', [CodingPlanController::class, 'storeRatio']);
+    Route::put('/coding_plan/ratios/{id}', [CodingPlanController::class, 'updateRatio']);
+    Route::delete('/coding_plan/ratios/{id}', [CodingPlanController::class, 'destroyRatio']);
+    // 官方模板目录（预置档位/折算标准一键落地）与定时校对的待确认变更（官方同步页）
+    Route::get('/coding_plan/catalog', [CodingPlanController::class, 'catalog']);
+    Route::post('/coding_plan/catalog/{code}/apply', [CodingPlanController::class, 'applyCatalog']);
+    Route::get('/coding_plan/checks', [CodingPlanController::class, 'checks']);
+    Route::post('/coding_plan/checks/ignore', [CodingPlanController::class, 'ignoreCheckChange']);
+
+    // 供应商官方套餐档位（个人版/团队版等，公开介绍页展示，管理端维护）
+    Route::get('/coding_plan/tiers', [CodingPlanController::class, 'tiers']);
+    Route::post('/coding_plan/tiers', [CodingPlanController::class, 'storeTier']);
+    Route::put('/coding_plan/tiers/{id}', [CodingPlanController::class, 'updateTier']);
+    Route::delete('/coding_plan/tiers/{id}', [CodingPlanController::class, 'destroyTier']);
+    // Coding Plan Plans / Stats (Admin)
     Route::post('/coding_plan/plans/{id}/attach', [CodingPlanController::class, 'attachPlan']);
     Route::post('/coding_plan/plans/{id}/detach', [CodingPlanController::class, 'detachPlan']);
     Route::get('/coding_plan/plans', [CodingPlanController::class, 'plans']);
@@ -456,13 +496,19 @@ Route::middleware([UserAuth::class, RootAuth::class])->group(function () {
 
 // ============================================
 // API RELAY ROUTES (Token Authentication)
+// 与 routes/relay.php 对齐：models 无 Distributor；转发类端点经 Distributor 选渠道
 // ============================================
 
-Route::middleware([TokenAuth::class, ApiRateLimit::class])->prefix('v1')->group(function () {
+$apiRelayMiddleware = [Stats::class, DecompressRequest::class, TokenAuth::class, ApiRateLimit::class];
+$apiRelayWithDistributor = [...$apiRelayMiddleware, Distributor::class, ModelRateLimit::class, SystemPerformanceCheck::class];
+
+Route::middleware($apiRelayMiddleware)->prefix('v1')->group(function () {
     // Models
     Route::get('models', [RelayController::class, 'models']);
     Route::get('models/{model}', [RelayController::class, 'model']);
+});
 
+Route::middleware($apiRelayWithDistributor)->prefix('v1')->group(function () {
     // Chat Completions
     Route::post('chat/completions', [RelayController::class, 'chat']);
     Route::post('completions', [RelayController::class, 'completions']);
@@ -478,9 +524,9 @@ Route::middleware([TokenAuth::class, ApiRateLimit::class])->prefix('v1')->group(
     Route::post('images/variations', [RelayController::class, 'imageVariations']);
 
     // Audio
-    Route::post('audio/transcriptions', [RelayController::class, 'transcriptions']);
-    Route::post('audio/translations', [RelayController::class, 'translations']);
-    Route::post('audio/speech', [RelayController::class, 'speech']);
+    Route::post('audio/transcriptions', [RelayController::class, 'audioTranscriptions']);
+    Route::post('audio/translations', [RelayController::class, 'audioTranslations']);
+    Route::post('audio/speech', [RelayController::class, 'audioSpeech']);
 
     // Other
     Route::post('edits', [RelayController::class, 'edits']);

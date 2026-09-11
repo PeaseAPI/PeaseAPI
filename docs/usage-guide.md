@@ -39,6 +39,12 @@
 3. **设置分组与倍率** → 控制用户计费
 4. **创建令牌** → 生成给用户使用的 API Key
 
+> **设置引导教程**：管理员登录后，控制台首页会自动展开「设置引导」卡片，按
+> 「添加上游渠道 → 确保模型可用 → 创建 API Key → 充值余额 → 发起首次请求」
+> 的顺序逐项打勾，每一步都直达对应页面。全部完成后引导自动收起；也可以点
+> 「跳过设置引导」不再显示（状态保存在服务端）。跳过后如需重新开启，可在
+> 折叠卡片上点「显示设置引导」手动展开继续。
+
 ### 3. 首次调用测试
 
 ```bash
@@ -422,6 +428,159 @@ php artisan coding_plan:reset-usage
 | POST | `/api/coding_plan/plans/{id}/attach` | 绑定套餐到账号池 |
 | POST | `/api/coding_plan/plans/{id}/detach` | 解绑套餐 |
 | GET | `/api/coding_plan/stats` | 全局统计概览 |
+| GET | `/api/coding_plan/offers` | **公开**抵扣介绍数据（无需登录，缓存 300s） |
+| GET | `/coding-plan` | **公开**抵扣产品介绍页（Blade，展示各厂商折算规则与校对状态） |
+
+### 抵扣介绍页与比率自动校对
+
+供应商（如火山引擎）常在新增模型时推出限时优惠，管理员手工维护的折算比率可能过时。
+平台通过以下机制把偏差风险降到最低（**只发现偏差、不自动改价**——改错比率等于资损，变更须人工确认）：
+
+1. **公开介绍页 `/coding-plan`**：展示每个供应商的两级折算口径（模型 → 供应商单位 → 平台积分）、
+   启用中的比率表（含「已收录 N 个模型」徽章）、最近校对时间与「待复核」标记，并在页首明示
+   「选择模型提供商即自动预载官方套餐档位与现有模型清单、随官方同步定期更新」。数据与
+   `GET /api/coding_plan/offers` 同源（缓存 300s，比率/供应商任何写操作即时失效）。
+2. **每 6 小时自动校对 `php artisan coding-plan:verify-ratios`**（可在 `CodingPlanRatioVerifyEnabled=false` 关闭）：
+   - **stale 检测**：启用比率超过 `CodingPlanRatioStaleDays`（默认 7 天）未人工复核 → 公开页与管理端
+     （Coding Plan 积分管理 → 折算比率，「待复核」徽标）标记；
+   - **定价源 diff**：在「供应商」管理中为厂商配置 `pricing_source_url`（可选）后，校对任务每 6 小时拉取该
+     JSON 并与比率表比对，发现**新增模型 / unit_cost 变化 / 模型下架**写入 `coding_plan_ratio_checks.changes`，
+     公开页显示「N 处上游变更待确认」。管理员确认后在控制台手工更新比率。
+3. 校对流水保留 90 天，可随时 `php artisan coding-plan:verify-ratios` 手动执行。
+
+定价源约定格式（HTTP 200 + JSON，`match_type` 缺省 `exact`，非法条目自动跳过）：
+
+```json
+{
+  "models": [
+    {"model": "doubao-lite-32k", "unit_cost": 0.5, "match_type": "exact"},
+    {"model": "doubao-pro-32k", "unit_cost": 1, "cost_mode": "per_request"}
+  ]
+}
+```
+
+### 预置厂商目录与产品类型
+
+供应商分两类产品形态（`plan_kind`，公开介绍页按此分组展示）：
+
+| plan_kind | 类型 | 计费方式 | 预置厂商（迁移 `2026_09_11_000002`，默认**停用**） |
+|---|---|---|---|
+| 1 | 订阅制 Coding Plan | 包月/包量，按请求次数或资源点折算（比率 `cost_mode=per_request`） | 火山引擎、中国联通、中国移动、智谱 GLM |
+| 2 | 按量 Token Plan | 按 token 用量折算扣减（比率 `cost_mode=per_1k_tokens`） | 阿里云百炼、腾讯混元、百度千帆、火山方舟（按量）、DeepSeek 开放平台、Moonshot Kimi |
+
+接入新厂商的标准流程（控制台 → Coding Plan 积分管理）：
+
+1. **供应商**：预置行已存在但停用，点「编辑」→ 设置**汇率**（供应商单位 → 平台积分）与定价源 URL（可选）→ 状态改「启用」；预置目录外的厂商直接「新增供应商」。
+2. **折算比率**：预置了主流模型族的前缀模板（`doubao-`/`qwen-`/`hunyuan-`/`ernie-`/`glm-`/`kimi-`/`deepseek-` 等，
+   均为**停用**状态、`unit_cost=1` 占位），逐条核对价格后启用；模板未覆盖的模型按「新增比率」补充。
+3. **账号**：添加该厂商的上游账号（ billing_mode 建议保持「按积分折算」，让比率表生效），绑定渠道后即可参与调度。
+4. 两种产品形态共用同一套账号池、订阅校验（`subscription_plans.plan_type=coding_plan` + `coding_vendor`）与介绍页展示，
+   引擎无需区分——差异全部由比率表 `cost_mode` 表达。
+
+> ⚠️ 预置行不携带任何真实价格（错误价格 = 资损）：启用前必须自行核对 `unit_exchange_rate` 与各比率 `unit_cost`。
+
+#### 官方套餐档位与分段折算标准（迁移 `2026_09_11_000003`）
+
+**套餐档位（`coding_plan_vendor_tiers`，管理端「套餐档位」页维护）**：记录各厂商官方订阅档位（个人版/团队版/坐席/用量包），
+公开介绍页按厂商展示（仅 `status=1`），价格留空表示以官网为准。预置数据（2026-09 据官方文档核对）：
+
+| 厂商 | 档位 | 价格 | 额度 |
+|---|---|---|---|
+| 阿里云 Token Plan（个人版） | Lite / Standard / Pro | 限时 ¥39 / ¥139 / ¥499 每月 | 1 万 / 4 万 Credits（7 天限额 2500 / 10000）；Pro 无 7 天限额 |
+| 阿里云 Token Plan（个人版） | 用量包 | ¥100/个/月 | 2 万 Credits（最多同时持有 5 个，需有效订阅） |
+| 阿里云 Token Plan（团队版） | 标准座席 / 高级座席 / 尊享座席 | ¥150 / ¥550 / ¥1398 每座席每月 | 2.5 万 / 10 万 / 25 万 Credits（月总额度制，无 7 天窗口） |
+| 阿里云 Token Plan（团队版） | 共享用量包 | ¥5000/个/月 | 62.5 万 Credits（跨坐席共享，有效期 1 个月） |
+| 智谱 GLM Coding Plan | 个人版 Lite / Pro / Max | 以官网为准 | 每 5 小时 2000 / 12000 / 28000 积分；每周 1 万 / 6 万 / 14 万 |
+| 智谱 GLM Coding Plan（团队版） | 标准版 / 高级版（每席位，2 席位起购） | 以官网为准（售前咨询） | 每席位每 5 小时 15000 / 35000；每周 66000 / 155000；超额可按量（API 刊例 9 折） |
+| 腾讯 TokenHub（迁移 `000004` 预置） | 通用 Lite/Standard/Pro/Max | ¥39 / ¥99 / ¥299 / ¥599 每月 | 780 / 1980 / 5980 / 11980 积分每订阅月 |
+| 腾讯 TokenHub（迁移 `000004` 预置） | Hy Lite/Standard/Pro/Max | ¥28 / ¥78 / ¥238 / ¥468 每月 | 560 / 1560 / 4760 / 9360 积分每订阅月（混元 Hy3/Hy4 专用） |
+| 火山引擎 | Agent Plan · Small | ¥9.9/月起（待官方文档核实） | 支持 Doubao / GLM / DeepSeek / Kimi / MiniMax（默认隐藏，核实后开放展示） |
+
+**分段折算（`cost_mode=per_token_parts`）**：真实上游（智谱 GLM、阿里云百炼）按「输入 / 缓存命中 / 输出」三段独立系数计量，
+比率表统一存储为**每千 token 系数**：
+
+```
+units = (输入 token × input_rate + 缓存命中 × cached_rate + 输出 token × output_rate) / 1000
+```
+
+- 智谱官方公式：积分 =（入×6.9 + 缓存×1.7 + 出×24）/ 10000 → 存为 `glm-5.3`：`0.69 / 0.17 / 2.4`（÷10 换算到千 token）；
+  `glm-5.3-flash`：`0.23 / 0.056 / 0.8`。非高峰时段（工作日 14:00–18:00 以外）官方按 50% 折扣计收，平台侧如需跟投可由管理员下调系数。
+- 阿里云官方示例 `qwen3.6-plus`：输入 8349 token → 1.67 Credits、缓存 40794 → 0.82、输出 573 → 0.69，
+  对应 `0.2 / 0.02 / 1.2`（千 token 口径，可与官方示例逐段对账）。
+- 缓存命中与输入**分开计量**（智谱与阿里官方口径一致）；OpenAI 协议下 `cached_tokens` 是 prompt 子集，
+  命中段会同时计入输入与缓存两段（对平台保守，不产生资损）。
+- 三段系数全为 0 视为配置缺失，自动回退按次计费（防止静默按 0 扣减）。
+- 预置分段标准行默认**停用**（`status=0`，remark 前缀「官方折算标准」），管理员核对 `unit_exchange_rate` 后启用。
+- `coding-plan:verify-ratios` 定价源 diff 支持 `per_token_parts` 条目：源中携带
+  `cost_mode:"per_token_parts"` + `input_rate`/`cached_rate`/`output_rate`（`unit_cost` 可省略），三率任一变化都会计入「待确认变更」。
+
+> 阿里云 Token Plan 以 Credits 统一计量，虽然按月订阅，但其扣减语义是「按用量折算 Credits」，因此归入 plan_kind=2（按量 Token Plan）、
+> 计数单位为 Credits；火山/联通/移动/智谱的订阅制资源包维持 plan_kind=1。
+
+#### 官方模板目录与定时同步工作流（迁移 `2026_09_11_000004`）
+
+为解决「各厂商分企业版/团队版/个人版、抵扣比率各不相同、官方随时改价上下架模型」的维护难题，
+系统内置**官方模板目录**（`App\Services\CodingPlanCatalog`，随代码发布维护的单一事实源）+
+**定时校对确认工作流**（`coding-plan:verify-ratios` 每 6 小时 + 管理端「官方同步」页）。
+
+**模板目录**（`GET /api/coding_plan/catalog`，2026-09-11 据官方文档核对）：
+
+| 模板 code | 厂商 / 产品线 | plan_kind | 官方单位 | 档位 | 折算标准 | 核对状态 |
+|---|---|---|---|---|---|---|
+| `aliyun` | 阿里云百炼 Token Plan（个人+团队） | 2 | Credits | 8 | 1（qwen3.6-plus 分段） | ✅ 官方文档核对 |
+| `zhipu` | 智谱 GLM Coding Plan（个人+团队） | 1 | 资源点 | 5 | 2（glm-5.3 / flash 分段） | ✅ 官方文档核对 |
+| `tencent` | 腾讯云 TokenHub Token Plan（通用+Hy） | 2 | 积分 | 8 | 0（官方系数页未定位，不预置防资损） | ✅ 价目核对，系数待人工 |
+| `deepseek` | DeepSeek 开放平台（纯 API 按量） | 2 | 千token | 0 | 2（高峰口径分段参考价） | ✅ 官方文档核对 |
+| `volcengine` | 火山引擎 Agent/Coding Plan | 1 | 点 | 1 | 3（前缀占位） | ⚠️ 官方页 JS 渲染，待核价 |
+| `unicom` / `unicom-token` | 联通 Coding Plan / Token Plan | 1 / 2 | 点 / 千token | 壳 | — | ❌ 官方页无法程序化访问 |
+| `cmcc` / `cmcc-token` | 移动 Coding Plan / Token Plan | 1 / 2 | 点 / 千token | 壳 | — | ❌ 官方页拒绝程序化访问 |
+
+**应用模板（`POST /api/coding_plan/catalog/{code}/apply`）是幂等的**：新建厂商一律停用态；
+档位/折算标准按模板预置（折算标准全部 `status=0`）；重新应用只更新仍是「官方档位/官方折算标准」备注的行，
+**不覆盖管理员改过的数据、不翻转 status（已启用的行不会被关闭）**。`body: {"activate_vendor": true}`
+可顺带启用厂商（仍要求自行设置 `unit_exchange_rate` 并启用比率，否则不会实际计费）。
+
+**五步工作流（管理端「官方同步」页全流程可视）**：
+
+1. **添加**：从模板目录点「从模板添加」（或「添加并启用厂商」）→ 厂商 + 全部官方档位 + 折算标准一键落地；
+2. **核价启用**：为厂商设置 `unit_exchange_rate`（供应商单位 → 平台积分汇率），核对折算标准后逐条启用；
+3. **定时监测**：调度任务每 6 小时运行 `coding-plan:verify-ratios`（开关 `CodingPlanRatioVerifyEnabled`），
+   对配置了 `pricing_source_url` 的厂商拉取结构化定价源做 diff，检测**新增模型（new）/ 抵扣率变化（changed，
+   含 unit_cost 与三段系数两种口径）/ 老模型下架（missing，源中消失的启用行）**，写入校对流水
+   `coding_plan_ratio_checks`（`changes` + 固化键 `pending_keys`）；stale 检测（默认 7 天未复核）并行进行；
+4. **确认**：管理端「官方同步」页展示每厂商待确认清单，逐条「应用」——changed → 按源改价；
+   new → 按源新增停用行；missing → 老模型停用（保留历史）。应用后下次 diff 自然消失，无需手工消单；
+5. **忽略**：不认可定价源的变更点「忽略」（键存 option `CodingPlanRatioIgnoreKeys`，仍展示但标已忽略、
+   不计入待确认数），随时可「恢复提醒」。
+
+**定价源 JSON 约定**（`pricing_source_url`，HTTP 200 + JSON，支持 `{"models":[...]}` 包裹或直接数组）：
+
+```json
+{"models":[
+  {"model":"glm-5.3","match_type":"exact","cost_mode":"per_token_parts",
+   "input_rate":0.69,"cached_rate":0.17,"output_rate":2.4},
+  {"model":"doubao-pro","unit_cost":0.5}
+]}
+```
+
+无法自建定价源的厂商，可把 `pricing_source_url` 指向任何能反映官方价格的 JSON 端点；
+diff 只报告不落库，全部变更须管理端人工确认（改错比率等于资损）。命令行支持
+`php artisan coding-plan:verify-ratios --vendor=zhipu,aliyun` 单独校对指定厂商。
+
+**各厂商官方口径速查（2026-09-11 抓取，改价以上游为准 —— 模板与监测的依据）**：
+
+| 厂商 | 版本差异 | 抵扣口径要点 | 时段折扣 | 模型上下架信号 |
+|---|---|---|---|---|
+| 阿里云百炼 | 个人版（3 档+用量包）/ 团队版（3 座席档+共享包）；同主体限购 1 份个人版，可同时购团队版 | Credits 统一计量，官方未公布逐模型系数表，以控制台用量详情为准；官方示例 qwen3.6-plus 0.2/0.02/1.2 可对账 | 夜间 22:00–08:00 指定模型（qwen3.8-max、deepseek-v4-pro-0813、deepseek-v4-flash-0731）5 折 | qwen3.8-max-preview 已下线并自动路由到 qwen3.8-max |
+| 智谱 GLM | 个人 Lite/Pro/Max + 团队标准/高级（2 席位起购，超额按 API 刊例 9 折） | 每万 token 系数：GLM-5.3 = 6.9/1.7/24、GLM-5.3-Flash = 2.3/0.56/8（÷10 存千 token）；MCP 工具 1.2/次 | 高峰=周一至五 14:00–18:00 按 1 倍，非高峰 5 折；另有夜间畅用活动 | GLM-5.2/5.1 → 自动路由 GLM-5.3；GLM-5-Turbo/4.7 → Flash |
+| 腾讯 TokenHub | 通用（多模型）+ Hy（混元专用）各 4 档；每主账号各 1 个、仅升配、不退订 | 2026-08-31 起积分抵扣模式；逐模型系数见官方「套餐内积分抵扣规则」（需人工核对） | — | glm-5 / glm-5.1 公告 2026-10-09 下线；模型库动态更新以公告为准 |
+| DeepSeek | 无套餐档位，充值余额直接按量扣费 | 元/百万 token：flash 输入未命中 2（命中 0.04）输出 8；v4-pro 9（0.30）/27 | 高峰=周一至五 9:00–12:00、14:00–18:00，空闲全部减半 | deepseek-v4-flash 等旧名自动路由 flash 并按 Flash 价计费 |
+| 火山引擎 | Agent Plan（AFP 抵扣+超额后付费）与 Coding Plan 双产品线 | 逐档价格/系数官方页 JS 渲染不可核证，需人工录入 | 存在「指定模型抵扣系数限时折扣」活动（临时） | 官方有「模型抵扣系数调整公告」「模型上线/下线公告」——监测重点 |
+| 联通 / 移动 | 各分 Coding Plan 与 Token Plan 两条产品线 | 官方页（联通超大 payload、移动 WAF）无法程序化抓取，档位与系数需人工录入 | — | 建议人工盯官方页并配置定价源 |
+
+> 模板落地后，公开介绍页（`/coding-plan`）仅展示 `status=1` 的档位；折算标准行需管理员
+> 核对 `unit_exchange_rate` 后手动启用。时间相关折扣（夜间/非高峰 5 折等）当前**不自动**
+> 参与引擎计费，管理员如需跟投请直接下调对应模型系数（并在 remark 注明口径）。
 
 ---
 

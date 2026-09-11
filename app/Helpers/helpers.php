@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 use App\Models\Option;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Get system option value
@@ -27,6 +28,8 @@ function setOption(string $key, mixed $value): void
         ['key' => $key],
         ['value' => $value]
     );
+    Cache::forget("option:{$key}");
+    Cache::forget(Option::AGGREGATE_CACHE_KEY);
 }
 
 /**

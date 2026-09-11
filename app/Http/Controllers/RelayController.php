@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\Channel;
 use App\Relay\Common\RelayHandler;
 use App\Relay\Common\RelayInfo;
 use App\Relay\Constant\RelayFormat;
 use App\Relay\Constant\RelayProtocol;
+use App\Services\BillingService;
+use App\Services\SensitiveWordService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -309,6 +312,53 @@ class RelayController extends Controller
     }
 
     /**
+     * 路由别名：POST /api/v1/chat/completions（routes/api.php 引用 chat）
+     */
+    public function chat(Request $request): Response
+    {
+        return $this->chatCompletions($request);
+    }
+
+    /**
+     * 路由别名：POST /api/pg/chat/completions（routes/api.php 引用 playgroundChat）
+     */
+    public function playgroundChat(Request $request): Response
+    {
+        return $this->chatCompletions($request);
+    }
+
+    /**
+     * 路由别名：GET /api/v1/models（routes/api.php 引用 models）
+     */
+    public function models(Request $request): JsonResponse
+    {
+        return app(ModelController::class)->list($request);
+    }
+
+    /**
+     * 路由别名：GET /api/v1/models/{model}（routes/api.php 引用 model）
+     */
+    public function model(Request $request, string $model): JsonResponse
+    {
+        return app(ModelController::class)->retrieve($request, $model);
+    }
+
+    /**
+     * 兜底路由：未知 /api/* 路径（携带有效令牌时命中）。
+     * 对标 new-api：返回 OpenAI 风格 404，而不是致命错误。
+     */
+    public function catchAll(Request $request, string $path): JsonResponse
+    {
+        return response()->json([
+            'error' => [
+                'message' => sprintf('Invalid URL (%s %s)', $request->method(), '/'.$path),
+                'type' => 'invalid_request_error',
+                'code' => 'unknown_url',
+            ],
+        ], 404);
+    }
+
+    /**
      * Dashboard Subscription - 对标 GET /dashboard/billing/subscription
      */
     public function dashboardSubscription(Request $request): JsonResponse
@@ -350,51 +400,94 @@ class RelayController extends Controller
     /**
      * 处理普通请求 (非流式)
      */
-    protected function handleNormal(Request $request, $channel, string $format, bool $isAnthropicNative = false): Response
+    protected function handleNormal(Request $request, ?Channel $channel, string $format, bool $isAnthropicNative = false): Response
     {
         $relayInfo = new RelayInfo;
         $relayInfo->request = $request;
         $relayInfo->channel = $channel;
         $relayInfo->relayFormat = $format;
+        // 注入 Token / 用户身份（计费与 Coding Plan 订阅校验依赖）
+        $relayInfo->hydrateFromRequest($request);
 
         // 设置入站协议类型
         if ($isAnthropicNative) {
             $relayInfo->relayProtocol = RelayProtocol::Anthropic;
         }
 
-        try {
-            $result = $this->relayHandler->handle($relayInfo);
+        // 敏感词请求内容检查（预扣之前：命中 → 400，不扣费、不写消费日志、不调用上游）
+        $sensitiveError = $this->sensitivePromptError($request, $relayInfo);
+        if ($sensitiveError !== null) {
+            return $sensitiveError;
+        }
 
-            // 记录日志
+        // 请求前预扣额度（余额不足 → 429；此时尚未产生任何上游调用）
+        $preError = app(BillingService::class)->preConsume($relayInfo);
+        if ($preError !== null) {
+            return response()->json(['error' => $preError], 429);
+        }
+
+        try {
+            // 适配器可能直接 echo 上游内容（new-api 风格），捕获后统一走 Response 返回，
+            // 保证 HTTP 状态码与响应体唯一、可预测。
+            ob_start();
+            $result = $this->relayHandler->handle($relayInfo);
+            ob_end_clean();
+
             $this->logRequest($request, $relayInfo, $result);
 
             if ($result instanceof Response) {
                 return $result;
             }
 
-            return response()->json($result);
+            $body = is_string($result) ? $result : json_encode($result);
+            $status = $relayInfo->responseStatus > 0 ? $relayInfo->responseStatus : Response::HTTP_OK;
+
+            // 敏感词响应内容检查（StopOnSensitiveEnabled；上游成本已产生，计费照常）
+            $sensitive = app(SensitiveWordService::class);
+            $sensitiveHit = $sensitive->checkResponse($body);
+            if ($sensitiveHit !== null) {
+                $sensitive->logHit('response', $sensitiveHit, $relayInfo->userId, $relayInfo->modelName);
+
+                return response()->json(SensitiveWordService::errorPayload(), Response::HTTP_BAD_REQUEST);
+            }
+
+            return response($body, $status, ['Content-Type' => 'application/json']);
         } catch (\Exception $e) {
             return $this->relayError($e->getMessage(), Response::HTTP_BAD_REQUEST);
         }
     }
 
     /**
-     * 处理流式请求 (SSE)
+     * 处理流式请求 (SSE)；余额不足时返回 429 JSON（Response 优于 StreamedResponse 精确类型）
      */
-    protected function handleStream(Request $request, $channel, string $format, bool $isAnthropicNative = false): StreamedResponse
+    protected function handleStream(Request $request, ?Channel $channel, string $format, bool $isAnthropicNative = false): Response
     {
-        return new StreamedResponse(function () use ($request, $channel, $format, $isAnthropicNative) {
-            $relayInfo = new RelayInfo;
-            $relayInfo->request = $request;
-            $relayInfo->channel = $channel;
-            $relayInfo->relayFormat = $format;
-            $relayInfo->isStream = true;
+        $relayInfo = new RelayInfo;
+        $relayInfo->request = $request;
+        $relayInfo->channel = $channel;
+        $relayInfo->relayFormat = $format;
+        $relayInfo->isStream = true;
+        // 注入 Token / 用户身份（计费与 Coding Plan 订阅校验依赖）
+        $relayInfo->hydrateFromRequest($request);
 
-            // 设置入站协议类型
-            if ($isAnthropicNative) {
-                $relayInfo->relayProtocol = RelayProtocol::Anthropic;
-            }
+        // 设置入站协议类型
+        if ($isAnthropicNative) {
+            $relayInfo->relayProtocol = RelayProtocol::Anthropic;
+        }
 
+        // 敏感词请求内容检查（预扣之前：命中 → 400 JSON；SSE 响应头尚未发出，可正常返回非流式错误）
+        $sensitiveError = $this->sensitivePromptError($request, $relayInfo);
+        if ($sensitiveError !== null) {
+            return $sensitiveError;
+        }
+
+        // 请求前预扣额度（余额不足 → 429 JSON；SSE 响应头尚未发出，可正常返回非流式错误）
+        $preError = app(BillingService::class)->preConsume($relayInfo);
+        if ($preError !== null) {
+            return response()->json(['error' => $preError], 429);
+        }
+
+        return new StreamedResponse(function () use ($request, $relayInfo, $isAnthropicNative) {
             // 设置 SSE 头
             header('Content-Type: text/event-stream');
             header('Cache-Control: no-cache');
@@ -402,14 +495,54 @@ class RelayController extends Controller
             header('X-Accel-Buffering: no');
 
             try {
-                $this->relayHandler->handleStream($relayInfo, function ($chunk) {
+                // 通过回调统一输出，并跟踪上游是否已发送 [DONE]，避免重复结束标记
+                $doneSent = false;
+                // 敏感词响应内容检查（StopOn）：滚动窗口扫描原始输出；命中 → 下发错误事件并截断后续输出
+                $sensitive = app(SensitiveWordService::class);
+                $sensitiveWindow = '';
+                $sensitiveHit = false;
+                $this->relayHandler->handleStream($relayInfo, function ($chunk) use (&$doneSent, $sensitive, &$sensitiveWindow, &$sensitiveHit, $isAnthropicNative, $relayInfo) {
+                    $chunk = (string) $chunk;
+
+                    if ($sensitive->shouldCheckResponse() && ! $sensitiveHit) {
+                        $sensitiveWindow = mb_substr($sensitiveWindow.$chunk, -SensitiveWordService::STREAM_WINDOW);
+                        $sensitiveHitWord = $sensitive->findIn($sensitiveWindow);
+                        if ($sensitiveHitWord !== null) {
+                            $sensitiveHit = true;
+                            $sensitive->logHit('response:stream', $sensitiveHitWord, $relayInfo->userId, $relayInfo->modelName);
+
+                            if ($isAnthropicNative) {
+                                echo 'event: error'."\n";
+                                echo 'data: '.json_encode(['type' => 'error', 'error' => ['type' => 'invalid_request_error', 'message' => 'your request contains sensitive words']])."\n\n";
+                            } else {
+                                echo 'data: '.json_encode(SensitiveWordService::errorPayload())."\n\n";
+                            }
+                            @ob_flush();
+                            @flush();
+
+                            return;
+                        }
+                    }
+
+                    if ($sensitiveHit) {
+                        return; // 命中后丢弃后续输出
+                    }
+
                     echo $chunk;
-                    ob_flush();
-                    flush();
+                    if (str_contains($chunk, '[DONE]')) {
+                        $doneSent = true;
+                    }
+                    @ob_flush();
+                    @flush();
                 });
 
-                            // 记录日志
+                // 记录日志
                 $this->logStreamRequest($request, $relayInfo);
+
+                if (! $doneSent) {
+                    echo "data: [DONE]\n\n";
+                    @flush();
+                }
             } catch (\Exception $e) {
                 if ($isAnthropicNative) {
                     // Anthropic 原生 SSE 错误事件
@@ -446,6 +579,33 @@ class RelayController extends Controller
     protected function logStreamRequest(Request $request, RelayInfo $info): void
     {
         // 流式完成后记录
+    }
+
+    /**
+     * 敏感词请求内容检查（Round 17）：命中 → 400 OpenAI 风格错误。
+     * 必须在 preConsume 之前调用：拒绝时不产生预扣/计费/消费日志，也不调用上游。
+     * 错误消息不回显命中词，避免词表枚举探针（命中词只进服务端日志）。
+     */
+    protected function sensitivePromptError(Request $request, RelayInfo $relayInfo): ?Response
+    {
+        $sensitive = app(SensitiveWordService::class);
+        if (! $sensitive->isEnabled() || ! $sensitive->shouldCheckPrompt()) {
+            return null;
+        }
+
+        $decoded = json_decode($request->getContent(), true);
+        if (! is_array($decoded)) {
+            return null;
+        }
+
+        $hit = $sensitive->findInPayload($decoded);
+        if ($hit === null) {
+            return null;
+        }
+
+        $sensitive->logHit('prompt', $hit, $relayInfo->userId, $relayInfo->modelName);
+
+        return response()->json(SensitiveWordService::errorPayload(), Response::HTTP_BAD_REQUEST);
     }
 
     /**

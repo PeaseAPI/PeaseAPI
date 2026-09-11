@@ -395,6 +395,7 @@
     "Operation successful": "Vorgang erfolgreich",
     "Operations": "Betrieb",
     "Options updated": "Optionen aktualisiert",
+    "skipped: :keys": "Übersprungen: :keys",
     "Order does not exist": "Bestellung existiert nicht",
     "PDO MySQL driver": "PDO-MySQL-Treiber",
     "PDO extension": "PDO-Erweiterung",

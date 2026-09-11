@@ -30,6 +30,7 @@ class AuthService
             'group' => 'default',
             'aff_code' => Str::random(16),
             'created_time' => time(),
+            'created_at' => time(),
             'accessed_time' => time(),
         ]);
 
@@ -62,7 +63,7 @@ class AuthService
         return $user;
     }
 
-        /**
+    /**
      * 创建会话
      */
     public function createSession(User $user, string $ip, string $userAgent, string $loginMethod = 'password'): UserSession

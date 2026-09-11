@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Coding Plan 上游账号池
@@ -21,12 +22,21 @@ class CodingPlanAccount extends Model
 
     public const STATUS_EXHAUSTED = 2;
 
+    /** 计费模式：按次提交（每次请求消耗 1 次提交） */
+    public const BILLING_MODE_PER_REQUEST = 1;
+
+    /** 计费模式：按积分折算（依据模型折算比率表换算单位消耗） */
+    public const BILLING_MODE_CREDIT = 2;
+
     protected $table = 'coding_plan_accounts';
 
     public $timestamps = false;
 
     protected $fillable = [
         'vendor',
+        'billing_mode',
+        'unit_name',
+        'unit_exchange_rate',
         'account_name',
         'api_key',
         'base_url',
@@ -51,15 +61,17 @@ class CodingPlanAccount extends Model
     ];
 
     protected $casts = [
+        'billing_mode' => 'integer',
+        'unit_exchange_rate' => 'float',
         'expires_at' => 'integer',
-        'quota_5h' => 'integer',
-        'used_5h' => 'integer',
+        'quota_5h' => 'float',
+        'used_5h' => 'float',
         'reset_5h_at' => 'integer',
-        'quota_weekly' => 'integer',
-        'used_weekly' => 'integer',
+        'quota_weekly' => 'float',
+        'used_weekly' => 'float',
         'reset_weekly_at' => 'integer',
-        'quota_monthly' => 'integer',
-        'used_monthly' => 'integer',
+        'quota_monthly' => 'float',
+        'used_monthly' => 'float',
         'reset_monthly_at' => 'integer',
         'monthly_usage_threshold' => 'integer',
         'priority' => 'integer',
@@ -88,11 +100,12 @@ class CodingPlanAccount extends Model
     }
 
     /**
-     * 账号是否在指定周期内仍有可用配额
+     * 账号是否在指定周期内仍有可用配额（可被调度）
      */
     public function hasAvailableQuota(): bool
     {
-        if ($this->status === self::STATUS_DISABLED) {
+        if ($this->status !== self::STATUS_ENABLED) {
+            // 停用 / 已耗尽的账号不参与调度（耗尽账号在窗口到期后自动恢复）
             return false;
         }
         if ($this->isExpired()) {
@@ -144,6 +157,62 @@ class CodingPlanAccount extends Model
             'weekly' => $this->quota_weekly > 0 ? max(0, $this->quota_weekly - $this->used_weekly) : -1,
             'monthly' => $this->quota_monthly > 0 ? max(0, $this->quota_monthly - $this->used_monthly) : -1,
         ];
+    }
+
+    /**
+     * 计数单位显示名（次/点/积分），空则根据计费模式推断
+     */
+    public function unitDisplayName(): string
+    {
+        if ($this->unit_name !== '') {
+            return $this->unit_name;
+        }
+
+        return $this->billing_mode === self::BILLING_MODE_CREDIT ? '积分' : '次';
+    }
+
+    /**
+     * 是否按积分折算计费
+     */
+    public function isCreditBilling(): bool
+    {
+        return $this->billing_mode === self::BILLING_MODE_CREDIT;
+    }
+
+    /**
+     * 账号生效的「供应商单位 → 平台积分」汇率
+     *
+     * 级联：账号级 > 供应商默认 > 兜底 1。
+     * 账号 rate 为 0 表示「跟随供应商默认」（见 storeAccount 注释），
+     * 与 CodingPlanRatioService::exchangeRate() 保持同一口径。
+     */
+    public function effectiveExchangeRate(): float
+    {
+        $rate = (float) $this->unit_exchange_rate;
+        if ($rate > 0) {
+            return $rate;
+        }
+
+        /** @var CodingPlanVendor|null $vendor */
+        $vendor = Cache::remember(
+            'coding_plan_vendor:'.$this->vendor,
+            300,
+            fn () => CodingPlanVendor::query()->where('code', $this->vendor)->first()
+        );
+
+        if ($vendor !== null && (float) $vendor->unit_exchange_rate > 0) {
+            return (float) $vendor->unit_exchange_rate;
+        }
+
+        return 1.0;
+    }
+
+    /**
+     * 供应商原生单位 → 平台积分折算（统一折算池口径）
+     */
+    public function toCredits(float $units): float
+    {
+        return round($units * max(0.000001, $this->effectiveExchangeRate()), 4);
     }
 
     /**

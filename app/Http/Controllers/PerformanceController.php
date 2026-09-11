@@ -51,14 +51,23 @@ class PerformanceController extends Controller
     {
         $summary = Cache::remember('perf:summary', 60, function () {
             $window = (int) app(OptionService::class)->get('PerformanceRetentionDays', 7);
+            // perf_metrics 无 created_at/duration/is_error 列，使用 bucket_ts + 聚合列
+            $cutoff = now()->subDays($window)->getTimestamp();
+            $base = PerfMetric::where('bucket_ts', '>=', $cutoff);
+
+            $agg = (clone $base)->selectRaw('COALESCE(SUM(request_count), 0) AS total_requests, COALESCE(SUM(total_latency_ms), 0) AS total_latency_ms, COALESCE(SUM(success_count), 0) AS success_count')->first();
+
+            $totalRequests = (int) ($agg->total_requests ?? 0);
+            $totalLatency = (int) ($agg->total_latency_ms ?? 0);
+            $successCount = (int) ($agg->success_count ?? 0);
 
             return [
                 'window_days' => $window,
-                'total_requests' => PerfMetric::where('created_at', '>=', now()->subDays($window))->count(),
-                'avg_duration' => (float) PerfMetric::where('created_at', '>=', now()->subDays($window))->avg('duration'),
-                'p95_duration' => $this->percentile('duration', 95, $window),
-                'p99_duration' => $this->percentile('duration', 99, $window),
-                'error_rate' => $this->errorRate($window),
+                'total_requests' => $totalRequests,
+                'avg_duration' => $totalRequests > 0 ? round($totalLatency / $totalRequests, 2) : 0.0,
+                'p95_duration' => $this->percentile('total_latency_ms', 'request_count', 95, $cutoff),
+                'p99_duration' => $this->percentile('total_latency_ms', 'request_count', 99, $cutoff),
+                'error_rate' => $totalRequests > 0 ? round(($totalRequests - $successCount) / $totalRequests * 100, 2) : 0.0,
             ];
         });
 
@@ -235,26 +244,28 @@ class PerformanceController extends Controller
         }
     }
 
-    protected function percentile(string $column, int $p, int $window): float
+    /**
+     * 按桶估算延迟分位数（ms）
+     *
+     * perf_metrics 为预聚合表（每小时一桶），无法求真实单请求分位数；
+     * 以各桶平均延迟（total_latency_ms/request_count）为样本，在 PHP 侧
+     * 计算分位数，兼容 MySQL/SQLite（不支持 PERCENTILE_CONT 聚合语法）。
+     */
+    protected function percentile(string $latencyColumn, string $countColumn, int $p, int $cutoff): float
     {
-        $row = PerfMetric::where('created_at', '>=', now()->subDays($window))
-            ->selectRaw("PERCENTILE_CONT(0.{$p}) WITHIN GROUP (ORDER BY {$column}) AS pct")
-            ->first();
+        $buckets = PerfMetric::where('bucket_ts', '>=', $cutoff)
+            ->where($countColumn, '>', 0)
+            ->selectRaw("{$latencyColumn} / {$countColumn} AS avg_ms")
+            ->pluck('avg_ms');
 
-        return $row ? (float) $row->pct : 0.0;
-    }
-
-    protected function errorRate(int $window): float
-    {
-        $total = PerfMetric::where('created_at', '>=', now()->subDays($window))->count();
-        if ($total === 0) {
+        if ($buckets->isEmpty()) {
             return 0.0;
         }
-        $errors = PerfMetric::where('created_at', '>=', now()->subDays($window))
-            ->where('is_error', true)
-            ->count();
 
-        return round($errors / $total * 100, 2);
+        $values = $buckets->map(fn ($v) => (float) $v)->sort()->values();
+        $index = (int) ceil($p / 100 * $values->count()) - 1;
+
+        return round($values->get(max(0, $index)), 2);
     }
 
     protected function bytesFromIni(string|false $value): int

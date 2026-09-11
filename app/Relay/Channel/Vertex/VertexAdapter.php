@@ -108,7 +108,7 @@ class VertexAdapter extends BaseAdapter
         curl_close($ch);
     }
 
-    public function streamHandler(RelayInfo $info): void
+    public function streamHandler(RelayInfo $info, ?callable $callback = null): void
     {
         $channel = $info->channel;
         $accessToken = $this->getAccessToken($channel->key);

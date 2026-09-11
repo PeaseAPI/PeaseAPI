@@ -19,6 +19,20 @@ For commercial licensing, please contact support@quantumnous.com
 import type { TimeGranularity } from '@/lib/time'
 
 // ============================================================================
+// Admin Setup Guide Types
+// ============================================================================
+
+export interface AdminSetupChecklistStep {
+  key: 'channel' | 'model'
+  completed: boolean
+}
+
+export interface AdminSetupChecklist {
+  steps: AdminSetupChecklistStep[]
+  dismissed: boolean
+}
+
+// ============================================================================
 // Quota & Usage Data Types
 // ============================================================================
 

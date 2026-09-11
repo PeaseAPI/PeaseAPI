@@ -57,11 +57,11 @@ class BraveSearchProvider extends AbstractNewsProvider
         }
 
         if ($request->fromDate) {
-            $params['freshness'] = $request->fromDate . 'to' . ($request->toDate ?? 'now');
+            $params['freshness'] = $request->fromDate.'to'.($request->toDate ?? 'now');
         }
 
         $data = $this->httpGet(
-            $this->getBaseUrl($channel) . '/res/v1/web/search',
+            $this->getBaseUrl($channel).'/res/v1/web/search',
             $params,
             [
                 'X-Subscription-Token' => $key,

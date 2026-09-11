@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Option;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Option (System Configuration) Service
@@ -22,6 +23,7 @@ class OptionService
         'SystemName' => 'Pease API',
         'SystemLogo' => '',
         'SystemFooter' => '',
+        'Footer' => '',
         'HomePageContent' => '',
         'About' => '',
         'Theme' => 'default',
@@ -158,6 +160,8 @@ class OptionService
         // ---------- Subscription ----------
         'SubscriptionEnabled' => false,
         'SubscriptionResetDay' => 1,
+        // Coding Plan：是否要求用户持有对应厂商订阅才能使用（默认关闭，向后兼容）
+        'CodingPlanRequireSubscription' => false,
 
         // ---------- Redemption ----------
         'RedemptionEnabled' => true,
@@ -186,6 +190,14 @@ class OptionService
         'PayMethod4MinTopup' => '',
         // 兼容旧版 JSON 格式
         'PayMethods' => '[{"name":"支付宝","icon":"SiAlipay","type":"alipay"},{"name":"微信","icon":"SiWechat","type":"wxpay"}]',
+        // 易支付网关地址（前端设置页保存键为 PayAddress，EpayUrl 为后端别名，见 ALIASES）
+        'PayAddress' => '',
+        // 按量计费单价：充值金额 = 额度 × Price（默认 7.3 元 / 美元额度）
+        'Price' => 7.3,
+        'TopUpEnabled' => true,
+        // 各网关单份额度单价（美元），未配置时的兜底值
+        'CreemPrice' => 0.01,
+        'WaffoPrice' => 0.01,
         'StripeEnabled' => false,
         'StripeApiKeys' => '',
         'StripeWebhookSecret' => '',
@@ -291,6 +303,7 @@ class OptionService
         'NotifyRootThreshold' => 10000,
         'SensitiveWordEnabled' => false,
         'SensitiveWords' => '',
+        'StopOnSensitiveEnabled' => false,
         'RateLimitEnabled' => false,
         'GlobalApiRateLimit' => 180,
         'GlobalWebRateLimit' => 60,
@@ -339,18 +352,63 @@ class OptionService
         'OAuthRegisterEnabled' => true,
         'UserAgreementEnabled' => false,
         'PrivacyPolicyEnabled' => false,
+
+        // ---------- 前端存量设置（new-api 命名，后端暂未消费，仅持久化回显） ----------
+        'EmailAliasRestrictionEnabled' => false,
+        'LinuxDOMinimumTrustLevel' => 0,
+        'SMTPSSLEnabled' => false,
+        'SMTPStartTLSEnabled' => false,
+        'SMTPInsecureSkipVerify' => false,
+        'SMTPForceAuthLogin' => false,
+        'WorkerUrl' => '',
+        'WorkerValidKey' => '',
+        'WorkerAllowHttpImageRequestEnabled' => false,
+        'CheckSensitiveOnPromptEnabled' => false,
+        'ModelRequestRateLimitSuccessCount' => 10,
+        'ModelRequestRateLimitGroup' => '',
+        'AutomaticDisableKeywords' => '',
+        'AutomaticDisableStatusCodes' => '',
+        'AutomaticRetryStatusCodes' => '',
+        'DataExportEnabled' => false,
+        'DataExportInterval' => 5,
+        'DataExportDefaultTime' => 'hour',
+        'DrawingEnabled' => false,
+        'MjAccountFilterEnabled' => false,
+        'MjActionCheckSuccessEnabled' => false,
+        'MjForwardUrlEnabled' => false,
+        'MjModeClearEnabled' => false,
+        'CreemTestMode' => false,
+        'CreemProducts' => [],
+        'CustomCallbackAddress' => '',
+        // 聊天快捷入口（new-api 兼容，JSON 数组或字符串）
+        'Chats' => '[]',
+        // Stripe 结账配置
+        'StripePriceId' => '',
+        'StripePromotionCodesEnabled' => false,
+        'WaffoCurrency' => 'USD',
+        'WaffoNotifyUrl' => '',
+        'WaffoReturnUrl' => '',
+        'WaffoPayMethods' => '',
+        'WaffoPrivateKey' => '',
+        'WaffoPublicCert' => '',
+        'WaffoSandbox' => false,
+        'WaffoSandboxApiKey' => '',
+        'WaffoSandboxPrivateKey' => '',
+        'WaffoSandboxPublicCert' => '',
+        'checkin_setting.max_quota' => 0,
     ];
 
     /**
      * Keys that should be stored as JSON arrays/objects.
      */
-        public const JSON_KEYS = [
+    public const JSON_KEYS = [
         'ModelRatio', 'GroupRatio', 'CompletionRatio', 'ModelPrice', 'CacheRatio',
         'EmailDomainWhitelist', 'EmailDomainRestriction', 'UserUsableGroups',
         'FriendLinks', 'AutoGroupRatio', 'CheckinStreakRules', 'PasskeyROrigins',
         'TieredBillingRules', 'SidebarModulesAdmin', 'HeaderNavModules',
         'console_setting.api_info', 'console_setting.announcements',
         'console_setting.faq', 'console_setting.uptime_kuma_groups',
+        'CreemProducts',
     ];
 
     /**
@@ -370,9 +428,18 @@ class OptionService
         'AutomaticEnableChannelEnabled', 'LogConsumeEnabled', 'LogNotConsumeEnabled',
         'DisplayInCurrencyEnabled', 'DisplayTokenStatEnabled', 'CheckinEnabled',
         'SubscriptionEnabled', 'RedemptionEnabled', 'StripeEnabled', 'EpayEnabled',
+        'CodingPlanRequireSubscription',
         'CreemEnabled', 'WaffoEnabled', 'WaffoPancakeEnabled', 'ChannelAffinityEnabled',
         'WechatPayEnabled', 'AlipayEnabled',
         'PerformanceMetricEnabled', 'NotifyRootEnabled', 'SensitiveWordEnabled',
+        // 前端存量 / 预留开关
+        'TopUpEnabled', 'EmailAliasRestrictionEnabled', 'SMTPSSLEnabled',
+        'SMTPStartTLSEnabled', 'SMTPInsecureSkipVerify', 'SMTPForceAuthLogin',
+        'WorkerAllowHttpImageRequestEnabled', 'CheckSensitiveOnPromptEnabled',
+        'StopOnSensitiveEnabled',
+        'DataExportEnabled', 'DrawingEnabled', 'MjAccountFilterEnabled',
+        'MjActionCheckSuccessEnabled', 'MjForwardUrlEnabled', 'MjModeClearEnabled',
+        'CreemTestMode', 'WaffoSandbox', 'StripePromotionCodesEnabled',
         'RateLimitEnabled', 'ModelRateLimitEnabled', 'GzipEnabled',
         'DecompressRequestEnabled', 'AuditLogEnabled', 'StatsEnabled',
         'RequestIdEnabled', 'RetryWithOtherChannelEnabled', 'CrossGroupRetryEnabled',
@@ -410,14 +477,19 @@ class OptionService
         'PaymentComplianceAcknowledgedAt',
         'SmsCodeTTL', 'SmsCodeLength', 'SmsSendInterval', 'SmsDailyLimit', 'SmsIpHourLimit',
         'QuotaPerUnit',
+        // 前端存量 / 预留整数项
+        'MinTopUpAmount', 'LinuxDOMinimumTrustLevel',
+        'ModelRequestRateLimitSuccessCount', 'DataExportInterval',
+        'checkin_setting.max_quota',
     ];
 
     /**
      * Keys that should be floats.
      */
-        public const FLOAT_KEYS = [
+    public const FLOAT_KEYS = [
         'BillingPromptRatio', 'StripeUnitPrice', 'TopUpRatio',
         'UsdExchangeRate', 'CustomCurrencyExchangeRate',
+        'Price', 'CreemPrice', 'WaffoPrice',
     ];
 
     /**
@@ -434,14 +506,103 @@ class OptionService
     ];
 
     /**
+     * 别名映射：前端（沿用 new-api 命名）保存键 => 后端规范键。
+     *
+     * 背景：前端控制台源自 new-api，大量设置键与 Laravel 后端命名存在
+     * 历史差异；不加映射时 PUT /api/option/ 会被 isKnown() 静默跳过，
+     * 设置界面保存无效。读写两端都会在此规范化，数据库只存规范键。
+     */
+    public const ALIASES = [
+        // ---------- 支付 ----------
+        'EpayUrl' => 'PayAddress',                  // 易支付网关地址
+        'MinTopUp' => 'MinTopUpAmount',             // 最低充值额度
+        'StripePrice' => 'StripeUnitPrice',         // Stripe 单份额度单价
+        'StripeMinTopUp' => 'StripeMinAmount',
+        'WaffoUnitPrice' => 'WaffoPrice',
+        'WaffoMinTopUp' => 'WaffoMinAmount',
+        'StripeApiSecret' => 'StripeApiKeys',       // Stripe 密钥（后端按单值消费）
+        // ---------- 显示 / 汇率 ----------
+        'USDExchangeRate' => 'UsdExchangeRate',
+        'general_setting.quota_display_type' => 'QuotaDisplayType',
+        'general_setting.custom_currency_symbol' => 'CustomCurrencySymbol',
+        'general_setting.custom_currency_exchange_rate' => 'CustomCurrencyExchangeRate',
+        'general_setting.docs_link' => 'DocLink',
+        // ---------- 安全 / 限流 ----------
+        'ModelRequestRateLimitEnabled' => 'ModelRateLimitEnabled',
+        'ModelRequestRateLimitCount' => 'ModelRateLimitCount',
+        'ModelRequestRateLimitDurationMinutes' => 'ModelRateLimitDuration',
+        'CheckSensitiveEnabled' => 'SensitiveWordEnabled',
+        // ---------- 绘图 ----------
+        'MjNotifyEnabled' => 'MJNotify',
+        // ---------- OAuth 命名差异 ----------
+        'GitHubOAuthEnabled' => 'GithubOAuthEnabled',
+        'GitHubClientId' => 'GithubClientId',
+        'GitHubClientSecret' => 'GithubClientSecret',
+        // ---------- 其它点号组 / 单键 ----------
+        'Logo' => 'SystemLogo',
+        'legal.user_agreement' => 'UserAgreement',
+        'legal.privacy_policy' => 'PrivacyPolicy',
+        'checkin_setting.enabled' => 'CheckinEnabled',
+        'checkin_setting.min_quota' => 'CheckinQuota',
+        'channel_affinity_setting.enabled' => 'ChannelAffinityEnabled',
+        'passkey.enabled' => 'PasskeyEnabled',
+        'passkey.rp_id' => 'PasskeyRPID',
+        'passkey.origins' => 'PasskeyROrigins',
+        'perf_metrics_setting.enabled' => 'PerformanceMetricEnabled',
+        'perf_metrics_setting.retention_days' => 'PerfMetricMaxAge',
+        // OAuth 点号命名（oauth-section 表单风格）→ 规范键
+        'discord.enabled' => 'DiscordOAuthEnabled',
+        'discord.client_id' => 'DiscordClientId',
+        'discord.client_secret' => 'DiscordClientSecret',
+        'oidc.enabled' => 'OIDCEnabled',
+        'oidc.client_id' => 'OIDCClientId',
+        'oidc.client_secret' => 'OIDCClientSecret',
+        'oidc.well_known' => 'OIDCWellKnown',
+        'oidc.authorization_endpoint' => 'OIDCAuthorizationEndpoint',
+        'oidc.token_endpoint' => 'OIDCTokenEndpoint',
+        'oidc.user_info_endpoint' => 'OIDCUserInfoEndpoint',
+    ];
+
+    /**
+     * 扩展键前缀：允许按前缀持久化的点号设置组（无后端消费者时仅存储回显）。
+     */
+    public const EXTENSION_PREFIXES = [
+        'model_setting.', 'model_deployment.', 'fetch_setting.',
+        'performance_setting.', 'perf_metrics_setting.', 'payment_setting.',
+        'token_setting.', 'console_setting.', 'general_setting.', 'legal.',
+        'checkin_setting.', 'passkey.', 'channel_affinity_setting.',
+        'claude.', 'gemini.', 'grok.', 'global.', 'monitor_setting.',
+        'group_ratio_setting.', 'tool_price_setting.', 'quota_setting.',
+        'billing_setting.',
+    ];
+
+    /**
+     * Resolve an option key to its canonical (stored) name.
+     */
+    public static function canonicalKey(string $key): string
+    {
+        return self::ALIASES[$key] ?? $key;
+    }
+
+    /**
+     * Per-request memo of raw DB values (canonical key => raw|NULL).
+     * Avoids repeated cache-store round-trips when the hot path (billing,
+     * auth, rate limiting) reads several options within one request.
+     */
+    private static array $runtimeCache = [];
+
+    /**
      * Get a single option value (with default fallback).
      */
     public static function get(string $key, mixed $default = null): mixed
     {
-        $default = $default ?? self::DEFAULTS[$key] ?? null;
-        $value = Option::get($key, null);
+        $key = self::canonicalKey($key);
+        if (! array_key_exists($key, self::$runtimeCache)) {
+            self::$runtimeCache[$key] = Option::get($key, null);
+        }
+        $value = self::$runtimeCache[$key];
         if ($value === null) {
-            return $default;
+            return $default ?? self::DEFAULTS[$key] ?? null;
         }
 
         return self::cast($key, $value);
@@ -462,24 +623,45 @@ class OptionService
 
     /**
      * Set an option value (with type casting and cache invalidation).
+     *
+     * JSON_KEYS values must be valid JSON when given as strings — invalid
+     * input throws instead of silently persisting an empty default map.
      */
     public static function set(string $key, mixed $value): void
     {
+        $key = self::canonicalKey($key);
+        if (in_array($key, self::JSON_KEYS, true) && is_string($value) && trim($value) !== '') {
+            json_decode($value);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \InvalidArgumentException(
+                    "Option [{$key}] expects valid JSON; refusing to store invalid input."
+                );
+            }
+        }
         $value = self::cast($key, $value);
         Option::set($key, $value);
+        unset(self::$runtimeCache[$key]);
     }
 
     /**
-     * Set multiple options at once.
+     * Set multiple options at once (atomic: no partial writes on failure).
      */
     public static function setMany(array $options): void
     {
+        $pairs = [];
         foreach ($options as $key => $value) {
-            if (! is_string($key)) {
-                continue;
+            if (is_string($key) && $key !== '') {
+                $pairs[$key] = $value;
             }
-            self::set($key, $value);
         }
+        if ($pairs === []) {
+            return;
+        }
+        DB::transaction(function () use ($pairs): void {
+            foreach ($pairs as $key => $value) {
+                self::set($key, $value);
+            }
+        });
     }
 
     /**
@@ -491,6 +673,12 @@ class OptionService
         $merged = self::DEFAULTS;
         foreach ($stored as $key => $value) {
             $merged[$key] = self::cast($key, $value);
+        }
+        // 别名键与规范键同步输出，保证前端任一命名都能取到已存值
+        foreach (self::ALIASES as $alias => $canonical) {
+            if (array_key_exists($canonical, $merged)) {
+                $merged[$alias] = $merged[$canonical];
+            }
         }
 
         return $merged;
@@ -516,6 +704,13 @@ class OptionService
      */
     public static function cast(string $key, mixed $value): mixed
     {
+        $key = self::canonicalKey($key);
+        // 扩展前缀键（model_setting.* 等）：原样存储返回，由前端解析
+        foreach (self::EXTENSION_PREFIXES as $prefix) {
+            if (str_starts_with($key, $prefix)) {
+                return $value;
+            }
+        }
         if (in_array($key, self::BOOL_KEYS, true)) {
             if (is_bool($value)) {
                 return $value;
@@ -562,14 +757,49 @@ class OptionService
      */
     public static function isKnown(string $key): bool
     {
-        return array_key_exists($key, self::DEFAULTS);
+        if (array_key_exists($key, self::DEFAULTS) || isset(self::ALIASES[$key])) {
+            return true;
+        }
+        foreach (self::EXTENSION_PREFIXES as $prefix) {
+            if (str_starts_with($key, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
      * Clear all option cache.
+     *
+     * Redis store: SCAN+DEL by prefix (fast path in Option::clearCache()).
+     * Other stores (file/database/...): prefix scan is impossible — fall back
+     * to forgetting every known key explicitly so install/seed flows never
+     * serve stale values for up to a full TTL.
      */
     public static function clearCache(): void
     {
         Option::clearCache();
+        self::$runtimeCache = [];
+        if (self::cacheDriver() !== 'redis') {
+            $keys = array_unique(array_merge(
+                array_keys(self::DEFAULTS),
+                array_keys(self::ALIASES),
+                array_values(self::ALIASES),
+            ));
+            foreach ($keys as $known) {
+                Cache::forget("option:{$known}");
+            }
+        }
+    }
+
+    /**
+     * Driver name of the current default cache store.
+     */
+    private static function cacheDriver(): string
+    {
+        $store = (string) config('cache.default');
+
+        return (string) config("cache.stores.{$store}.driver", $store);
     }
 }

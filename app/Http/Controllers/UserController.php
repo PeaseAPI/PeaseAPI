@@ -15,7 +15,7 @@ class UserController extends Controller
      */
     public function self(): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
         if (! $user) {
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
@@ -23,7 +23,7 @@ class UserController extends Controller
 
         // Mask news API keys if present in setting JSON
         $setting = is_string($user->setting) ? json_decode($user->setting, true) : $user->setting;
-                $newsKeys = $setting['news_keys'] ?? [];
+        $newsKeys = $setting['news_keys'] ?? [];
         $maskedNewsKeys = [
             'news_google_key' => self::maskKey($newsKeys['news_google_key'] ?? ''),
             'news_newsapi_key' => self::maskKey($newsKeys['news_newsapi_key'] ?? ''),
@@ -65,7 +65,7 @@ class UserController extends Controller
      */
     public function updateSelf(Request $request): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
         if (! $user) {
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
@@ -91,7 +91,7 @@ class UserController extends Controller
      */
     public function deleteSelf(): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
         if (! $user) {
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
@@ -110,7 +110,7 @@ class UserController extends Controller
      */
     public function groups(): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
         if (! $user) {
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
@@ -125,11 +125,11 @@ class UserController extends Controller
     }
 
     /**
-          * PUT /api/user/news-keys - Update the user's news API keys.
+     * PUT /api/user/news-keys - Update the user's news API keys.
      */
     public function updateNewsKeys(Request $request): JsonResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
         if (! $user) {
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
@@ -190,10 +190,10 @@ class UserController extends Controller
             return str_repeat('*', strlen($key));
         }
 
-        return str_repeat('*', strlen($key) - 4) . substr($key, -4);
+        return str_repeat('*', strlen($key) - 4).substr($key, -4);
     }
 
-                public function index(Request $request)
+    public function index(Request $request)
     {
         $query = User::query();
         if ($request->has('search')) {

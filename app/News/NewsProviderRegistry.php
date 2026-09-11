@@ -24,7 +24,7 @@ class NewsProviderRegistry
 
     public function __construct()
     {
-                $this->register(new GoogleCustomSearchProvider);
+        $this->register(new GoogleCustomSearchProvider);
         $this->register(new NewsApiProvider);
         $this->register(new TavilyProvider);
         $this->register(new ExaProvider);
@@ -65,7 +65,7 @@ class NewsProviderRegistry
      *
      * @return array<int, array<string, mixed>>
      */
-        public function list(): array
+    public function list(): array
     {
         $result = [];
         foreach ($this->providers as $key => $provider) {

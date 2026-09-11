@@ -395,6 +395,7 @@
     "Operation successful": "Operation successful",
     "Operations": "Operations",
     "Options updated": "Options updated",
+    "skipped: :keys": "skipped: :keys",
     "Order does not exist": "Order does not exist",
     "PDO MySQL driver": "PDO MySQL driver",
     "PDO extension": "PDO extension",

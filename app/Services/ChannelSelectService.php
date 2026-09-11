@@ -7,10 +7,12 @@ namespace App\Services;
 use App\Models\Ability;
 use App\Models\Channel;
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 
 /**
- * 渠道选择算法 - 负载均衡、优先级、亲和性
+ * 渠道选择算法 - 负载均衡、优先级
+ *
+ * 渠道亲和性（读写与键格式）统一由 ChannelAffinityService 提供，
+ * Distributor 中间件为其唯一读写调用方。
  */
 class ChannelSelectService
 {
@@ -26,10 +28,6 @@ class ChannelSelectService
         }
 
         $channels = $this->sortByWeight($channels);
-
-        if ($user) {
-            $channels = $this->applyAffinity($channels, $user, $model);
-        }
 
         $channels = $this->filterByHealth($channels);
 
@@ -76,41 +74,6 @@ class ChannelSelectService
     }
 
     /**
-     * 应用渠道亲和性
-     */
-    public function applyAffinity(array $channels, User $user, string $model): array
-    {
-        $affinityKey = "channel_affinity:{$user->id}:{$model}";
-        $preferredChannelId = Cache::get($affinityKey);
-
-        if (! $preferredChannelId) {
-            return $channels;
-        }
-
-        usort($channels, function ($a, $b) use ($preferredChannelId) {
-            if ($a['id'] == $preferredChannelId) {
-                return -1;
-            }
-            if ($b['id'] == $preferredChannelId) {
-                return 1;
-            }
-
-            return 0;
-        });
-
-        return $channels;
-    }
-
-    /**
-     * 记录渠道亲和性
-     */
-    public function recordAffinity(int $userId, int $channelId, string $model): void
-    {
-        $affinityKey = "channel_affinity:{$userId}:{$model}";
-        Cache::put($affinityKey, $channelId, 86400 * 30);
-    }
-
-    /**
      * 按健康状态过滤渠道
      */
     public function filterByHealth(array $channels): array
@@ -149,6 +112,39 @@ class ChannelSelectService
             ->where('model', $model)
             ->where('enabled', true)
             ->exists();
+    }
+
+    /**
+     * 为模型选择一个可用渠道（返回 Channel 模型，含 default 组回退）
+     *
+     * abilities 表结构为 {group, model, channel_id, enabled, priority, weight}，
+     * 同组无可用能力时回退 default 组再选一次。
+     */
+    public function pickChannel(string $model, string $group = 'default'): ?Channel
+    {
+        $channelIds = Ability::where('model', $model)
+            ->where('group', $group)
+            ->where('enabled', true)
+            ->orderBy('priority', 'desc')
+            ->pluck('channel_id');
+
+        if ($channelIds->isEmpty() && $group !== 'default') {
+            $channelIds = Ability::where('model', $model)
+                ->where('group', 'default')
+                ->where('enabled', true)
+                ->orderBy('priority', 'desc')
+                ->pluck('channel_id');
+        }
+
+        if ($channelIds->isEmpty()) {
+            return null;
+        }
+
+        return Channel::whereIn('id', $channelIds)
+            ->where('status', 1)
+            ->orderBy('priority', 'desc')
+            ->orderByRaw('RAND()')
+            ->first();
     }
 
     /**

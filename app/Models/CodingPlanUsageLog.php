@@ -23,12 +23,15 @@ class CodingPlanUsageLog extends Model
         'channel_id',
         'model',
         'count',
+        'units',
+        'credits',
         'prompt_tokens',
         'completion_tokens',
         'total_tokens',
         'request_id',
         'success',
         'error',
+        'meta',
         'created_at',
     ];
 
@@ -36,11 +39,14 @@ class CodingPlanUsageLog extends Model
         'account_id' => 'integer',
         'user_id' => 'integer',
         'channel_id' => 'integer',
-        'count' => 'integer',
+        'count' => 'float',
+        'units' => 'float',
+        'credits' => 'float',
         'prompt_tokens' => 'integer',
         'completion_tokens' => 'integer',
         'total_tokens' => 'integer',
         'success' => 'boolean',
+        'meta' => 'array',
         'created_at' => 'integer',
     ];
 

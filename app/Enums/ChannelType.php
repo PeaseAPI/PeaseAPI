@@ -86,7 +86,7 @@ enum ChannelType: int
     case CHINA_MOBILE = 70;  // 移动云
     case CHINA_UNICOM = 71;  // 联通云
 
-        // 新闻 / 搜索 API（聚合转发）
+    // 新闻 / 搜索 API（聚合转发）
     case GOOGLE_CUSTOM_SEARCH = 80;  // Google Custom Search JSON API
     case NEWS_API = 81;              // NewsAPI.org
     case TAVILY = 82;                // Tavily Search API
@@ -151,7 +151,7 @@ enum ChannelType: int
             self::CHINA_UNICOM => '联通云',
             self::GOOGLE_CUSTOM_SEARCH => 'Google Custom Search',
             self::NEWS_API => 'NewsAPI',
-                        self::TAVILY => 'Tavily Search',
+            self::TAVILY => 'Tavily Search',
             self::EXA => 'Exa Search',
             self::BRAVE_SEARCH => 'Brave Search',
             default => '未知',
@@ -199,7 +199,7 @@ enum ChannelType: int
             self::CHINA_UNICOM => 'https://ai.cucloud.cn',
             self::GOOGLE_CUSTOM_SEARCH => 'https://www.googleapis.com',
             self::NEWS_API => 'https://newsapi.org',
-                        self::TAVILY => 'https://api.tavily.com',
+            self::TAVILY => 'https://api.tavily.com',
             self::EXA => 'https://api.exa.ai',
             self::BRAVE_SEARCH => 'https://api.search.brave.com',
             default => '',

@@ -31,7 +31,9 @@ class AdminAuth
             return $this->unauthorizedResponse($request, '账户已被禁用');
         }
 
-        if ($user->role < UserRole::ADMIN) {
+        // 注意：枚举实例与 int 直接比较恒为 false（PHP 对象比较语义），
+        // 必须取 backing value 比较
+        if ((int) $user->role < UserRole::ADMIN->value) {
             return $this->unauthorizedResponse($request, '需要管理员权限');
         }
 

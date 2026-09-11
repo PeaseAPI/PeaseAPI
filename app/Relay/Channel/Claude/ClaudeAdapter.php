@@ -76,13 +76,20 @@ class ClaudeAdapter extends BaseAdapter
             }
         }
 
-        // Token usage
+        // Token usage（同步回填 RelayInfo：转换路径此前从不设置 token 计数，计费恒为 0）
         if (isset($body['usage'])) {
+            $inputTokens = (int) ($body['usage']['input_tokens'] ?? 0);
             $openai['usage'] = [
-                'prompt_tokens' => $body['usage']['input_tokens'] ?? 0,
+                'prompt_tokens' => $inputTokens,
                 'completion_tokens' => $body['usage']['output_tokens'] ?? 0,
-                'total_tokens' => ($body['usage']['input_tokens'] ?? 0) + ($body['usage']['output_tokens'] ?? 0),
+                'total_tokens' => $inputTokens + ($body['usage']['output_tokens'] ?? 0),
             ];
+            $info->promptTokens = $inputTokens;
+            $info->completionTokens = (int) ($body['usage']['output_tokens'] ?? 0);
+            $info->cachedTokens = min(
+                max(0, (int) ($body['usage']['cache_read_input_tokens'] ?? 0)),
+                max(0, $inputTokens)
+            );
         }
 
         $info->responseBody = json_encode($openai);
@@ -121,7 +128,7 @@ class ClaudeAdapter extends BaseAdapter
         // 流式响应处理
     }
 
-    public function streamHandler(RelayInfo $info, callable $callback): void
+    public function streamHandler(RelayInfo $info, ?callable $callback = null): void
     {
         $channel = $info->channel;
 
@@ -138,14 +145,47 @@ class ClaudeAdapter extends BaseAdapter
             CURLOPT_HTTPHEADER => $this->buildHeaders($headers),
             CURLOPT_RETURNTRANSFER => false,
             CURLOPT_TIMEOUT => 120,
-            CURLOPT_WRITEFUNCTION => function ($ch, $data) use ($callback) {
-                $lines = explode("\n", $data);
-                foreach ($lines as $line) {
-                    if (str_starts_with($line, 'data: ')) {
-                        $json = substr($line, 6);
-                        $event = json_decode($json, true);
+            CURLOPT_WRITEFUNCTION => function ($ch, $data) use ($info, $callback) {
+                $info->recordFirstResponse();
 
-                        if ($event['type'] === 'content_block_delta') {
+                // 解析 Anthropic SSE usage 计费计数：message_start → 输入 token（含缓存命中），
+                // message_delta → 输出 token；缺失时转换路径流式计费恒为 0
+                static $lineBuf = '';
+                $lineBuf .= $data;
+                $lines = explode("\n", $lineBuf);
+                $lineBuf = (string) array_pop($lines); // 保留最后一段可能不完整的行
+
+                $events = [];
+                foreach ($lines as $line) {
+                    $line = trim($line);
+                    if ($line === '' || ! str_starts_with($line, 'data:')) {
+                        continue;
+                    }
+                    $payload = trim(substr($line, 6));
+                    if ($payload === '' || $payload === '[DONE]') {
+                        continue;
+                    }
+                    $event = json_decode($payload, true);
+                    if (! is_array($event)) {
+                        continue;
+                    }
+                    $events[] = $event;
+                    if (($event['type'] ?? '') === 'message_start' && isset($event['message']['usage'])) {
+                        $usage = $event['message']['usage'];
+                        $info->promptTokens = (int) ($usage['input_tokens'] ?? 0);
+                        $info->cachedTokens = min(
+                            max(0, (int) ($usage['cache_read_input_tokens'] ?? 0)),
+                            max(0, $info->promptTokens)
+                        );
+                    } elseif (($event['type'] ?? '') === 'message_delta' && isset($event['usage']['output_tokens'])) {
+                        $info->completionTokens = (int) $event['usage']['output_tokens'];
+                    }
+                }
+
+                if ($callback !== null) {
+                    // 转换为 OpenAI 流式格式转发（仅内容与结束事件）
+                    foreach ($events as $event) {
+                        if (($event['type'] ?? '') === 'content_block_delta') {
                             $text = $event['delta']['text'] ?? '';
                             $callback('data: '.json_encode([
                                 'choices' => [[
@@ -155,7 +195,7 @@ class ClaudeAdapter extends BaseAdapter
                                     ],
                                 ]],
                             ])."\n\n");
-                        } elseif ($event['type'] === 'message_delta') {
+                        } elseif (($event['type'] ?? '') === 'message_delta') {
                             $callback('data: '.json_encode([
                                 'choices' => [[
                                     'index' => 0,
@@ -163,11 +203,15 @@ class ClaudeAdapter extends BaseAdapter
                                     'finish_reason' => $event['delta']['stop_reason'] ?? 'stop',
                                 ]],
                                 'usage' => [
-                                    'completion_tokens' => $event['usage']['output_tokens'] ?? 0,
+                                    'prompt_tokens' => $info->promptTokens,
+                                    'completion_tokens' => $info->completionTokens,
                                 ],
                             ])."\n\n");
                         }
                     }
+                } else {
+                    echo $data;
+                    flush();
                 }
 
                 return strlen($data);

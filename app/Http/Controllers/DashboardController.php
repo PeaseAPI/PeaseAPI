@@ -22,8 +22,8 @@ class DashboardController extends Controller
             'token_count' => Token::where('user_id', $user->id)->count(),
         ];
 
-        // Recent logs (logs table uses created_at)
-        $recentLogs = Log::with(['token', 'channel'])
+        // Recent logs (logs table uses created_at; 冗余列已含 token_name/channel_name，无关联)
+        $recentLogs = Log::query()
             ->where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->limit(10)
@@ -68,8 +68,6 @@ class DashboardController extends Controller
         return view('dashboard.profile');
     }
 
-                
-    
     public function newsKeys()
     {
         return view('dashboard.news-keys');

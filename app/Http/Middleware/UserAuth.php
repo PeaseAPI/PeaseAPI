@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Models\User;
-use App\Models\UserSession;
 use App\Services\AuthService;
 use Closure;
 use Illuminate\Http\Request;
@@ -79,4 +78,3 @@ class UserAuth
         return $next($request);
     }
 }
-

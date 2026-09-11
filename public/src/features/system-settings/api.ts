@@ -37,7 +37,12 @@ export async function getSystemOptions() {
 }
 
 export async function updateSystemOption(request: UpdateOptionRequest) {
-  const res = await api.put<UpdateOptionResponse>('/api/option/', request)
+  // 后端 PUT /api/option/ 只接受扁平 { Key: value }（或表单 options[Key]）；
+  // 之前发送 { key, value } 信封会被 OptionService::isKnown() 判为未知键而
+  // 静默跳过（响应仍为 success），导致所有设置保存无效
+  const res = await api.put<UpdateOptionResponse>('/api/option/', {
+    [request.key]: request.value,
+  })
   return res.data
 }
 

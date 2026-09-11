@@ -144,8 +144,8 @@ export function UserSubscriptionsDialog(props: Props) {
         getAdminPlans(),
         getUserSubscriptions(props.user.id),
       ])
-      if (plansRes.success) setPlans(plansRes.data || [])
-      if (subsRes.success) setSubs(subsRes.data || [])
+      if (plansRes.success) setPlans(plansRes.data?.items ?? [])
+      if (subsRes.success) setSubs(subsRes.data?.items ?? [])
     } catch {
       toast.error(t('Loading failed'))
     } finally {

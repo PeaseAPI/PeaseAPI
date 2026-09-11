@@ -395,6 +395,7 @@
     "Operation successful": "操作成功",
     "Operations": "運營配置",
     "Options updated": "選項已更新",
+    "skipped: :keys": "已跳過：:keys",
     "Order does not exist": "訂單不存在",
     "PDO MySQL driver": "PDO MySQL 驅動",
     "PDO extension": "PDO 擴充",

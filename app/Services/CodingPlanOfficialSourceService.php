@@ -8,12 +8,14 @@ use App\Console\Commands\VerifyCodingPlanRatios;
 use App\Models\CodingPlanModelRatio;
 use App\Models\CodingPlanRatioCheck;
 use App\Services\CodingPlanParsers\AnthropicParser;
+use App\Services\CodingPlanParsers\BaiduParser;
 use App\Services\CodingPlanParsers\DeepSeekParser;
 use App\Services\CodingPlanParsers\GoogleParser;
 use App\Services\CodingPlanParsers\MiniMaxParser;
 use App\Services\CodingPlanParsers\MoonshotParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
 use App\Services\CodingPlanParsers\TencentTokenHubParser;
+use App\Services\CodingPlanParsers\VolcengineDocParser;
 use App\Services\CodingPlanParsers\XaiMarkdownParser;
 use App\Services\CodingPlanParsers\ZhipuMarkdownParser;
 use Illuminate\Support\Collection;
@@ -152,12 +154,13 @@ class CodingPlanOfficialSourceService
         ],
         'volcengine' => [
             'label' => '火山方舟',
-            'pricing_url' => null,
-            'format' => 'spa',
-            'parser' => null,
+            'pricing_url' => 'https://docs.volcengine.com/api/doc/getDocDetail?DocumentID=1544106&lang=zh',
+            'format' => 'json',
+            'parser' => VolcengineDocParser::class,
             'proxy' => false,
             'model_catalog_url' => null,
-            'notes' => 'doccenter SPA → 探测 XHR API（garfish 配置）',
+            'catalog_from_pricing' => true,
+            'notes' => 'doccenter SPA → 前端 bundle 挖出 XHR API getDocDetail（旧 doc 1099320 已 301 → 1544106 model-pricing）；Content=Quill delta（Z 正文/R 行/C cell/x* cell 文本）→ catalog 提取 doubao-*；按量价元/百万 token（CNY）→ 三率归 P7-1',
         ],
         'unicom' => [
             'label' => '联通云',
@@ -188,12 +191,13 @@ class CodingPlanOfficialSourceService
         ],
         'baidu' => [
             'label' => '百度千帆',
-            'pricing_url' => null,
+            'pricing_url' => 'https://cloud.baidu.com/doc/qianfan/s/wmh4sv6ya',
             'format' => 'html',
-            'parser' => null,
+            'parser' => BaiduParser::class,
             'proxy' => false,
             'model_catalog_url' => null,
-            'notes' => '价格表未定位（迁移 000003 划定 vendor 但未预置）',
+            'catalog_from_pricing' => true,
+            'notes' => '旧 doc hlpl7xe2f 已 302 → 从 index 定位新页 qianfan/s/wmh4sv6ya（415KB SSR，217 行价格表）；「版本名称」列=API id（连排格按 ernie-/bce- 前缀切分）→ catalog；按量价元/千 tokens（CNY，单位天然 /千无需换算）→ 三率归 P7-1',
         ],
     ];
 

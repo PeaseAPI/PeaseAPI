@@ -9,12 +9,14 @@ declare(strict_types=1);
 require '/Users/snails/Project/PeaseAPI/vendor/autoload.php';
 
 use App\Services\CodingPlanParsers\AnthropicParser;
+use App\Services\CodingPlanParsers\BaiduParser;
 use App\Services\CodingPlanParsers\DeepSeekParser;
 use App\Services\CodingPlanParsers\GoogleParser;
 use App\Services\CodingPlanParsers\MiniMaxParser;
 use App\Services\CodingPlanParsers\MoonshotParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
 use App\Services\CodingPlanParsers\TencentTokenHubParser;
+use App\Services\CodingPlanParsers\VolcengineDocParser;
 use App\Services\CodingPlanParsers\XaiMarkdownParser;
 use App\Services\CodingPlanParsers\ZhipuMarkdownParser;
 
@@ -334,6 +336,39 @@ check('minimax-m3 划线价取实价 input=0.0003（$0.30/1M）', abs(($mmByMode
 check('minimax-m3 output=0.0012、cached=0.00006', abs(($mmByModel['minimax-m3']['output_rate'] ?? 0) - 0.0012) < 1e-9 && abs(($mmByModel['minimax-m3']['cached_rate'] ?? 0) - 0.00006) < 1e-9);
 check('minimax-m2.7-highspeed input=0.0006、legacy m2.5 未收', abs(($mmByModel['minimax-m2.7-highspeed']['input_rate'] ?? 0) - 0.0006) < 1e-9 && ! isset($mmByModel['minimax-m2.5']));
 check('minimax Caching Write 列不入字段（entry 8 键）', count($mmEntries[1]) === 8);
+// ---- baidu（千帆 SSR 价格页：版本名称列连排 id 切分；量包表跳过；CNY→空 pricing）----
+$baiduHtml = <<<'BAIDU'
+<table><thead><tr><th>模型名称</th><th>版本名称</th><th>服务内容</th><th>子项</th><th>在线推理</th><th>批量推理</th><th>单位</th></tr></thead><tbody>
+<tr><td>ERNIE 5.1</td><td>ERNIE-5.1</td><td>推理服务</td><td>输入（输入&lt;=32k）</td><td>0.004</td><td>-</td><td>元/千tokens</td></tr>
+<tr><td>ERNIE 5.1</td><td>ERNIE-5.1ERNIE-5.1-Speed-Preview</td><td>推理服务</td><td>输出</td><td>0.018</td><td>-</td><td>元/千tokens</td></tr>
+<tr><td>BCE</td><td>bce-embedding-base_v1</td><td>推理服务</td><td>输入</td><td>0.002</td><td>-</td><td>元/千tokens</td></tr>
+</tbody></table>
+<table><thead><tr><th>量包名称</th><th>量包额度（Tokens）</th><th>服务速率限制</th><th>有效期</th><th>原价(元)</th></tr></thead><tbody>
+<tr><td>500万Tokens体验包</td><td>5,000,000</td><td>-</td><td>1个月</td><td>99</td></tr>
+</tbody></table>
+BAIDU;
+$baiduParser = new BaiduParser;
+$baiduCatalog = $baiduParser->parseCatalog($baiduHtml);
+check('baidu 连排版本名称切分 + 量包表跳过', $baiduCatalog === ['ernie-5.1', 'ernie-5.1-speed-preview', 'bce-embedding-base_v1']);
+check('baidu parsePricing 空（元/千 tokens CNY→P7）', $baiduParser->parsePricing($baiduHtml) === []);
+
+// ---- volcengine（doccenter getDocDetail API：Content=Quill delta JSON 字符串，逐 zone 提 doubao-*）----
+// 双层 JSON（API 响应包裹 delta 字符串）用 json_encode 构造，避免手写嵌套转义
+$volcDelta = ['version' => '0.4.24', 'data' => [
+    '0' => ['zoneType' => 'Z', 'ops' => [
+        ['insert' => '输入 2.4 元/百万 token，输出 24 元/百万 token。'],
+        ['insert' => 'doubao-seed-1.6 系列支持分段计费，doubao-seedance-2.5 为视频模型。'],
+    ]],
+    'xrA' => ['zoneType' => 'C', 'ops' => [['insert' => 'doubao-seed-1.6-vision']]],
+    'xrB' => ['zoneType' => 'C', 'ops' => [['insert' => 'doubao-1.5-thinking-pro.']]],
+]];
+$volcBody = json_encode(['Result' => ['Content' => json_encode($volcDelta, JSON_UNESCAPED_UNICODE)]], JSON_UNESCAPED_UNICODE);
+$volcParser = new VolcengineDocParser;
+$volcCatalog = $volcParser->parseCatalog($volcBody);
+check('volcengine Quill delta 逐 zone 提取（正文+cell）', $volcCatalog === ['doubao-seed-1.6', 'doubao-seedance-2.5', 'doubao-seed-1.6-vision', 'doubao-1.5-thinking-pro']);
+check('volcengine 叙述句不整体入库（模型 id 精准切分）', ! in_array('doubao-seed-1.6 系列支持分段计费，doubao-seedance-2.5 为视频模型。', $volcCatalog, true));
+check('volcengine parsePricing 空（元/百万 token CNY→P7）', $volcParser->parsePricing($volcBody) === []);
+check('volcengine 非 API 响应（壳 HTML）安全返回空', $volcParser->parseCatalog('<html>doc center shell</html>') === []);
 
 echo $fail === 0 ? "\n✅ 解析器 fixture 全部通过\n" : "\n❌ {$fail} 项失败\n";
 exit($fail === 0 ? 0 : 1);

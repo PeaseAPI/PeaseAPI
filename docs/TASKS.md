@@ -62,7 +62,7 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 
 ## 3. 当前执行指针
 
-> **下一步**：**P1-2 全部收官**（volcengine/baidu/unicom/scnet/siliconflow 已落地；cmcc 文档 API 确认需 OIDC 登录态——匿名 curl 302 → iam/oidc/authorize，端点存在但不可匿名抓，预置数据覆盖；aliyun 源已重定位但内容=套餐档位归 P2-1），原始响应已存 `storage/app/private/coding-plan-snapshots/*/` 供解析器调试。P0 已全部完成；P1 全部完成；P7-1 已完成（2026-09-12）。下一优先：P2-1（套餐档位/promotions 表）或 P7-2（汇率配置，解锁 USD 厂商折算与 siliconflow 时段价比率行）。新需求 R9-R12 → P7/P8/P9（见任务清单末尾）。
+> **下一步**：**QA 全量功能自检（2026-09-12 第十九轮，R13）**——按「### QA 全量功能自检」清单逐项检查（工程静态 → 自检命令 → 服务器部署态 → 网站 E2E → relay 真实调用火山 ark），所有发现记入该节问题表并逐条修复；每轮：本地验证 → git commit+push → 服务器 `git pull` → migrate/缓存清理 → 重跑检测。P0~P8 已完成；P9（成本感知路由）与 P1-9/P1-5b/P4-3/P4-4/P5-x 待 QA 通过后继续。新需求 R9-R12 → P7/P8/P9（见任务清单末尾）。
 
 ---
 
@@ -158,9 +158,48 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 - [ ] P9-3 恢复回归：上游「已达时间窗上限」（quota_exceeded/429）→ 账号池已有 `reset_*_at` 自动恢复（`CodingPlanPoolService::resetExpiredWindows`），补渠道级 `cooldown_until` + 解析上游 Retry-After/重置文案；恢复到点调度自动切回低成本源；无窗口信息时用保守默认（如 5h 窗口起点）
 - [ ] P9-4 可观测与验收：管理端展示每模型各源「成本/状态/恢复倒计时」；手测断言 failover 与恢复回归路径（含 cost_first 下恢复后切回）
 
+### QA 全量功能自检（R13，2026-09-12 第十九轮新增）
+
+> 用户要求：把**所有功能**自查一遍，所有错误/问题/业务逻辑缺陷记入本节问题表（QA-N 编号），逐条修复；每修复一批即 commit+push → 服务器 pull → 自动清理升级（migrate/缓存）→ **全部设置重新检测一遍**。会话中断后按本节继续。
+
+**检查矩阵**（✅=通过 / ❌=有问题→见问题表 / ⏳=待检）：
+
+| # | 类别 | 检查项 | 本地 | 服务器 |
+|---|------|--------|------|--------|
+| A1 | 工程 | `php -l` 全量（app/routes/config/database） | ✅ 0 错误 | ⏳ |
+| A2 | 工程 | `vendor/bin/pint --test` 风格 | ✅ PASS | ⏳ |
+| A3 | 工程 | `php artisan route:list` 可启动（549 条） | ✅ | ⏳ |
+| A4 | 工程 | `migrate:status` 无 pending | ✅ 000016 Ran | ⏳ |
+| B1 | 自检 | `coding-plan:test-time-discounts` 28 项 | ✅ | ⏳ |
+| B2 | 自检 | `coding-plan:test-currency` 30 项 | ✅ | ⏳ |
+| B3 | 自检 | `php tests/coding-plan-parser-fixture.php` 全过 | ✅ | ⏳ |
+| C1 | 部署 | 服务器 git pull 至 origin/main | — | ⏳（落后 25 提交，QA-2） |
+| C2 | 部署 | 服务器 migrate 无 pending | — | ⏳ |
+| C3 | 部署 | config/route/view 缓存重建 + storage 权限 | — | ⏳ |
+| C4 | 运维 | schedule:run / queue:work 进程存在性 | — | ❓QA-1 |
+| C5 | 运维 | laravel.log 近期无新 ERROR/Exception | — | ⏳ |
+| D1 | 网站 | 首页/介绍页 200 | — | ⏳ |
+| D2 | 网站 | 登录 snails → /api/user/self | — | ⏳ |
+| D3 | 网站 | 用户侧接口抽测（令牌/额度/公告/订阅） | — | ⏳ |
+| D4 | 网站 | 公开 API：public_promotions / offers 数据 | — | ⏳ |
+| D5 | 网站 | 管理端 API 抽测（dashboard/渠道/模型/设置/汇率/活动） | — | ⏳ |
+| D6 | relay | `/v1/models` 列表 | — | ⏳ |
+| D7 | relay | `/v1/chat/completions` 真实调用（火山 ark，OpenAI 协议） | — | ⏳ |
+| D8 | relay | `/v1/messages` Anthropic 协议（ark /api/coding） | — | ⏳ |
+| D9 | relay | 错误路径：无效 token 401 / 无效模型口径 | — | ⏳ |
+| D10 | relay | 用量落库与扣费（quota 扣减 + meta.fx） | — | ⏳ |
+
+**问题表**（修复完一条勾一条 `[x]`，状态：open / fixed / wontfix(注明) / 观察）：
+
+| 编号 | 严重度 | 位置 | 现象与影响 | 修复 | 状态 |
+|------|--------|------|-----------|------|------|
+| QA-1 | 高(运维) | 服务器进程 | 初查（ps aux / root crontab / systemd timers / tmux / screen）**未发现** `schedule:run`、`queue:work` 任何进程——6h 官方源同步、每日 09:00 活动提醒、订单超时取消、任务轮询等调度链路疑似停摆 | 只读核实宝塔计划任务/进程守护；**不碰服务器设置**，确认后记录交用户处置 | open |
+| QA-2 | 中(部署) | 服务器 git | 服务器落后 origin/main 25 个提交（HEAD=3d1bb44 vs origin=80037b0） | 本轮部署 `git pull` 快进解决 | open |
+| QA-3 | 待定 | — | （占位：随检查逐条追加） | — | open |
+
 ---
 
-## 5. 厂商数据源清单（权威表，随抓取结果更新）
+
 
 | 厂商 code | 产品 | 确定页面 | 格式 | 代理 | 状态 |
 |---|---|---|---|---|---|
@@ -187,6 +226,7 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 
 ## 6. 变更记录
 
+- 2026-09-12（十九）：**QA 全量功能自检启动（R13）**——按用户要求全功能自查+逐条修复+每轮 commit→push→服务器 pull→清理升级→复检；本地基线先验证：php -l 全量 0 错误、pint PASS、route:list 549 条、migrate 000016 齐、time-discounts 28/28、test-currency 30/30、parser fixture 全过 ✅。任务账本新增「QA 全量功能自检」节（检查矩阵 A/B/C/D 四类 20+ 项 + 问题表）；初查疑点：服务器无 schedule/queue 进程（QA-1）、服务器落后 25 提交（QA-2）。火山 ark 真实调用 key 已由用户提供（doubao-seed-evolving 等 10 模型，OpenAI 兼容 /api/coding/v3 + Anthropic 兼容 /api/coding）。
 - 2026-09-12（十八）：**P8 上架流全量（P8-1/2/3）**——①后端 P8-1：`GET /coding_plan/vendors/{code}/models` 聚合清单（库内比率行全量 × 最新官方目录快照 × 最近校对流水的 model_catalog 条目）；每行 `official` 四态实时判定（in_catalog/missing/new/unknown，diffCatalogModels 同口径：仅 exact 行参与存在性比对、小写归一、prefix 不做前缀推断——prefix 行覆盖的官方模型仍报 new 为既有口径）+ new 虚拟行（id=null、model 取快照原样大小写）；summary 计数 + 快照 fetched_at。`CodingPlanOfficialSourceService::latestCatalog()` 抽取目录读取。②后端 P8-2：`POST /coding_plan/vendors/{code}/models/batch_status`（ids+status 批量启停，vendor 隔离）→ flushCache + `Cache::forget('channel_cache')`（与 SyncChannelCache 同口径，渠道可见性即时生效）。③后端 P8-3：`POST /coding_plan/catalog_changes/apply`（action=new 落地停用态 exact 行 per_request unit_cost=1 remark「待配置定价」，status=0 不自动计费；action=missing 停用对应行 + 写 `model_catalog|model|` 忽略键防重复提醒——停用行仍在后续 diff 中）；复用 ignoreCheckChange 的 IGNORE_KEYS_OPTION 双态兼容。④前端：新「模型上架」tab（models-tab.tsx）：厂商 Select → summary 徽标行（启用/停用/官方新增/官方未列/目录数+快照时间）→ 全选/勾选批量启停条 → 清单表（official 徽标 + new/missing 未忽略行 amber 高亮 + 未落地「落地（停用态）/忽略」、官方未列「下架（停用）/忽略」按钮，复用 ignoreCheckChange）。types.ts 增 OfficialModelState/CodingPlanVendorModelRow/CodingPlanVendorModels、api.ts 增三函数、index.tsx 挂 tab。**环境备忘**：本机无全局 node/Docker daemon 未随系统启动——typecheck 用 `node_modules/@typescript/native-preview-darwin-arm64/lib/tsgo -b`（原生二进制免 node）；oxlint/build 用 Docker（daemon `open -a Docker` 手动拉起，镜像走 `docker.m.daocloud.io` 加速，容器内 `npm i --no-save @oxlint/binding-linux-arm64-musl` 补平台 binding 后跑 lint/build；宿主 node_modules 是 darwin binding 不能直接在容器复用）。自检 verify_p8 32 项全过（openai 真实基线 + 事务内四态判定 + 批量启停/channel_cache 失效 + new 落地原样名/幂等 skipped + missing 停用+忽略键落库 + 401 隔离 + 回滚与快照/忽略清单清理）；回归 fixture ✓、time-discounts 28/28 ✓、currency 30/30 ✓、pint ✓、typecheck ✓、oxlint coding-plan 0 warning 0 error、build ✓。openai 现库 official 分布 {unknown:2,new:1}（最新快照 catalog 仅 1 条，历史同步状态非代码问题）。**P8 全部完成**
 
 - 2026-09-12（十七）：**P7-5 收尾 + P2-4 + P4-1（介绍页）**——①后端 P2-4：公开端点 `GET /api/coding_plan/public_promotions`（enabled 且未过期、字段白名单、scheduled/ongoing 展示）；与同 URI 的管理端 promotions 路由会互相覆盖（Laravel 同 method+URI 仅存一条），故独立命名，自检确认管理端 401/公开 200 双轨。②后端 P7-5：`publicOffers()` 卡片增 `currency`（vendorOfficialCurrency 统一口径）、tiers 增 `currency`/`price_cny`（CurrencyExchangeService 折算 CNY，不可折算→null）；storeRate/destroyRate 补 `Cache::forget('coding_plan_offers')`（vendor 写入已走 flushCache 覆盖）。③前端 P4-1：公开介绍页 `/coding-plan`（routes/coding-plan/index.tsx + features/coding-plan-introduce/index.tsx）：官方活动区（kind 徽标 + 倒计时徽标 ≤72h 红/≤7 天黄/其余灰 + 截止时间 + 官方公告外链，即上下架公告位）、厂商卡片（plan_kind 分组、billing/currency 徽标、最近核对 + source_status + stale/change 计数、文档外链）、档位表（官方原币价/折算 CNY 双列）、模型抵扣率表。**路由冲突排障**：`_authenticated/coding-plan`（pathless layout alias）与新公开页同 URL → generator 报 Conflicting configuration paths 且 build 静默跳过 routeTree 重生成；管理端挪至 `_authenticated/coding-plan-manage`（use-sidebar-data 同步），routeTree 经一次性 Generator 脚本重生成。④自检 verify_p24 22 项全过（USD 100→730 折算正确、事务回滚零残留）。typecheck ✓ oxlint 0 error build ✓ pint ✓。**遗留**：coding-plan 页（管理端+介绍页）i18n → P4-3 统一改造；现库启用 vendor 均未录 tiers，双列价待运营补数。

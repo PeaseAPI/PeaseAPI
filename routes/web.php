@@ -124,7 +124,7 @@ Route::middleware('auth')->group(function () {
         // Subscription
         Route::get('/subscription/plans', [SubscriptionController::class, 'plans']);
         Route::post('/subscription/subscribe', [SubscriptionController::class, 'subscribe']);
-        Route::get('/subscription/my', [SubscriptionController::class, 'mySubscriptions']);
+        Route::get('/subscription/my', [SubscriptionController::class, 'mySubscription']);
         Route::post('/subscription/{id}/cancel', [SubscriptionController::class, 'cancel']);
 
         // News API keys (user's own search provider keys)

@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Console\Commands\VerifyCodingPlanRatios;
 use App\Models\CodingPlanAccount;
 use App\Models\CodingPlanModelRatio;
+use App\Models\CodingPlanPromotion;
 use App\Models\CodingPlanRatioCheck;
 use App\Models\CodingPlanUsageLog;
 use App\Models\CodingPlanVendor;
@@ -914,6 +915,104 @@ class CodingPlanController extends Controller
         CurrencyExchangeService::flushMemo();
 
         return $this->success(null, '汇率已删除（该币种将按回落规则取值）');
+    }
+
+    /**
+     * 促销/价格变动/模型退市活动列表（P2-1）
+     * GET /coding_plan/promotions?vendor=&state=&all=1
+     */
+    public function promotions(Request $request): JsonResponse
+    {
+        $now = time();
+        $query = CodingPlanPromotion::query()
+            ->when($request->input('vendor'), fn ($q, $v) => $q->where('vendor', $v))
+            ->when(! $request->boolean('all'), fn ($q) => $q->enabled())
+            ->orderBy('vendor')
+            ->orderBy('sort')
+            ->orderBy('id');
+
+        $data = $query->get()->map(function (CodingPlanPromotion $row) use ($now) {
+            $arr = $row->toArray();
+            // 前台展示状态（scheduled/ongoing/expired）与倒计时秒数（ends_at 未公布 → null）
+            $arr['state'] = $row->displayState($now);
+            $arr['remaining_seconds'] = $row->remainingSeconds($now);
+
+            return $arr;
+        })->values()->all();
+
+        return $this->success(['promotions' => $data, 'now' => $now]);
+    }
+
+    /**
+     * 新增/更新活动（upsert：传 id 即更新，否则新建）
+     * POST /coding_plan/promotions
+     */
+    public function storePromotion(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'id' => ['nullable', 'integer', 'min:1'],
+            'vendor' => ['required', 'string', 'max:64'],
+            'kind' => ['required', 'string', 'in:'.implode(',', CodingPlanPromotion::KINDS)],
+            'title' => ['required', 'string', 'max:128'],
+            'description' => ['nullable', 'string', 'max:65535'],
+            // 折扣乘数 (0,1)：0.8=8 折；仅 discount 类型有意义
+            'discount' => ['nullable', 'numeric', 'gt:0', 'lt:1'],
+            // Unix 秒；ends_at 传 null/0 = 官方未公布截止（长期有效）
+            'starts_at' => ['nullable', 'integer', 'min:0'],
+            'ends_at' => ['nullable', 'integer', 'min:0'],
+            'source_url' => ['nullable', 'string', 'max:512'],
+            'status' => ['nullable', 'integer', 'in:0,1'],
+            'remind_days' => ['nullable', 'integer', 'min:0', 'max:90'],
+            'sort' => ['nullable', 'integer'],
+            'remark' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $endsAt = (int) ($data['ends_at'] ?? 0);
+        $startsAt = (int) ($data['starts_at'] ?? 0);
+        if ($endsAt > 0 && $startsAt > 0 && $endsAt < $startsAt) {
+            return $this->error('ends_at 不能早于 starts_at', 422);
+        }
+
+        $payload = [
+            'vendor' => strtolower(trim($data['vendor'])),
+            'kind' => $data['kind'],
+            'title' => $data['title'],
+            'description' => $data['description'] ?? null,
+            'discount' => $data['discount'] ?? null,
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt > 0 ? $endsAt : null, // 0 = 官方未公布
+            'source_url' => $data['source_url'] ?? null,
+            'status' => $data['status'] ?? CodingPlanPromotion::STATUS_ENABLED,
+            'remind_days' => $data['remind_days'] ?? 7,
+            'sort' => $data['sort'] ?? 0,
+            'remark' => $data['remark'] ?? null,
+            'updated_at' => time(),
+        ];
+
+        $promotion = isset($data['id'])
+            ? CodingPlanPromotion::query()->findOrFail($data['id'])
+            : new CodingPlanPromotion;
+        $promotion->fill($payload);
+        if (! $promotion->exists) {
+            $promotion->created_at = time();
+        }
+        $promotion->save();
+
+        return $this->success($promotion, '活动已保存');
+    }
+
+    /**
+     * 删除活动
+     * DELETE /coding_plan/promotions/{id}
+     */
+    public function destroyPromotion(int $id): JsonResponse
+    {
+        $deleted = CodingPlanPromotion::query()->where('id', $id)->delete();
+        if (! $deleted) {
+            return $this->error('活动不存在', 404);
+        }
+
+        return $this->success(null, '活动已删除');
     }
 
     /**

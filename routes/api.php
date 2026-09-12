@@ -446,6 +446,11 @@ Route::middleware([UserAuth::class, AdminAuth::class])->group(function () {
     Route::get('/coding_plan/rates', [CodingPlanController::class, 'rates']);
     Route::post('/coding_plan/rates', [CodingPlanController::class, 'storeRate']);
     Route::delete('/coding_plan/rates/{code}', [CodingPlanController::class, 'destroyRate']);
+
+    // 促销/价格变动/模型退市活动管理（P2-1）
+    Route::get('/coding_plan/promotions', [CodingPlanController::class, 'promotions']);
+    Route::post('/coding_plan/promotions', [CodingPlanController::class, 'storePromotion']);
+    Route::delete('/coding_plan/promotions/{id}', [CodingPlanController::class, 'destroyPromotion']);
     // Coding Plan Plans / Stats (Admin)
     Route::post('/coding_plan/plans/{id}/attach', [CodingPlanController::class, 'attachPlan']);
     Route::post('/coding_plan/plans/{id}/detach', [CodingPlanController::class, 'detachPlan']);

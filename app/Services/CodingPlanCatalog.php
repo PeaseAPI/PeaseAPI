@@ -80,6 +80,7 @@ class CodingPlanCatalog
             'baidu' => self::baidu(),
             'unicom' => self::unicom(),
             'unicom-token' => self::unicomToken(),
+            'scnet' => self::scnet(),
             'cmcc' => self::cmcc(),
             'cmcc-token' => self::cmccToken(),
             'cmcc-token-team' => self::cmccTokenTeam(),
@@ -543,6 +544,41 @@ class CodingPlanCatalog
                 ['model' => 'MiniMax-M2.5', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 0.11, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 30, 'status' => 0],
                 ['model' => 'DeepSeek-', 'match_type' => 'prefix', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 40, 'status' => 0],
                 ['model' => 'MiniMax-', 'match_type' => 'prefix', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 1, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 50, 'status' => 0],
+            ],
+        ];
+    }
+
+    /**
+     * 超算互联网 SCNet（中科曙光）Token Plan（Credits 扣减倍率量纲，P2-1 档位预置）
+     *
+     * 官方口径要点（2026-09-12 抓取 https://www.scnet.cn/ac/openapi/doc/2.0/moduleapi/plans/token-plan.html，
+     * VitePress SSR 快照存 storage/app/private/coding-plan-snapshots/scnet/）：
+     *  - 套餐档位（月度 Credits，均为活动价 CNY）：基础 30（原价 50）/标准 110（原 185）/
+     *    高级 265（原 440）/旗舰 764（原 1274）元；官方公布月度 Credits 额度区间 6 万~180 万
+     *    （两端=基础/旗舰，中间档额度快照未取到 → 留空待核对）。
+     *  - 模型按「Credits 扣减倍率」扣减（如 GLM-5.3=2.29、Kimi-K3=4.12）：消耗 M tokens 扣 M×N
+     *    Credits（与智谱「折算 tokens」同构）；19 款国产模型目录见 ScnetParser 抓取（catalog）。
+     *  - 完整逐模型倍率表待人工核对后由管理员补录（下方 ratios 为快照示例行，status=0 仅参考）。
+     */
+    private static function scnet(): array
+    {
+        return [
+            'name' => '超算互联网 Token Plan',
+            'plan_kind' => 2,
+            'billing_mode' => 2,
+            'unit_name' => 'Credits',
+            'docs_url' => 'https://www.scnet.cn/ac/openapi/doc/2.0/moduleapi/plans/token-plan.html',
+            'verified_at' => '2026-09-12',
+            'notes' => '套餐档位（活动价）：基础 30/标准 110/高级 265/旗舰 764 元（原价 50/185/440/1274），月度 Credits 6 万~180 万（中间档额度待核对）；模型按倍率扣 Credits（GLM-5.3=2.29、Kimi-K3=4.12 等，完整表待补）；GLM/DeepSeek/Kimi/MiniMax/Qwen 19 款国产模型（见抓取目录）。',
+            'tiers' => [
+                ['name' => '基础版', 'price' => 30, 'price_note' => '活动价，原价 ¥50/月', 'period' => '月', 'quota' => 60000, 'quota_unit' => 'Credits', 'quota_note' => '快照区间下限', 'sort' => 10, 'status' => 1],
+                ['name' => '标准版', 'price' => 110, 'price_note' => '活动价，原价 ¥185/月', 'period' => '月', 'quota' => null, 'quota_unit' => 'Credits', 'quota_note' => '额度待核对（官方区间 6万~180万）', 'sort' => 20, 'status' => 1],
+                ['name' => '高级版', 'price' => 265, 'price_note' => '活动价，原价 ¥440/月', 'period' => '月', 'quota' => null, 'quota_unit' => 'Credits', 'quota_note' => '额度待核对（官方区间 6万~180万）', 'sort' => 30, 'status' => 1],
+                ['name' => '旗舰版', 'price' => 764, 'price_note' => '活动价，原价 ¥1274/月', 'period' => '月', 'quota' => 1800000, 'quota_unit' => 'Credits', 'quota_note' => '快照区间上限', 'sort' => 40, 'status' => 1],
+            ],
+            'ratios' => [
+                ['model' => 'glm-5.3', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 2.29, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 10, 'status' => 0],
+                ['model' => 'kimi-k3', 'match_type' => 'exact', 'cost_mode' => 'per_1k_tokens', 'unit_cost' => 4.12, 'input_rate' => 0, 'cached_rate' => 0, 'output_rate' => 0, 'sort' => 20, 'status' => 0],
             ],
         ];
     }

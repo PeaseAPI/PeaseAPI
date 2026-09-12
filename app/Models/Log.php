@@ -35,6 +35,14 @@ class Log extends Model
 
     public $timestamps = false;
 
+    /**
+     * 兜底默认值：生产库（严格模式）logs.token_name 为 NOT NULL 且无默认值，
+     * 充值/兑换类日志（QuotaService::addQuota）不带 token_name，缺省即 1364 插入失败。
+     */
+    protected $attributes = [
+        'token_name' => '',
+    ];
+
     protected $fillable = [
         'user_id', 'created_at', 'type', 'content', 'username',
         'token_name', 'model_name', 'quota', 'prompt_tokens',

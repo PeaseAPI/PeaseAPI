@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Mail\EmailVerificationMail;
 use App\Mail\PasswordResetMail;
+use Illuminate\Mail\MailManager;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
@@ -138,5 +139,10 @@ class EmailService
 
             Config::set('mail.from.name', OptionService::get('SystemName', config('app.name', 'Pease API')));
         }
+
+        // MailManager 会按名字缓存已解析的 Mailer 实例；queue worker 是常驻进程，
+        // 首次解析后管理端热更的 SMTP 配置（host/port）不会再被读取，导致运行时
+        // SMTP 热更新静默失效。purge 强制下次按当前 config 重新解析。
+        app(MailManager::class)->purge('smtp');
     }
 }

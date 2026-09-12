@@ -16,6 +16,7 @@ use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\RedemptionController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SystemInfoController;
+use App\Http\Controllers\TicketController;
 use App\Http\Controllers\WebAuthController;
 use App\Http\Middleware\AdminAuth;
 use Illuminate\Support\Facades\Auth;
@@ -88,6 +89,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [DashboardController::class, 'profile'])->name('profile');
     Route::get('/news-keys', [DashboardController::class, 'newsKeys'])->name('news-keys');
     Route::get('/settings', [DashboardController::class, 'settings'])->name('user.settings');
+    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets');
+    Route::get('/tickets/{id}', [TicketController::class, 'show'])->name('tickets.show');
 
     // Web API routes (return JSON for frontend JS)
     Route::prefix('web-api')->group(function () {
@@ -107,6 +110,11 @@ Route::middleware('auth')->group(function () {
 
         // Redemption
         Route::post('/redeem', [RedemptionController::class, 'redeem']);
+
+        // Tickets（工单）
+        Route::post('/tickets', [TicketController::class, 'store']);
+        Route::post('/tickets/{id}/reply', [TicketController::class, 'reply']);
+        Route::post('/tickets/{id}/close', [TicketController::class, 'close']);
 
         // Payment
         Route::get('/pricings', [PaymentController::class, 'pricings']);
@@ -165,6 +173,10 @@ Route::middleware('auth')->group(function () {
         })->name('admin.options');
         Route::get('/system-settings', [AdminController::class, 'systemSettings'])->name('admin.system-settings');
         Route::get('/coding-plan', [AdminController::class, 'codingPlan'])->name('admin.coding-plan');
+        Route::get('/tickets', [AdminController::class, 'tickets'])->name('admin.tickets');
+        Route::get('/tickets/{id}', [AdminController::class, 'ticketView'])->name('admin.tickets.view');
+        Route::post('/tickets/{id}/reply', [AdminController::class, 'ticketReply'])->name('admin.tickets.reply');
+        Route::post('/tickets/{id}/status', [AdminController::class, 'ticketStatus'])->name('admin.tickets.status');
         Route::get('/system-info', [SystemInfoController::class, 'index'])->name('admin.system-info');
         Route::post('/system-instances/cleanup', [SystemInfoController::class, 'cleanup'])->name('admin.system-instances.cleanup');
         Route::delete('/system-instances/{node_name}', [SystemInfoController::class, 'destroy'])->name('admin.system-instances.delete');

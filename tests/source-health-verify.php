@@ -77,7 +77,7 @@ try {
     check('页面含官方源同步健康卡片', str_contains($html, '官方源同步健康'));
     check('卡片含连续失败告警 badge', str_contains($html, '个源连续失败告警'));
     check('自检 vendor 行入卡（table-danger）', str_contains($html, $tag) && str_contains($html, 'table-danger'));
-    check('侧边栏红点 badge 渲染（bg-red-500）', str_contains($html, 'bg-red-500'));
+    check('侧边栏红点 badge 渲染（健康告警红点）', str_contains($html, '官方定价源连续拉取失败（P1-9）'));
 
     // ④ 成功一次自然复位
     $svc->recordCheck($tag, CodingPlanRatioCheck::SOURCE_OK);
@@ -94,7 +94,7 @@ try {
     Cache::forget(ALERT_CACHE_KEY);
     $html = (new AdminController)->codingPlan()->render();
     check('复位后卡片显示「全部正常」', str_contains($html, '全部正常'));
-    check('复位后侧边栏红点消失', ! str_contains($html, 'bg-red-500'));
+    check('复位后侧边栏健康告警红点消失', ! str_contains($html, '官方定价源连续拉取失败（P1-9）'));
 } finally {
     DB::rollBack();
     Cache::forget(ALERT_CACHE_KEY); // 自检造的告警不残留进 badge 缓存

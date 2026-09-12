@@ -44,6 +44,13 @@ class DocsController extends Controller
                 'description' => '系统设置、渠道配置、模型 Key 管理、Coding Plan 等全部使用文档',
                 'file' => 'usage-guide.md',
             ],
+            [
+                'slug' => 'features',
+                'title' => '功能解读',
+                'icon' => '✨',
+                'description' => '工单支持、Coding Plan 双池、智能成本路由、时段折扣、健康告警等新功能全景解读',
+                'file' => 'features.md',
+            ],
         ];
 
         return response()->view('docs.index', compact('systemName', 'systemLogo', 'systemFooter', 'registerEnabled', 'passwordLoginEnabled', 'docs'));
@@ -73,6 +80,7 @@ class DocsController extends Controller
         $docsMap = [
             'deployment' => ['title' => '部署指南', 'icon' => '🚀', 'file' => 'deployment.md'],
             'usage-guide' => ['title' => '使用手册', 'icon' => '📖', 'file' => 'usage-guide.md'],
+            'features' => ['title' => '功能解读', 'icon' => '✨', 'file' => 'features.md'],
         ];
 
         if (! isset($docsMap[$slug])) {
@@ -91,6 +99,7 @@ class DocsController extends Controller
         $allDocs = [
             ['slug' => 'deployment', 'title' => '部署指南', 'icon' => '🚀'],
             ['slug' => 'usage-guide', 'title' => '使用手册', 'icon' => '📖'],
+            ['slug' => 'features', 'title' => '功能解读', 'icon' => '✨'],
         ];
 
         return response()->view('docs.view', compact('systemName', 'systemLogo', 'systemFooter', 'registerEnabled', 'passwordLoginEnabled', 'doc', 'slug', 'markdownContent', 'allDocs'));

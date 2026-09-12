@@ -131,27 +131,7 @@ footer{padding:48px 0;border-top:1px solid var(--border);background:rgba(15,23,4
 </head>
 <body>
 <div class="bg-decoration"></div>
-<nav>
-    <div class="container">
-        <a href="/" class="nav-brand">
-            <div class="nav-logo">
-                <img src="{{ $systemLogo ?: '/logo.png' }}" alt="{{ $systemName }}">
-            </div>
-            <span class="nav-name">{{ $systemName }}</span>
-        </a>
-        <div class="nav-links">
-            <a href="/docs">文档</a>
-            <a href="/pricing" class="active">价格</a>
-            <a href="/about">关于</a>
-            @if($passwordLoginEnabled)
-            <a href="/login" class="btn btn-ghost">登录</a>
-            @endif
-            @if($registerEnabled)
-            <a href="/register" class="btn btn-primary">免费注册</a>
-            @endif
-        </div>
-    </div>
-</nav>
+@include('partials.public-nav')
 
 <section class="hero">
     <div class="container">
@@ -303,17 +283,6 @@ footer{padding:48px 0;border-top:1px solid var(--border);background:rgba(15,23,4
     </div>
 </section>
 
-<footer>
-    <div class="container">
-        <div class="footer-content">
-            @if(!empty($systemFooter))
-                {!! $systemFooter !!}
-            @else
-                <p>&copy; {{ date('Y') }} {{ $systemName }}. All rights reserved.</p>
-                <p><a href="/">首页</a> · <a href="/docs">文档</a> · <a href="/pricing">价格</a> · <a href="/about">关于</a> · <a href="/user-agreement">用户协议</a> · <a href="/privacy-policy">隐私政策</a></p>
-            @endif
-        </div>
-    </div>
-</footer>
+@include('partials.public-footer')
 </body>
 </html>

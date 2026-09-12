@@ -27,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
             $systemName = config('app.name', 'Pease API');
             $systemLogo = '';
             $footerHtml = '';
+            $systemFooter = '';
+            $registerEnabled = true;
+            $passwordLoginEnabled = true;
             $smsEnabled = false;
             $phoneLoginEnabled = false;
             $phoneRegisterEnabled = false;
@@ -37,6 +40,10 @@ class AppServiceProvider extends ServiceProvider
                     $systemName = OptionService::get('SystemName', $systemName);
                     $systemLogo = OptionService::get('SystemLogo', '');
                     $footerHtml = OptionService::get('Footer', '');
+                    // 公开页统一导航/页脚所需：自定义页脚 HTML 与注册/密码登录开关
+                    $systemFooter = OptionService::get('SystemFooter', '');
+                    $registerEnabled = (bool) OptionService::get('RegisterEnabled', true);
+                    $passwordLoginEnabled = (bool) OptionService::get('PasswordLoginEnabled', true);
                     // 短信服务开关：从数据库选项读取（后台系统设置控制）
                     $smsEnabled = (bool) OptionService::get('SmsEnabled', false);
                     $phoneLoginEnabled = (bool) OptionService::get('PhoneLoginEnabled', false);
@@ -51,6 +58,9 @@ class AppServiceProvider extends ServiceProvider
                 'systemName' => $systemName,
                 'systemLogo' => $systemLogo,
                 'footerHtml' => $footerHtml,
+                'systemFooter' => $systemFooter,
+                'registerEnabled' => $registerEnabled,
+                'passwordLoginEnabled' => $passwordLoginEnabled,
                 'smsEnabled' => $smsEnabled,
                 'phoneLoginEnabled' => $phoneLoginEnabled,
                 'phoneRegisterEnabled' => $phoneRegisterEnabled,

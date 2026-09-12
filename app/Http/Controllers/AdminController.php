@@ -7,6 +7,8 @@ use App\Models\Channel;
 use App\Models\CodingPlanAccount;
 use App\Models\CodingPlanUsageLog;
 use App\Models\Log;
+use App\Models\Ticket;
+use App\Models\TicketReply;
 use App\Models\Token;
 use App\Models\User;
 use App\Services\CodingPlanOfficialSourceService;
@@ -362,5 +364,88 @@ class AdminController extends Controller
             'success' => true,
             'data' => [],
         ]);
+    }
+
+    /**
+     * 工单管理列表（status=pending/replied/closed/all 筛选，待处理置顶）
+     */
+    public function tickets(Request $request)
+    {
+        $status = (string) $request->query('status', 'pending');
+        $query = Ticket::query()->with('user');
+
+        $query = match ($status) {
+            'replied' => $query->where('status', Ticket::STATUS_REPLIED),
+            'closed' => $query->where('status', Ticket::STATUS_CLOSED),
+            'all' => $query,
+            default => $query->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_CUSTOMER_REPLY]),
+        };
+
+        $tickets = $query
+            ->orderByRaw('field(status, 1, 3, 2, 4), last_reply_at desc, id desc')
+            ->limit(200)
+            ->get();
+
+        return response()->view('admin.tickets', [
+            'tickets' => $tickets,
+            'statusFilter' => $status,
+            'categoryMap' => Ticket::CATEGORY_MAP,
+            'priorityMap' => Ticket::PRIORITY_MAP,
+            'statusMap' => Ticket::STATUS_MAP,
+        ]);
+    }
+
+    /**
+     * 工单会话详情 + 回复（客服视角）
+     */
+    public function ticketView(int $id)
+    {
+        $ticket = Ticket::query()->with(['replies.user', 'user'])->findOrFail($id);
+
+        return response()->view('admin.ticket-view', [
+            'ticket' => $ticket,
+            'categoryMap' => Ticket::CATEGORY_MAP,
+            'priorityMap' => Ticket::PRIORITY_MAP,
+            'statusMap' => Ticket::STATUS_MAP,
+        ]);
+    }
+
+    /**
+     * 客服回复：is_admin 流水 + 状态置已回复
+     */
+    public function ticketReply(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'content' => 'required|string|min:2|max:2000',
+        ]);
+
+        $ticket = Ticket::query()->findOrFail($id);
+        if ($ticket->isClosed()) {
+            return response()->json(['success' => false, 'message' => '工单已关闭，请先重开再回复']);
+        }
+
+        $ticket->update(['status' => Ticket::STATUS_REPLIED, 'last_reply_at' => time()]);
+        TicketReply::query()->create([
+            'ticket_id' => $ticket->id,
+            'user_id' => (int) Auth::id(),
+            'is_admin' => true,
+            'content' => trim((string) $validated['content']),
+            'created_at' => time(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => '回复成功']);
+    }
+
+    /**
+     * 工单状态操作：close=关闭 / reopen=重开（回到待处理）
+     */
+    public function ticketStatus(Request $request, int $id): JsonResponse
+    {
+        $action = (string) $request->input('action', 'close');
+        $ticket = Ticket::query()->findOrFail($id);
+
+        $ticket->update(['status' => $action === 'reopen' ? Ticket::STATUS_OPEN : Ticket::STATUS_CLOSED]);
+
+        return response()->json(['success' => true, 'message' => $action === 'reopen' ? '工单已重开' : '工单已关闭']);
     }
 }

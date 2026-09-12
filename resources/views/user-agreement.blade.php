@@ -190,17 +190,29 @@ footer a{color:var(--text-muted)}
     .article{padding:28px 22px}
     .nav-links a{margin-left:16px}
 }
+/* 统一导航/页脚补充样式（partials/public-nav、partials/public-footer 所需类，后置覆盖上方简版定义） */
+.nav-brand{display:flex;align-items:center;gap:12px}
+.nav-logo{width:36px;height:36px;border-radius:10px;overflow:hidden;flex-shrink:0;background:var(--gradient);display:flex;align-items:center;justify-content:center}
+.nav-logo img{width:100%;height:100%;object-fit:cover}
+.nav-logo svg{width:20px;height:20px;color:#fff}
+.nav-name{font-size:18px;font-weight:700;color:#fff}
+.nav-links{display:flex;align-items:center;gap:8px}
+.nav-links a{padding:8px 16px;font-size:14px;color:var(--text-muted);transition:all 0.2s;border-radius:8px;margin-left:0}
+.nav-links a:hover{color:#fff;background:rgba(255,255,255,0.05)}
+.nav-links a.active{color:#fff;background:rgba(99,102,241,0.15)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;font-size:14px;font-weight:600;border-radius:10px;transition:all 0.2s;cursor:pointer;border:none;outline:none}
+.btn-primary{background:var(--gradient);color:#fff;box-shadow:0 4px 14px rgba(99,102,241,0.4)}
+.btn-primary:hover{transform:translateY(-1px)}
+.btn-ghost{background:rgba(255,255,255,0.06);color:var(--text-light);border:1px solid var(--border)}
+.btn-ghost:hover{background:rgba(255,255,255,0.1)}
+footer{padding:48px 0;border-top:1px solid var(--border);background:rgba(15,23,42,0.5)}
+.footer-content{text-align:center;color:var(--text-muted);font-size:14px;line-height:1.8}
+.footer-content a{color:var(--primary-light);transition:color 0.2s}
+.footer-content a:hover{color:#fff}
 </style>
 </head>
 <body>
-<nav><div class="container">
-    <a href="/" class="nav-brand">{{ $systemName }}</a>
-    <div class="nav-links">
-        <a href="/">首页</a>
-        <a href="/pricing">价格</a>
-        <a href="/about">关于</a>
-    </div>
-</div></nav>
+@include('partials.public-nav')
 
 <section class="hero"><div class="container">
     <span class="eyebrow">TERMS OF SERVICE</span>
@@ -332,8 +344,6 @@ footer a{color:var(--text-muted)}
     @endif
 </section>
 
-<footer><div class="container">
-    @if(!empty($systemFooter)){!! $systemFooter !!}@else<p>&copy; {{ date('Y') }} {{ $systemName }} · 保留所有权利</p>@endif
-</div></footer>
+@include('partials.public-footer')
 </body>
 </html>

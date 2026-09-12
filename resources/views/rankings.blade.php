@@ -99,21 +99,7 @@ footer{padding:48px 0;border-top:1px solid var(--border);background:rgba(15,23,4
 </head>
 <body>
 <div class="bg-decoration"></div>
-<nav>
-    <div class="container">
-        <a href="/" class="nav-brand">
-            <div class="nav-logo"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
-            <span class="nav-name">{{ $systemName }}</span>
-        </a>
-        <div class="nav-links">
-            <a href="/about">关于</a>
-            <a href="/pricing">价格</a>
-            <a href="/rankings" class="active">排行榜</a>
-            @if($passwordLoginEnabled)<a href="/login" class="btn btn-ghost">登录</a>@endif
-            @if($registerEnabled)<a href="/register" class="btn btn-primary">免费注册</a>@endif
-        </div>
-    </div>
-</nav>
+@include('partials.public-nav')
 
 <section class="hero">
     <div class="container">
@@ -168,17 +154,6 @@ footer{padding:48px 0;border-top:1px solid var(--border);background:rgba(15,23,4
     </div>
 </section>
 
-<footer>
-    <div class="container">
-        <div class="footer-content">
-            @if(!empty($systemFooter))
-                {!! $systemFooter !!}
-            @else
-                <p>&copy; {{ date('Y') }} {{ $systemName }}. All rights reserved.</p>
-                <p><a href="/">首页</a> · <a href="/pricing">价格</a> · <a href="/about">关于</a> · <a href="/rankings">排行榜</a></p>
-            @endif
-        </div>
-    </div>
-</footer>
+@include('partials.public-footer')
 </body>
 </html>

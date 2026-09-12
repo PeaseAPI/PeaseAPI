@@ -80,7 +80,6 @@
         default => '未配置定价源',
     };
 @endphp
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -167,19 +166,7 @@ footer{padding:40px 0;border-top:1px solid var(--border);margin-top:40px;text-al
 </head>
 <body>
 <div class="bg-decoration"></div>
-<nav>
-    <div class="container">
-        <a class="nav-brand" href="/">
-            <span class="nav-logo">@if($systemLogo)<img src="{{ $systemLogo }}" alt="logo">@else{{ mb_substr($systemName, 0, 1) }}@endif</span>
-            <span class="nav-name">{{ $systemName }}</span>
-        </a>
-        <div class="nav-links">
-            <a href="/pricing">价格</a>
-            <a href="/docs">文档</a>
-            <a href="/login">控制台</a>
-        </div>
-    </div>
-</nav>
+@include('partials.public-nav')
 
 <div class="hero">
     <div class="container">
@@ -354,11 +341,6 @@ footer{padding:40px 0;border-top:1px solid var(--border);margin-top:40px;text-al
     </div>
 </div>
 
-<footer>
-    <div class="container">
-        {!! $systemFooter ?: ('© '.date('Y').' '.$systemName) !!}
-    </div>
-</footer>
+@include('partials.public-footer')
 </body>
 </html>
-

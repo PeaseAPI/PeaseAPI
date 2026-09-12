@@ -62,6 +62,9 @@
                 <a href="{{ route('news-keys') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('news-keys') ? 'active' : '' }}">
                     <i class="fas fa-key w-5 mr-3"></i>中转 Key 设置
                 </a>
+                <a href="{{ route('tickets') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('tickets*') ? 'active' : '' }}">
+                    <i class="fas fa-headset w-5 mr-3"></i>工单支持
+                </a>
 
                 @if(auth()->user() && auth()->user()->role >= 100)
                 <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-6 mb-2 px-3">管理后台</div>
@@ -99,6 +102,20 @@
                 </a>
                 <a href="{{ route('admin.redemptions') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('admin.redemptions') ? 'active' : '' }}">
                     <i class="fas fa-ticket-alt w-5 mr-3"></i>兑换码管理
+                </a>
+                @php
+                    $ticketPending = 0;
+                    try {
+                        $ticketPending = Cache::remember('admin:ticket_pending_badge', 120, static fn (): int => \App\Models\Ticket::query()->whereIn('status', [\App\Models\Ticket::STATUS_OPEN, \App\Models\Ticket::STATUS_CUSTOMER_REPLY])->count());
+                    } catch (\Throwable) {
+                        $ticketPending = 0; // 表未迁移等异常不阻塞后台渲染
+                    }
+                @endphp
+                <a href="{{ route('admin.tickets') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('admin.tickets*') ? 'active' : '' }}">
+                    <i class="fas fa-life-ring w-5 mr-3"></i>工单管理
+                    @if ($ticketPending > 0)
+                        <span class="ml-auto inline-flex items-center justify-center rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white" title="待处理工单（新单 + 用户追回）">{{ $ticketPending }}</span>
+                    @endif
                 </a>
                 <a href="{{ route('admin.system-settings') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('admin.options*') || request()->routeIs('admin.system-settings') ? 'active' : '' }}">
                     <i class="fas fa-cog w-5 mr-3"></i>系统设置

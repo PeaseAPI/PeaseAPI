@@ -8,7 +8,6 @@ use App\Models\CodingPlanPromotion;
 use App\Services\OptionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -16,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
 /**
  * Coding Plan 厂商活动到期提醒（P2-3）：通知订阅对应厂商套餐的用户。
  */
-class PromotionReminderMail extends Mailable implements ShouldQueue
+class PromotionReminderMail extends BaseMailable implements ShouldQueue
 {
     use Queueable;
     use SerializesModels;

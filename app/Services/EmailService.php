@@ -125,7 +125,17 @@ class EmailService
         ]);
 
         if ($from !== '' && $from !== null) {
-            Config::set('mail.from.address', $from);
+            // SMTPFrom 必须是合法邮箱地址（历史数据可能误填站点名）；
+            // 无效时回退到 SMTPAccount（SMTP 登录账号通常即发件地址），
+            // 两者皆无效则保留 .env 默认值，避免投出非法 From 头被上游拒收。
+            $fromAddress = filter_var($from, FILTER_VALIDATE_EMAIL)
+                ? $from
+                : (filter_var((string) $username, FILTER_VALIDATE_EMAIL) ? $username : null);
+
+            if ($fromAddress !== null) {
+                Config::set('mail.from.address', $fromAddress);
+            }
+
             Config::set('mail.from.name', OptionService::get('SystemName', config('app.name', 'Pease API')));
         }
     }

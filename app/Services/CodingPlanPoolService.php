@@ -89,7 +89,18 @@ class CodingPlanPoolService
         // SQL 原子增量使用安全的数字字面量
         $unitsLiteral = number_format($units, 4, '.', '');
 
-        DB::transaction(function () use ($account, $units, $unitsLiteral, $credits, $meta, $success, $error, $now) {
+        // 汇率快照留痕（P7-3）：厂商官方币种非基准 CNY 时，记录本次计费
+        // 「若按官方价折算」所用的汇率与时刻，便于事后审计（汇率随时间变化）
+        $logMeta = $meta['meta'] ?? null;
+        if (is_array($logMeta) && ! isset($logMeta['fx'])) {
+            $vendorCurrency = CurrencyExchangeService::vendorOfficialCurrency($account->vendor);
+            $fx = CurrencyExchangeService::snapshotFor($vendorCurrency);
+            if ($fx !== null) {
+                $logMeta['fx'] = $fx;
+            }
+        }
+
+        DB::transaction(function () use ($account, $units, $unitsLiteral, $credits, $meta, $success, $error, $now, $logMeta) {
             $increments = [
                 'last_used_at' => $now,
                 'updated_at' => $now,
@@ -135,7 +146,7 @@ class CodingPlanPoolService
                 'request_id' => $meta['request_id'] ?? null,
                 'success' => $success,
                 'error' => $error,
-                'meta' => $meta['meta'] ?? null,
+                'meta' => $logMeta,
                 'created_at' => $now,
             ]);
 

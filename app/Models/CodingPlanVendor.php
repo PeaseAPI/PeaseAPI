@@ -37,6 +37,8 @@ class CodingPlanVendor extends Model
         'plan_kind',
         'unit_name',
         'unit_exchange_rate',
+        // 官方计价币种（ISO 4217，P7-1 迁移 000010，缺省 CNY）
+        'currency',
         'docs_url',
         'pricing_source_url',
         'status',

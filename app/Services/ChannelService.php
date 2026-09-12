@@ -85,7 +85,8 @@ class ChannelService
                     'model' => $model,
                     'channel_id' => $channel->id,
                     'enabled' => $channel->status,
-                    'priority' => $channel->priority,
+                    // priority 列为 NOT NULL，渠道未设置时回退为 0，避免建渠道 500
+                    'priority' => $channel->priority ?? 0,
                 ]);
             }
         }

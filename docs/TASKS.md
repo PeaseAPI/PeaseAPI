@@ -173,16 +173,16 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 | B1 | 自检 | `coding-plan:test-time-discounts` 28 项 | ✅ | ⏳ |
 | B2 | 自检 | `coding-plan:test-currency` 30 项 | ✅ | ⏳ |
 | B3 | 自检 | `php tests/coding-plan-parser-fixture.php` 全过 | ✅ | ⏳ |
-| C1 | 部署 | 服务器 git pull 至 origin/main | — | ⏳（落后 25 提交，QA-2） |
-| C2 | 部署 | 服务器 migrate 无 pending | — | ⏳ |
-| C3 | 部署 | config/route/view 缓存重建 + storage 权限 | — | ⏳ |
+| C1 | 部署 | 服务器 git pull 至 origin/main | — | ✅ 已快进（QA-2） |
+| C2 | 部署 | 服务器 migrate 无 pending | — | ✅ 000001→000016 全 Ran |
+| C3 | 部署 | config/route/view 缓存重建 + storage 权限 | — | ✅ 当前未启用缓存（bootstrap/cache 仅 packages/services），storage 可写正常 |
 | C4 | 运维 | schedule:run / queue:work 进程存在性 | — | ❓QA-1 |
-| C5 | 运维 | laravel.log 近期无新 ERROR/Exception | — | ⏳ |
-| D1 | 网站 | 首页/介绍页 200 | — | ⏳ |
-| D2 | 网站 | 登录 snails → /api/user/self | — | ⏳ |
-| D3 | 网站 | 用户侧接口抽测（令牌/额度/公告/订阅） | — | ⏳ |
-| D4 | 网站 | 公开 API：public_promotions / offers 数据 | — | ⏳ |
-| D5 | 网站 | 管理端 API 抽测（dashboard/渠道/模型/设置/汇率/活动） | — | ⏳ |
+| C5 | 运维 | laravel.log 近期无新 ERROR/Exception | — | ⚠️ 发现 QA-11/QA-12 两处 500（已修复，待部署复检） |
+| D1 | 网站 | 首页/介绍页 200 | — | ✅ https 200 + /api/status 正常 |
+| D2 | 网站 | 登录 snails → /api/user/self | — | ✅ |
+| D3 | 网站 | 用户侧接口抽测（令牌/额度/公告/订阅） | — | ✅ 令牌创建/self/额度读取通过（额度修改经 QA-11 修复后走 API） |
+| D4 | 网站 | 公开 API：public_promotions / offers 数据 | — | ✅ 4 vendor（含 currency）+ 9 条活动返回 |
+| D5 | 网站 | 管理端 API 抽测（dashboard/渠道/模型/设置/汇率/活动） | — | ⚠️ QA-11（PUT /api/user 500，已修）；渠道列表/选项/汇率读取 ✅ |
 | D6 | relay | `/v1/models` 列表 | — | ⏳ |
 | D7 | relay | `/v1/chat/completions` 真实调用（火山 ark，OpenAI 协议） | — | ⏳ |
 | D8 | relay | `/v1/messages` Anthropic 协议（ark /api/coding） | — | ⏳ |
@@ -194,8 +194,17 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 | 编号 | 严重度 | 位置 | 现象与影响 | 修复 | 状态 |
 |------|--------|------|-----------|------|------|
 | QA-1 | 高(运维) | 服务器进程 | 初查（ps aux / root crontab / systemd timers / tmux / screen）**未发现** `schedule:run`、`queue:work` 任何进程——6h 官方源同步、每日 09:00 活动提醒、订单超时取消、任务轮询等调度链路疑似停摆 | 只读核实宝塔计划任务/进程守护；**不碰服务器设置**，确认后记录交用户处置 | open |
-| QA-2 | 中(部署) | 服务器 git | 服务器落后 origin/main 25 个提交（HEAD=3d1bb44 vs origin=80037b0） | 本轮部署 `git pull` 快进解决 | open |
-| QA-3 | 待定 | — | （占位：随检查逐条追加） | — | open |
+| QA-2 | 中(部署) | 服务器 git | 服务器落后 origin/main 25 个提交（HEAD=3d1bb44 vs origin=80037b0） | 本轮部署 `git pull` 快进解决 | ✅ fixed |
+| QA-3 | 高(迁移) | `CodingPlanCatalog::applyRatios()` | 全新库按序回放迁移时 000005 崩溃：ratio 写入未守卫 `time_discounts` 列缺失（该列由 000012 补） | applyRatios 对 time_discounts 增加 Schema::hasColumn 守卫；空库全量回放验证通过 | ✅ fixed |
+| QA-4 | 低(工程) | tests/coding-plan-parser-fixture.php | 硬编码绝对路径 `/Users/snails/...`，其他环境/服务器无法运行 | 改为 `__DIR__.'/../vendor/autoload.php'` | ✅ fixed |
+| QA-5 | 高(数据) | CodingPlanVendorSeeder | seeder 未写 currency 字段，按量价币种无法推导（USD/CNY 混排） | 补 anthropic/openai/google=USD、alibaba=CNY；服务器重跑后 vendor 4 行 currency 正确 | ✅ fixed |
+| QA-6 | 中(设置) | Option UsdExchangeRate | 服务器 `UsdExchangeRate=1`（本地 7.3），USD 计价按量价折算 CNY 全错 | 用 snails 走管理端 `PUT /option/` 真实 API 改 7.3 | open |
+| QA-7 | 低(自检) | TestCodingPlanCurrency | 断言失败时仍打印「全部通过」（29 通过 1 失败也报全绿），自检口径失真 | 对齐 time-discounts 的失败口径（非 0 退出 + 失败明细）；复测 30/30 | ✅ fixed |
+| QA-8 | 中(安全) | 服务器 .env | 生产站点 `APP_ENV=local / APP_DEBUG=true / APP_URL 空`——异常会把堆栈/环境暴露给公网，且生成的 URL（支付回调/邮件链接）可能错 | 属服务器环境配置，**不碰服务器设置**，交用户处置（建议 production/false/https://www.peaseapi.com） | open |
+| QA-9 | 中(运营) | 服务器 channels | 渠道表 0 行——relay 无任何上游，平台无法转发任何请求 | 属运营配置缺失非代码缺陷；本轮为 E2E 验证创建测试渠道 volc-ark-coding（volc ark coding，type=4） | 观察 |
+| QA-10 | 中(功能) | Relay/Volcengine | ①`VolcengineAdapter` 是死代码（selectAdapter 把 38/56 归入 openAITypes→OpenAIAdapter），且其默认 base `/api/v3` 与 OpenAIAdapter 固定拼的 `/v1/chat/completions` 相加仍打不通 ark（会变成 /api/v3/v1/...）；②还会给模型名强加 `ark-` 前缀（doubao-seed-evolving 等会请求失败）；③OpenAI 协议上游 base_url 无法适配带版本路径网关（ark coding /api/coding/v3 等固定拼 /v1/...） | 本轮不改：Anthropic 协议入口 `/v1/messages` 透传可用（base=/api/coding）；OpenAI 协议入口用 type=4 渠道走协议转换。遗留到下一轮重构 adapter 选择与路径拼接 | open |
+| QA-11 | 高(接口) | UserController::update | `PUT /api/user/` 500 ArgumentCountError：签名要求路由 {id}，但路由不提供（new-api 兼容约定 id 在 body）；laravel.log 已留痕 | update() 改 `int $id = 0` + body id 回退 + 校验对齐 Api\UserApiController（quota 替代无效的 balance 字段） | ✅ fixed |
+| QA-12 | 高(接口) | ChannelService::syncAbilities | 创建渠道不带 priority 时 abilities 插入 null → NOT NULL 约束 500（SQLSTATE 23000），渠道根本建不出来 | `'priority' => $channel->priority ?? 0` | ✅ fixed |
 
 ---
 

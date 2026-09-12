@@ -232,14 +232,30 @@ class UserController extends Controller
         return response()->json($user);
     }
 
-    public function update(Request $request, int $id)
+    public function update(Request $request, int $id = 0)
     {
-        $user = User::findOrFail($id);
-        $data = $request->only(['username', 'email', 'status', 'role', 'balance']);
-        if ($request->has('password')) {
-            $data['password'] = Hash::make($request->password);
+        // 兼容 new-api 风格 PUT /api/user/（id 放在 body）；同时保留 PUT /api/user/{id}
+        if ($id <= 0) {
+            $id = (int) $request->input('id');
         }
-        $user->update($data);
+        if ($id <= 0) {
+            return response()->json(['success' => false, 'message' => __('User ID is required')], 422);
+        }
+
+        $validated = $request->validate([
+            'username' => 'sometimes|string|min:3|max:32|alpha_num|unique:users,username,'.$id,
+            'email' => 'sometimes|email|unique:users,email,'.$id,
+            'status' => 'sometimes|integer|in:0,1',
+            'role' => 'sometimes|integer',
+            'quota' => 'sometimes|integer|min:0',
+        ]);
+
+        $user = User::findOrFail($id);
+        $user->fill($validated);
+        if ($request->filled('password')) {
+            $user->password = Hash::make((string) $request->input('password'));
+        }
+        $user->save();
 
         return response()->json($user);
     }

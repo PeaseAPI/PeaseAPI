@@ -306,12 +306,23 @@ class RelayHandler
         $this->adapter = match (true) {
             // Anthropic 原生协议（入站为 Anthropic 格式，透传不做转换）
             $this->info->relayProtocol === RelayProtocol::Anthropic => new AnthropicNativeAdapter,
-            in_array($channelType, $claudeTypes, true) => new ClaudeAdapter,
-            in_array($channelType, $geminiTypes, true) => new GeminiAdapter,
-            in_array($channelType, $awsTypes, true) => new AWSAdapter,
-            in_array($channelType, $vertexTypes, true) => new VertexAdapter,
+            // 注意：类型数组存的是枚举实例，与 int 的 channelType 比较前必须取 ->value，
+            // 否则严格 in_array 恒为 false，所有渠道都会落入 default（OpenAIAdapter）
+            in_array($channelType, self::enumValues($claudeTypes), true) => new ClaudeAdapter,
+            in_array($channelType, self::enumValues($geminiTypes), true) => new GeminiAdapter,
+            in_array($channelType, self::enumValues($awsTypes), true) => new AWSAdapter,
+            in_array($channelType, self::enumValues($vertexTypes), true) => new VertexAdapter,
             default => new OpenAIAdapter,
         };
+    }
+
+    /**
+     * @param  array<int, ChannelType>  $types
+     * @return array<int, int>
+     */
+    private static function enumValues(array $types): array
+    {
+        return array_map(static fn (ChannelType $type): int => $type->value, $types);
     }
 
     protected function parseRequestBody(): void

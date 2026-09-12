@@ -171,12 +171,13 @@ trait OpenAICompatibleTrait
         @ob_end_flush();
 
         $ch = curl_init();
+        $buffer = ''; // SSE 行缓冲（跨 WRITEFUNCTION 分块的半行），usage 解析也需要读取
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($info->requestBody),
             CURLOPT_HTTPHEADER => $this->formatCurlHeaders($headers),
-            CURLOPT_WRITEFUNCTION => function ($curl, $data) use ($info) {
+            CURLOPT_WRITEFUNCTION => function ($curl, $data) use ($info, &$buffer) {
                 // 客户端中断：不再继续读上游（模型可能仍在长时间生成），立即结算，
                 // 避免脚本被 FPM request_terminate_timeout 硬杀导致计费/退款全部跳过
                 if (connection_aborted() !== 0) {
@@ -186,6 +187,35 @@ trait OpenAICompatibleTrait
                 }
 
                 $info->recordFirstResponse();
+
+                // 解析 OpenAI SSE 流式 usage 计费计数（上游对 stream_options.include_usage
+                // 在最后一个 chunk 返回 usage）；缺失时流式计费 token 恒为 0
+                $buffer .= $data;
+                $lines = explode("\n", $buffer);
+                $buffer = (string) array_pop($lines); // 保留最后一段可能不完整的行
+
+                foreach ($lines as $line) {
+                    $line = trim($line);
+                    if ($line === '' || ! str_starts_with($line, 'data:')) {
+                        continue;
+                    }
+                    $payload = trim(substr($line, 5));
+                    if ($payload === '' || $payload === '[DONE]') {
+                        continue;
+                    }
+                    $chunk = json_decode($payload, true);
+                    if (is_array($chunk) && isset($chunk['usage']) && is_array($chunk['usage'])) {
+                        if (isset($chunk['usage']['prompt_tokens'])) {
+                            $info->promptTokens = (int) $chunk['usage']['prompt_tokens'];
+                        }
+                        if (isset($chunk['usage']['completion_tokens'])) {
+                            $info->completionTokens = (int) $chunk['usage']['completion_tokens'];
+                        }
+                        // 缓存命中 token（计费按 CacheRatio 折扣）
+                        $this->extractCachedTokens($info, $chunk['usage']);
+                    }
+                }
+
                 echo $data;
                 flush();
 

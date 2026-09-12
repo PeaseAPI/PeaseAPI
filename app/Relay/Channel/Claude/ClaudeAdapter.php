@@ -40,7 +40,8 @@ class ClaudeAdapter extends BaseAdapter
         }
 
         $info->upstreamBody = json_encode($claudeBody);
-        $info->upstreamUrl = 'https://api.anthropic.com/v1/messages';
+        // 尊重渠道 base_url（含 Coding Plan 账号池覆盖）：Anthropic 协议标准路径 /v1/messages
+        $info->upstreamUrl = $info->getUpstreamUrl('/v1/messages');
     }
 
     public function formatResponse(RelayInfo $info): void

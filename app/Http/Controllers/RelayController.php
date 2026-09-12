@@ -488,6 +488,11 @@ class RelayController extends Controller
         }
 
         return new StreamedResponse(function () use ($request, $relayInfo, $isAnthropicNative) {
+            // 客户端提前断开（如用户取消生成）时继续读完上游流并正常结算：
+            // PHP 默认 ignore_user_abort=Off 会在输出检测到断连后直接终止脚本，
+            // 跳过 handleStream 的计费/退款/日志，导致预扣额度（PreConsumedQuota）泄漏
+            ignore_user_abort(true);
+
             // 设置 SSE 头
             header('Content-Type: text/event-stream');
             header('Cache-Control: no-cache');

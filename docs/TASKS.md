@@ -183,11 +183,11 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 | D3 | 网站 | 用户侧接口抽测（令牌/额度/公告/订阅） | — | ✅ 令牌创建/self/额度读取通过（额度修改经 QA-11 修复后走 API） |
 | D4 | 网站 | 公开 API：public_promotions / offers 数据 | — | ✅ 4 vendor（含 currency）+ 9 条活动返回 |
 | D5 | 网站 | 管理端 API 抽测（dashboard/渠道/模型/设置/汇率/活动） | — | ⚠️ QA-11（PUT /api/user 500，已修）；渠道列表/选项/汇率读取 ✅ |
-| D6 | relay | `/v1/models` 列表 | — | ⏳ |
-| D7 | relay | `/v1/chat/completions` 真实调用（火山 ark，OpenAI 协议） | — | ⏳ |
-| D8 | relay | `/v1/messages` Anthropic 协议（ark /api/coding） | — | ⏳ |
-| D9 | relay | 错误路径：无效 token 401 / 无效模型口径 | — | ⏳ |
-| D10 | relay | 用量落库与扣费（quota 扣减 + meta.fx） | — | ⏳ |
+| D6 | relay | `/v1/models` 列表 | — | ✅ 返回模型列表（含 doubao-seed-evolving） |
+| D7 | relay | `/v1/chat/completions` 真实调用（火山 ark，OpenAI 协议） | — | ✅ OpenAI↔Anthropic 协议转换真实调 ark，回复「正常」+ reasoning_content + usage 52/29 |
+| D8 | relay | `/v1/messages` Anthropic 协议（ark /api/coding） | — | ✅ 非流式回复「正常」usage 52/29；流式 SSE 事件序列完整（message_start→content_block→thinking/text delta→message_delta→message_stop→[DONE]） |
+| D9 | relay | 错误路径：无效 token 401 / 无效模型口径 | — | ✅ 无效 token 401 |
+| D10 | relay | 用量落库与扣费（quota 扣减 + meta.fx） | — | ⚠️ 扣费链路四处对齐（logs/token/channel/user used=157；流式 +85）；发现 QA-13 流式客户端中断泄漏预扣额度（已修待复检）；logs.other 为空数组属预期（meta.fx 仅 CodingPlan 用量日志使用） |
 
 **问题表**（修复完一条勾一条 `[x]`，状态：open / fixed / wontfix(注明) / 观察）：
 
@@ -205,6 +205,7 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 | QA-10 | 中(功能) | Relay/Volcengine | ①`VolcengineAdapter` 是死代码（selectAdapter 把 38/56 归入 openAITypes→OpenAIAdapter），且其默认 base `/api/v3` 与 OpenAIAdapter 固定拼的 `/v1/chat/completions` 相加仍打不通 ark（会变成 /api/v3/v1/...）；②还会给模型名强加 `ark-` 前缀（doubao-seed-evolving 等会请求失败）；③OpenAI 协议上游 base_url 无法适配带版本路径网关（ark coding /api/coding/v3 等固定拼 /v1/...） | 本轮不改：Anthropic 协议入口 `/v1/messages` 透传可用（base=/api/coding）；OpenAI 协议入口用 type=4 渠道走协议转换。遗留到下一轮重构 adapter 选择与路径拼接 | open |
 | QA-11 | 高(接口) | UserController::update | `PUT /api/user/` 500 ArgumentCountError：签名要求路由 {id}，但路由不提供（new-api 兼容约定 id 在 body）；laravel.log 已留痕 | update() 改 `int $id = 0` + body id 回退 + 校验对齐 Api\UserApiController（quota 替代无效的 balance 字段） | ✅ fixed |
 | QA-12 | 高(接口) | ChannelService::syncAbilities | 创建渠道不带 priority 时 abilities 插入 null → NOT NULL 约束 500（SQLSTATE 23000），渠道根本建不出来 | `'priority' => $channel->priority ?? 0` | ✅ fixed |
+| QA-13 | 高(计费) | RelayController::handleStream | 流式请求客户端提前断开（用户取消生成）时，PHP 默认 `ignore_user_abort=Off` 在输出检测到断连后直接终止脚本——handleStream 的 catch/退款/计费全部跳过，实测预扣 500 quota 永久泄漏（无日志、无退款、无结算），服务器复现 | StreamedResponse 闭包开头 `ignore_user_abort(true)`，断连后继续读完上游流并正常结算计费 | open |
 
 ---
 

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Ability;
 use App\Models\Channel;
+use App\Models\CodingPlanAccount;
+use App\Models\CodingPlanUsageLog;
 use App\Models\Log;
 use App\Models\Token;
 use App\Models\User;
@@ -260,6 +262,84 @@ class AdminController extends Controller
      * Returns grouped monitor statuses from Uptime Kuma integration.
      * When not configured, returns an empty list.
      */
+    /**
+     * Coding Plan 池可观测（P9-4）
+     *
+     * 消费 P9-2 落库的 coding_plan_usage_logs.meta.route（落选候选与成本明细）
+     * 与 P9-3 的账号/渠道 cooldown_until，提供：
+     *  ① 账号池概览（按 vendor 聚合：可用/冷却中/耗尽/停用）
+     *  ② 冷却倒计时（账号级 + 渠道级，秒级实时）
+     *  ③ 近 7 天跨源 failover 统计（落选原因分布、承接 vendor 分布、明细含候选成本）
+     */
+    public function codingPlan()
+    {
+        $now = time();
+        $since = $now - 7 * 86400;
+
+        // ① 账号池概览（按 vendor 聚合）
+        $poolOverview = CodingPlanAccount::query()
+            ->selectRaw('vendor, count(*) as total')
+            ->selectRaw('sum(case when status = 2 then 1 else 0 end) as exhausted')
+            ->selectRaw('sum(case when status = 0 then 1 else 0 end) as disabled')
+            ->selectRaw('sum(case when cooldown_until is not null and cooldown_until > ? then 1 else 0 end) as cooling', [$now])
+            ->selectRaw('sum(case when status = 1 and (cooldown_until is null or cooldown_until <= ?) then 1 else 0 end) as available', [$now])
+            ->groupBy('vendor')
+            ->orderBy('vendor')
+            ->get();
+
+        // ② 冷却倒计时（账号级 + 渠道级）
+        $coolingAccounts = CodingPlanAccount::query()
+            ->where('cooldown_until', '>', $now)
+            ->orderBy('cooldown_until')
+            ->get(['id', 'vendor', 'account_name', 'cooldown_until', 'status']);
+        $coolingChannels = Channel::query()
+            ->where('cooldown_until', '>', $now)
+            ->orderBy('cooldown_until')
+            ->get(['id', 'name', 'cooldown_until']);
+
+        // ③ 近 7 天路由决策统计（仅 meta.route 非空的流水）
+        $routeStats = [
+            'failover_count' => 0,
+            'by_reason' => [],
+            'by_final_vendor' => [],
+            'recent' => [],
+        ];
+
+        $routeLogs = CodingPlanUsageLog::query()
+            ->where('created_at', '>=', $since)
+            ->whereNotNull('meta')
+            ->orderByDesc('created_at')
+            ->limit(500)
+            ->get()
+            ->filter(fn ($log) => is_array($log->meta) && isset($log->meta['route']));
+
+        foreach ($routeLogs as $log) {
+            $route = $log->meta['route'];
+            $routeStats['failover_count']++;
+
+            $finalVendor = (string) ($log->vendor ?? 'unknown');
+            $routeStats['by_final_vendor'][$finalVendor] = ($routeStats['by_final_vendor'][$finalVendor] ?? 0) + 1;
+
+            foreach ((array) ($route['attempted'] ?? []) as $att) {
+                $reason = (string) ($att['reason'] ?? 'unknown');
+                $routeStats['by_reason'][$reason] = ($routeStats['by_reason'][$reason] ?? 0) + 1;
+            }
+
+            $routeStats['recent'][] = [
+                'time' => (int) $log->created_at,
+                'model' => (string) ($log->model ?? '-'),
+                'vendor' => $finalVendor,
+                'strategy' => (string) ($route['strategy'] ?? '-'),
+                'failed_channel_id' => (int) ($route['failed_channel_id'] ?? 0),
+                'final_channel_id' => (int) ($route['final_channel_id'] ?? 0),
+                'attempted' => array_values((array) ($route['attempted'] ?? [])),
+            ];
+        }
+        $routeStats['recent'] = array_slice($routeStats['recent'], 0, 20);
+
+        return view('admin.coding-plan', compact('poolOverview', 'coolingAccounts', 'coolingChannels', 'routeStats'));
+    }
+
     public function uptimeStatus(): JsonResponse
     {
         $enabled = OptionService::get('console_setting.uptime_kuma_enabled', false);

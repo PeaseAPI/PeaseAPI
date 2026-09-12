@@ -80,6 +80,9 @@
                 <a href="{{ route('admin.abilities') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('admin.abilities') ? 'active' : '' }}">
                     <i class="fas fa-cubes w-5 mr-3"></i>能力管理
                 </a>
+                <a href="{{ route('admin.coding-plan') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('admin.coding-plan') ? 'active' : '' }}">
+                    <i class="fas fa-robot w-5 mr-3"></i>Coding Plan 池
+                </a>
                 <a href="{{ route('admin.logs') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('admin.logs') ? 'active' : '' }}">
                     <i class="fas fa-file-alt w-5 mr-3"></i>全局日志
                 </a>

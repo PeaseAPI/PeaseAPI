@@ -164,6 +164,7 @@ Route::middleware('auth')->group(function () {
             return redirect()->route('admin.system-settings');
         })->name('admin.options');
         Route::get('/system-settings', [AdminController::class, 'systemSettings'])->name('admin.system-settings');
+        Route::get('/coding-plan', [AdminController::class, 'codingPlan'])->name('admin.coding-plan');
         Route::get('/system-info', [SystemInfoController::class, 'index'])->name('admin.system-info');
         Route::post('/system-instances/cleanup', [SystemInfoController::class, 'cleanup'])->name('admin.system-instances.cleanup');
         Route::delete('/system-instances/{node_name}', [SystemInfoController::class, 'destroy'])->name('admin.system-instances.delete');

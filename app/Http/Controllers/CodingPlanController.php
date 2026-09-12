@@ -897,6 +897,8 @@ class CodingPlanController extends Controller
             ]
         );
         CurrencyExchangeService::flushMemo();
+        // 折算价进介绍页 offers 聚合（tier.price_cny），汇率变化须即时失效
+        Cache::forget('coding_plan_offers');
 
         return $this->success($rate, '汇率已保存');
     }
@@ -913,6 +915,7 @@ class CodingPlanController extends Controller
             return $this->error('汇率不存在', 404);
         }
         CurrencyExchangeService::flushMemo();
+        Cache::forget('coding_plan_offers');
 
         return $this->success(null, '汇率已删除（该币种将按回落规则取值）');
     }
@@ -1167,6 +1170,43 @@ class CodingPlanController extends Controller
         $offers = Cache::remember('coding_plan_offers', 300, fn () => $this->ratioService->publicOffers());
 
         return $this->success($offers);
+    }
+
+    /**
+     * 公开活动列表（P2-4，介绍页倒计时徽标数据源）。
+     * GET /coding_plan/public_promotions
+     * 口径：status=1 且未过期（scheduled 预告 + ongoing 进行中均展示，expired 剔除）；
+     * 内部字段（status/remind_days/remark）不外露。与管理端 GET /coding_plan/promotions
+     * 同 URI 会互相覆盖路由，故公开端点独立命名 public_promotions。
+     */
+    public function publicPromotions(): JsonResponse
+    {
+        $now = time();
+        $promotions = CodingPlanPromotion::query()
+            ->enabled()
+            ->orderBy('vendor')
+            ->orderBy('sort')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (CodingPlanPromotion $row) => $row->displayState($now) !== 'expired')
+            ->map(fn (CodingPlanPromotion $row) => [
+                'id' => $row->id,
+                'vendor' => $row->vendor,
+                'kind' => $row->kind,
+                'title' => $row->title,
+                'description' => $row->description,
+                'discount' => $row->discount,
+                'starts_at' => $row->starts_at,
+                'ends_at' => $row->ends_at,
+                'source_url' => $row->source_url,
+                'state' => $row->displayState($now),
+                'remaining_seconds' => $row->remainingSeconds($now),
+                'sort' => $row->sort,
+            ])
+            ->values()
+            ->all();
+
+        return $this->success(['promotions' => $promotions, 'now' => $now]);
     }
 
     /**

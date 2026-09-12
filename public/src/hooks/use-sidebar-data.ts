@@ -159,7 +159,7 @@ export function useSidebarData(): SidebarData {
           },
           {
             title: t('Coding Plan'),
-            url: '/coding-plan',
+            url: '/coding-plan-manage',
             icon: Code2,
           },
           {

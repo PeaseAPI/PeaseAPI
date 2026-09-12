@@ -76,6 +76,9 @@ Route::get('/coding_plan/offers', [CodingPlanController::class, 'publicOffers'])
 // Built-in pricing source JSON (CodingPlanCatalog ratios) for vendor pricing_source_url
 Route::get('/coding_plan/pricing_source/{code}', [CodingPlanController::class, 'pricingSource']);
 
+// Public promotions for introduce page countdown badges (status=1, not expired; P2-4)
+Route::get('/coding_plan/public_promotions', [CodingPlanController::class, 'publicPromotions']);
+
 // Public Subscription Plans
 Route::get('/subscription/plans', [SubscriptionController::class, 'plans']);
 

@@ -29,6 +29,7 @@ import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as AuthenticatedChat2linkRouteImport } from './routes/_authenticated/chat2link'
 import { Route as AuthenticatedSystemSettingsRouteRouteImport } from './routes/_authenticated/system-settings/route'
 import { Route as AboutIndexRouteImport } from './routes/about/index'
+import { Route as CodingPlanIndexRouteImport } from './routes/coding-plan/index'
 import { Route as OauthProviderRouteImport } from './routes/oauth/$provider'
 import { Route as PricingIndexRouteImport } from './routes/pricing/index'
 import { Route as RankingsIndexRouteImport } from './routes/rankings/index'
@@ -38,7 +39,7 @@ import { Route as AuthenticatedApiInfoIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedApiInfoNewsKeysRouteImport } from './routes/_authenticated/api-info/news-keys'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
 import { Route as AuthenticatedChatChatIdRouteImport } from './routes/_authenticated/chat/$chatId'
-import { Route as AuthenticatedCodingPlanIndexRouteImport } from './routes/_authenticated/coding-plan/index'
+import { Route as AuthenticatedCodingPlanManageIndexRouteImport } from './routes/_authenticated/coding-plan-manage/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedDashboardSectionRouteImport } from './routes/_authenticated/dashboard/$section'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
@@ -170,6 +171,11 @@ const AboutIndexRoute = AboutIndexRouteImport.update({
   path: '/about/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CodingPlanIndexRoute = CodingPlanIndexRouteImport.update({
+  id: '/coding-plan/',
+  path: '/coding-plan/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OauthProviderRoute = OauthProviderRouteImport.update({
   id: '/oauth/$provider',
   path: '/oauth/$provider',
@@ -218,10 +224,10 @@ const AuthenticatedChatChatIdRoute = AuthenticatedChatChatIdRouteImport.update({
   path: '/chat/$chatId',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedCodingPlanIndexRoute =
-  AuthenticatedCodingPlanIndexRouteImport.update({
-    id: '/coding-plan/',
-    path: '/coding-plan/',
+const AuthenticatedCodingPlanManageIndexRoute =
+  AuthenticatedCodingPlanManageIndexRouteImport.update({
+    id: '/coding-plan-manage/',
+    path: '/coding-plan-manage/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedDashboardIndexRoute =
@@ -428,6 +434,7 @@ export interface FileRoutesByFullPath {
   '/chat2link': typeof AuthenticatedChat2linkRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
+  '/coding-plan/': typeof CodingPlanIndexRoute
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
   '/setup/': typeof SetupIndexRoute
@@ -440,7 +447,7 @@ export interface FileRoutesByFullPath {
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/api-info/': typeof AuthenticatedApiInfoIndexRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
-  '/coding-plan/': typeof AuthenticatedCodingPlanIndexRoute
+  '/coding-plan-manage/': typeof AuthenticatedCodingPlanManageIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/keys/': typeof AuthenticatedKeysIndexRoute
   '/models/': typeof AuthenticatedModelsIndexRoute
@@ -488,6 +495,7 @@ export interface FileRoutesByTo {
   '/chat2link': typeof AuthenticatedChat2linkRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about': typeof AboutIndexRoute
+  '/coding-plan': typeof CodingPlanIndexRoute
   '/pricing': typeof PricingIndexRoute
   '/rankings': typeof RankingsIndexRoute
   '/setup': typeof SetupIndexRoute
@@ -500,7 +508,7 @@ export interface FileRoutesByTo {
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/api-info': typeof AuthenticatedApiInfoIndexRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
-  '/coding-plan': typeof AuthenticatedCodingPlanIndexRoute
+  '/coding-plan-manage': typeof AuthenticatedCodingPlanManageIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/keys': typeof AuthenticatedKeysIndexRoute
   '/models': typeof AuthenticatedModelsIndexRoute
@@ -552,6 +560,7 @@ export interface FileRoutesById {
   '/_authenticated/chat2link': typeof AuthenticatedChat2linkRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
+  '/coding-plan/': typeof CodingPlanIndexRoute
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
   '/setup/': typeof SetupIndexRoute
@@ -564,7 +573,7 @@ export interface FileRoutesById {
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/_authenticated/api-info/': typeof AuthenticatedApiInfoIndexRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
-  '/_authenticated/coding-plan/': typeof AuthenticatedCodingPlanIndexRoute
+  '/_authenticated/coding-plan-manage/': typeof AuthenticatedCodingPlanManageIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/keys/': typeof AuthenticatedKeysIndexRoute
   '/_authenticated/models/': typeof AuthenticatedModelsIndexRoute
@@ -615,6 +624,7 @@ export interface FileRouteTypes {
     | '/chat2link'
     | '/oauth/$provider'
     | '/about/'
+    | '/coding-plan/'
     | '/pricing/'
     | '/rankings/'
     | '/setup/'
@@ -627,7 +637,7 @@ export interface FileRouteTypes {
     | '/usage-logs/$section'
     | '/api-info/'
     | '/channels/'
-    | '/coding-plan/'
+    | '/coding-plan-manage/'
     | '/dashboard/'
     | '/keys/'
     | '/models/'
@@ -675,6 +685,7 @@ export interface FileRouteTypes {
     | '/chat2link'
     | '/oauth/$provider'
     | '/about'
+    | '/coding-plan'
     | '/pricing'
     | '/rankings'
     | '/setup'
@@ -687,7 +698,7 @@ export interface FileRouteTypes {
     | '/usage-logs/$section'
     | '/api-info'
     | '/channels'
-    | '/coding-plan'
+    | '/coding-plan-manage'
     | '/dashboard'
     | '/keys'
     | '/models'
@@ -738,6 +749,7 @@ export interface FileRouteTypes {
     | '/_authenticated/chat2link'
     | '/oauth/$provider'
     | '/about/'
+    | '/coding-plan/'
     | '/pricing/'
     | '/rankings/'
     | '/setup/'
@@ -750,7 +762,7 @@ export interface FileRouteTypes {
     | '/_authenticated/usage-logs/$section'
     | '/_authenticated/api-info/'
     | '/_authenticated/channels/'
-    | '/_authenticated/coding-plan/'
+    | '/_authenticated/coding-plan-manage/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/keys/'
     | '/_authenticated/models/'
@@ -793,6 +805,7 @@ export interface RootRouteChildren {
   errors503Route: typeof errors503Route
   OauthProviderRoute: typeof OauthProviderRoute
   AboutIndexRoute: typeof AboutIndexRoute
+  CodingPlanIndexRoute: typeof CodingPlanIndexRoute
   PricingIndexRoute: typeof PricingIndexRoute
   RankingsIndexRoute: typeof RankingsIndexRoute
   SetupIndexRoute: typeof SetupIndexRoute
@@ -941,6 +954,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/coding-plan/': {
+      id: '/coding-plan/'
+      path: '/coding-plan'
+      fullPath: '/coding-plan/'
+      preLoaderRoute: typeof CodingPlanIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/oauth/$provider': {
       id: '/oauth/$provider'
       path: '/oauth/$provider'
@@ -1004,11 +1024,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatChatIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/coding-plan/': {
-      id: '/_authenticated/coding-plan/'
-      path: '/coding-plan'
-      fullPath: '/coding-plan/'
-      preLoaderRoute: typeof AuthenticatedCodingPlanIndexRouteImport
+    '/_authenticated/coding-plan-manage/': {
+      id: '/_authenticated/coding-plan-manage/'
+      path: '/coding-plan-manage'
+      fullPath: '/coding-plan-manage/'
+      preLoaderRoute: typeof AuthenticatedCodingPlanManageIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard/': {
@@ -1325,7 +1345,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
   AuthenticatedApiInfoIndexRoute: typeof AuthenticatedApiInfoIndexRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
-  AuthenticatedCodingPlanIndexRoute: typeof AuthenticatedCodingPlanIndexRoute
+  AuthenticatedCodingPlanManageIndexRoute: typeof AuthenticatedCodingPlanManageIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedKeysIndexRoute: typeof AuthenticatedKeysIndexRoute
   AuthenticatedModelsIndexRoute: typeof AuthenticatedModelsIndexRoute
@@ -1351,7 +1371,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedUsageLogsSectionRoute: AuthenticatedUsageLogsSectionRoute,
   AuthenticatedApiInfoIndexRoute: AuthenticatedApiInfoIndexRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
-  AuthenticatedCodingPlanIndexRoute: AuthenticatedCodingPlanIndexRoute,
+  AuthenticatedCodingPlanManageIndexRoute:
+    AuthenticatedCodingPlanManageIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedKeysIndexRoute: AuthenticatedKeysIndexRoute,
   AuthenticatedModelsIndexRoute: AuthenticatedModelsIndexRoute,
@@ -1382,6 +1403,7 @@ const rootRouteChildren: RootRouteChildren = {
   errors503Route: errors503Route,
   OauthProviderRoute: OauthProviderRoute,
   AboutIndexRoute: AboutIndexRoute,
+  CodingPlanIndexRoute: CodingPlanIndexRoute,
   PricingIndexRoute: PricingIndexRoute,
   RankingsIndexRoute: RankingsIndexRoute,
   SetupIndexRoute: SetupIndexRoute,

@@ -148,9 +148,9 @@ class CodingPlanRatioService
      *
      * @param  int  $submits  本次请求消耗的提交次数（来自套餐 coding_submits_per_request）
      * @return array{units: float, credits: float, ratio: ?CodingPlanModelRatio, time_window: array|null}
-     *                                                                           units:   供应商原生单位消耗（已含时段折扣）
-     *                                                                           credits: 折算后的平台积分
-     *                                                                           time_window: 命中的时段折扣窗口（null=原价）
+     *                                                                                                    units:   供应商原生单位消耗（已含时段折扣）
+     *                                                                                                    credits: 折算后的平台积分
+     *                                                                                                    time_window: 命中的时段折扣窗口（null=原价）
      */
     public function calcUsage(
         CodingPlanAccount $account,
@@ -298,40 +298,57 @@ class CodingPlanRatioService
             'updated_at' => (int) $r->updated_at,
         ])->values()->all();
 
-        // 官方套餐档位（仅公开展示 status=1），按 vendor_code 分组供卡片渲染
+        // 官方套餐档位（仅公开展示 status=1），按 vendor_code 分组供卡片渲染。
+        // 双列价：price=厂商官方原币价（币种继承 vendors.currency），price_cny=按当前汇率折算
+        // 人民币价（不可折算 → null，前端不展示折算列）。
         $tiers = CodingPlanVendorTier::query()
             ->where('status', 1)
             ->orderBy('sort')
             ->orderBy('id')
             ->get()
             ->groupBy('vendor_code');
-        $formatTiers = fn (Collection $items) => $items->map(fn (CodingPlanVendorTier $t) => [
-            'name' => $t->name,
-            'price' => $t->price,
-            'price_note' => $t->price_note,
-            'period' => $t->period,
-            'quota' => $t->quota,
-            'quota_unit' => $t->quota_unit,
-            'quota_note' => $t->quota_note,
-        ])->values()->all();
+        $formatTiers = fn (Collection $items, string $currency) => $items->map(function (CodingPlanVendorTier $t) use ($currency) {
+            $price = $t->price;
 
-        $cards = $vendors->map(fn (CodingPlanVendor $vendor) => [
-            'code' => $vendor->code,
-            'name' => $vendor->name,
-            'logo' => $vendor->logo,
-            'billing_mode' => (int) $vendor->billing_mode,
-            // 产品类型：1=订阅制 Coding Plan / 2=按量 Token Plan（介绍页分组用）
-            'plan_kind' => (int) $vendor->plan_kind,
-            'unit_name' => $vendor->unit_name,
-            'unit_exchange_rate' => (float) $vendor->unit_exchange_rate,
-            'docs_url' => $vendor->docs_url,
-            'last_checked_at' => $checks->get($vendor->code)?->checked_at,
-            'source_status' => $checks->get($vendor->code)?->source_status ?? CodingPlanRatioCheck::SOURCE_NONE,
-            'stale_count' => (int) ($checks->get($vendor->code)?->stale_count ?? 0),
-            'change_count' => (int) ($checks->get($vendor->code)?->change_count ?? 0),
-            'ratios' => $formatRatios($ratios->get($vendor->code, collect())),
-            'tiers' => $formatTiers($tiers->get($vendor->code, collect())),
-        ])->values();
+            return [
+                'name' => $t->name,
+                'price' => $price,
+                'currency' => $currency,
+                'price_cny' => $price === null
+                    ? null
+                    : CurrencyExchangeService::convert((float) $price, $currency, 'CNY'),
+                'price_note' => $t->price_note,
+                'period' => $t->period,
+                'quota' => $t->quota,
+                'quota_unit' => $t->quota_unit,
+                'quota_note' => $t->quota_note,
+            ];
+        })->values()->all();
+
+        $cards = $vendors->map(function (CodingPlanVendor $vendor) use ($checks, $formatRatios, $formatTiers, $ratios, $tiers) {
+            // 官方计价币种（行缺失/字段空按基准 CNY，与计费侧口径一致）
+            $currency = CurrencyExchangeService::vendorOfficialCurrency($vendor->code);
+
+            return [
+                'code' => $vendor->code,
+                'name' => $vendor->name,
+                'logo' => $vendor->logo,
+                'billing_mode' => (int) $vendor->billing_mode,
+                // 产品类型：1=订阅制 Coding Plan / 2=按量 Token Plan（介绍页分组用）
+                'plan_kind' => (int) $vendor->plan_kind,
+                'unit_name' => $vendor->unit_name,
+                'unit_exchange_rate' => (float) $vendor->unit_exchange_rate,
+                // 官方计价币种（tier 原币价展示 + 折算 CNY 双列）
+                'currency' => $currency,
+                'docs_url' => $vendor->docs_url,
+                'last_checked_at' => $checks->get($vendor->code)?->checked_at,
+                'source_status' => $checks->get($vendor->code)?->source_status ?? CodingPlanRatioCheck::SOURCE_NONE,
+                'stale_count' => (int) ($checks->get($vendor->code)?->stale_count ?? 0),
+                'change_count' => (int) ($checks->get($vendor->code)?->change_count ?? 0),
+                'ratios' => $formatRatios($ratios->get($vendor->code, collect())),
+                'tiers' => $formatTiers($tiers->get($vendor->code, collect()), $currency),
+            ];
+        })->values();
 
         // 比率表中存在、但未建供应商行的孤儿厂商 → 合成卡片，避免介绍页漏报
         $known = $vendors->pluck('code')->all();
@@ -347,6 +364,7 @@ class CodingPlanRatioService
                 'plan_kind' => CodingPlanVendor::PLAN_KIND_CODING,
                 'unit_name' => '',
                 'unit_exchange_rate' => 1.0,
+                'currency' => 'CNY',
                 'docs_url' => null,
                 'last_checked_at' => $checks->get($code)?->checked_at,
                 'source_status' => $checks->get($code)?->source_status ?? CodingPlanRatioCheck::SOURCE_NONE,

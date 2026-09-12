@@ -22,7 +22,7 @@ import { CodingPlan } from '@/features/coding-plan'
 import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
-export const Route = createFileRoute('/_authenticated/coding-plan/')({
+export const Route = createFileRoute('/_authenticated/coding-plan-manage/')({
   beforeLoad: () => {
     const { auth } = useAuthStore.getState()
     if (!auth.user || auth.user.role < ROLE.ADMIN) {

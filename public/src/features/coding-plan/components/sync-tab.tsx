@@ -46,11 +46,14 @@ import type {
   CodingPlanCheckItem,
   CodingPlanPendingChange,
 } from '../types'
+import { t } from 'i18next'
+import { useTranslation } from 'react-i18next'
 
 /** 待确认变更的应用动作（missing=下架走 status=0，changed=改系数，new=按源新增停用行） */
 type ApplyKind = 'new' | 'changed' | 'missing'
 
 export function SyncTab() {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const [busy, setBusy] = useState<string | null>(null)
 
@@ -87,11 +90,11 @@ export function SyncTab() {
         (r) => r.vendor === vendor && r.model === item.model && r.match_type === matchType
       )
       if (kind === 'missing') {
-        if (!existing) throw new Error(`找不到现有比率行：${item.model}`)
+        if (!existing) throw new Error(t('No existing ratio row: {{model}}', { model: item.model }))
         return updateRatio(existing.id, { status: 0 })
       }
       if (kind === 'changed') {
-        if (!existing) throw new Error(`找不到现有比率行：${item.model}`)
+        if (!existing) throw new Error(t('No existing ratio row: {{model}}', { model: item.model }))
         const payload: Record<string, unknown> = item.split_rates
           ? {
               input_rate: item.to_parts?.[0],
@@ -117,29 +120,29 @@ export function SyncTab() {
     onSuccess: (_res, vars) => {
       toast.success(
         vars.kind === 'missing'
-          ? `${vars.item.model} 已停用（老模型下架）`
-          : `${vars.item.model} 已${vars.kind === 'new' ? '添加（停用态）' : '按源更新'}`
+          ? t('{{model}} disabled (old model delisted)', { model: vars.item.model })
+          : t('{{model}} {{action}}', { model: vars.item.model, action: vars.kind === 'new' ? t('added (disabled)') : t('updated from source') })
       )
       invalidateAll()
     },
-    onError: (err: Error) => toast.error(err.message || '应用失败'),
+    onError: (err: Error) => toast.error(err.message || t('Failed to apply')),
   })
 
   const ignoreMutation = useMutation({
     mutationFn: ({ vendor, key, undo }: { vendor: string; key: string; undo?: boolean }) =>
       ignoreCheckChange(vendor, key, undo),
-    onSuccess: (res) => toast.success(res.message || '已更新忽略清单'),
-    onError: () => toast.error('操作失败'),
+    onSuccess: (res) => toast.success(res.message || t('Ignore list updated')),
+    onError: () => toast.error(t('Operation failed')),
   })
 
   const catalogMutation = useMutation({
     mutationFn: ({ code, activate }: { code: string; activate?: boolean }) =>
       applyCatalogTemplate(code, { activate_vendor: activate }),
     onSuccess: (res) => {
-      toast.success(res.message || '模板已应用')
+      toast.success(res.message || t('Template applied'))
       invalidateAll()
     },
-    onError: () => toast.error('模板应用失败'),
+    onError: () => toast.error(t('Failed to apply template')),
   })
 
   const run = (id: string, fn: () => void) => {
@@ -176,9 +179,9 @@ export function SyncTab() {
 }
 
 const KIND_LABEL: Record<string, string> = {
-  new: '新增模型',
-  changed: '抵扣变化',
-  missing: '模型下架',
+  new: 'New models',
+  changed: 'Ratio changes',
+  missing: 'Model removals',
 }
 
 function fmt(n: number | undefined | null): string {
@@ -219,18 +222,18 @@ function renderSyncTab(props: SyncTabViewProps) {
     <div className='flex flex-col gap-4'>
       <Alert>
         <CheckCircle2 className='h-4 w-4' />
-        <AlertTitle>官方同步工作流</AlertTitle>
+        <AlertTitle>{t('Official sync workflow')}</AlertTitle>
         <AlertDescription className='text-muted-foreground text-sm'>
-          ① 从下方模板一键添加厂商（档位+折算标准全部停用态预置）→ ② 设置汇率并启用比率 →
-          ③ 定时任务每 6 小时比对定价源，发现「新增模型 / 抵扣变化 / 模型下架」生成待确认清单 →
-          ④ 逐条「应用」或「忽略」。应用后 diff 自动消失，无需额外确认动作。
+          {t('① Add a vendor from a template below (tiers + ratios all preset as disabled) → ② set exchange rates and enable ratios →')}
+          {t('③ the scheduled task compares pricing sources every 6 hours and queues "new models / ratio changes / model removals" for confirmation →')}
+          {t('④ apply or ignore each entry. After applying, the diff disappears automatically — no extra confirmation needed.')}
         </AlertDescription>
       </Alert>
 
       {items.length === 0 ? (
         <Card>
           <CardContent className='text-muted-foreground py-8 text-center text-sm'>
-            暂无校对记录 —— 配置供应商 pricing_source_url 后，定时校对（每 6 小时）会在此生成待确认变更。
+            {t('No check records yet — configure a vendor pricing_source_url and scheduled checks (every 6 hours) will generate pending changes here.')}
           </CardContent>
         </Card>
       ) : (
@@ -249,56 +252,56 @@ function renderSyncTab(props: SyncTabViewProps) {
       <Card>
         <CardHeader>
           <CardTitle className='flex items-center gap-2'>
-            <Download className='h-4 w-4' /> 官方模板目录
+            <Download className='h-4 w-4' /> {t('Official template catalog')}
           </CardTitle>
           <CardDescription>
-            内置各厂商官方套餐档位与折算标准（随版本维护）。应用 = 幂等落地：新建厂商（停用态）、
-            预置档位与折算标准；仅覆盖官方预置行，绝不自动启用、不影响你改过的数据。
+            {t('Built-in official tiers and conversion standards per vendor (maintained with releases). Apply = idempotent: creates the vendor (disabled),')}
+            {t('presets tiers and ratios; only overwrites official preset rows — never auto-enables or touches your edits.')}
           </CardDescription>
         </CardHeader>
         <CardContent className='grid gap-3 md:grid-cols-2'>
-          {templates.map((t) => (
-            <div key={t.code} className='flex flex-col gap-2 rounded-lg border p-3'>
+          {templates.map((tpl) => (
+            <div key={tpl.code} className='flex flex-col gap-2 rounded-lg border p-3'>
               <div className='flex items-center justify-between gap-2'>
-                <div className='font-medium'>{t.name}</div>
-                <Badge variant={t.vendor_exists ? 'secondary' : 'outline'}>
-                  {t.vendor_exists ? '已存在' : '未添加'}
+                <div className='font-medium'>{tpl.name}</div>
+                <Badge variant={tpl.vendor_exists ? 'secondary' : 'outline'}>
+                  {tpl.vendor_exists ? t('Exists') : t('Not added')}
                 </Badge>
               </div>
               <div className='text-muted-foreground text-xs'>
-                单位：{t.unit_name} ｜ 档位 {t.tier_count} 条（库内 {t.db_tier_count}）｜ 折算标准{' '}
-                {t.ratio_count} 条（库内 {t.db_ratio_count}）｜
-                {t.verified_at ? ` 模板核对 ${t.verified_at}` : ' 待人工核对'}
+                {t('Unit: {{unit}} | Tiers {{tiers}} ({{dbTiers}} in DB) | Ratios', { unit: tpl.unit_name, tiers: tpl.tier_count, dbTiers: tpl.db_tier_count })}{' '}
+                {t('{{count}} ({{dbCount}} in DB) |', { count: tpl.ratio_count, dbCount: tpl.db_ratio_count })}
+                {tpl.verified_at ? t(' template checked {{time}}', { time: tpl.verified_at }) : t(' pending manual check')}
               </div>
-              {t.notes && (
-                <div className='text-muted-foreground text-xs leading-relaxed'>{t.notes}</div>
+              {tpl.notes && (
+                <div className='text-muted-foreground text-xs leading-relaxed'>{tpl.notes}</div>
               )}
-              {t.docs_url && (
+              {tpl.docs_url && (
                 <a
-                  href={t.docs_url}
+                  href={tpl.docs_url}
                   target='_blank'
                   rel='noreferrer'
                   className='text-xs text-blue-500 hover:underline'
                 >
-                  官方文档 ↗
+                  {t('Official docs ↗')}
                 </a>
               )}
               <div className='mt-1 flex gap-2'>
                 <Button
                   size='sm'
                   disabled={busy !== null}
-                  onClick={() => onApplyTemplate(t.code)}
+                  onClick={() => onApplyTemplate(tpl.code)}
                 >
-                  {t.vendor_exists ? '同步模板数据' : '从模板添加'}
+                  {tpl.vendor_exists ? t('Sync template data') : t('Add from template')}
                 </Button>
-                {!t.vendor_exists && (
+                {!tpl.vendor_exists && (
                   <Button
                     size='sm'
                     variant='outline'
                     disabled={busy !== null}
-                    onClick={() => onApplyTemplate(t.code, true)}
+                    onClick={() => onApplyTemplate(tpl.code, true)}
                   >
-                    添加并启用厂商
+                    {t('Add and enable vendor')}
                   </Button>
                 )}
               </div>
@@ -319,12 +322,13 @@ type CheckCardProps = {
 }
 
 const SOURCE_LABEL: Record<number, string> = {
-  0: '未配置定价源',
-  1: '源比对完成',
-  2: '源拉取失败',
+  0: t('Pricing source not configured'),
+  1: t('Source comparison completed'),
+  2: t('Source fetch failed'),
 }
 
 function CheckCard({ item, vendorName, busy, onApply, onIgnore }: CheckCardProps) {
+  const { t } = useTranslation()
   const groups: { kind: ApplyKind; rows: CodingPlanPendingChange[] }[] = (
     ['new', 'changed', 'missing'] as ApplyKind[]
   ).map((kind) => ({ kind, rows: item.changes?.[kind] ?? [] }))
@@ -335,35 +339,35 @@ function CheckCard({ item, vendorName, busy, onApply, onIgnore }: CheckCardProps
         <CardTitle className='flex flex-wrap items-center gap-2 text-base'>
           {vendorName}
           <Badge variant={item.source_status === 1 ? 'secondary' : 'outline'}>
-            {SOURCE_LABEL[item.source_status] ?? '未知'}
+            {t(SOURCE_LABEL[item.source_status] ?? 'Unknown')}
           </Badge>
           <Badge variant={item.change_count > 0 ? 'destructive' : 'secondary'}>
-            待确认 {item.change_count}
+            {t('{{count}} pending', { count: item.change_count })}
           </Badge>
           {item.stale_count > 0 && (
-            <Badge variant='outline'>待复核 {item.stale_count}</Badge>
+            <Badge variant='outline'>{t('{{count}} to re-check', { count: item.stale_count })}</Badge>
           )}
           <span className='text-muted-foreground ml-auto text-xs font-normal'>
-            核对时间：{item.checked_at > 0 ? new Date(item.checked_at * 1000).toLocaleString() : '-'}
+            {t('Checked at:')} {item.checked_at > 0 ? new Date(item.checked_at * 1000).toLocaleString() : '-'}
           </span>
         </CardTitle>
       </CardHeader>
       {item.change_count === 0 && (item.changes?.new?.length ?? 0) + (item.changes?.changed?.length ?? 0) + (item.changes?.missing?.length ?? 0) === 0 ? (
-        <CardContent className='text-muted-foreground text-sm'>与定价源一致，无待确认变更。</CardContent>
+        <CardContent className='text-muted-foreground text-sm'>{t('In sync with the pricing source; no pending changes.')}</CardContent>
       ) : (
         <CardContent className='flex flex-col gap-3'>
           {groups.map(({ kind, rows }) =>
             rows.length === 0 ? null : (
               <div key={kind} className='flex flex-col gap-1'>
-                <div className='text-xs font-semibold'>{KIND_LABEL[kind]}</div>
+                <div className='text-xs font-semibold'>{t(KIND_LABEL[kind])}</div>
                 {rows.map((change) => {
                   const detail = change.split_rates
-                    ? `三段系数 ${fmtParts(change.from_parts)} → ${fmtParts(change.to_parts)}`
+                    ? t('Split rates {{from}} → {{to}}', { from: fmtParts(change.from_parts), to: fmtParts(change.to_parts) })
                     : kind === 'changed'
-                      ? `单位成本 ${fmt(change.from)} → ${fmt(change.to)}`
+                      ? t('Unit cost {{from}} → {{to}}', { from: fmt(change.from), to: fmt(change.to) })
                       : kind === 'new'
-                        ? `新模型（${change.cost_mode ?? 'per_1k_tokens'}）`
-                        : '定价源中已消失（老模型下架）'
+                        ? t('New model ({{mode}})', { mode: change.cost_mode ?? 'per_1k_tokens' })
+                        : t('Removed from pricing source (old model delisted)')
                   return (
                     <div
                       key={change.key ?? `${kind}-${change.model}`}
@@ -371,7 +375,7 @@ function CheckCard({ item, vendorName, busy, onApply, onIgnore }: CheckCardProps
                     >
                       <span className='font-medium'>{change.model}</span>
                       <span className='text-muted-foreground'>{detail}</span>
-                      {change.ignored && <Badge variant='outline'>已忽略</Badge>}
+                      {change.ignored && <Badge variant='outline'>{t('Ignored')}</Badge>}
                       <span className='ml-auto flex gap-1'>
                         {!change.ignored && (
                           <>
@@ -382,7 +386,7 @@ function CheckCard({ item, vendorName, busy, onApply, onIgnore }: CheckCardProps
                                 disabled={busy !== null}
                                 onClick={() => onApply(item.vendor, kind, change)}
                               >
-                                {kind === 'missing' ? '下架（停用）' : '应用'}
+                                {kind === 'missing' ? t('Delist (disable)') : t('Apply')}
                               </Button>
                             )}
                             {kind === 'new' && (
@@ -392,7 +396,7 @@ function CheckCard({ item, vendorName, busy, onApply, onIgnore }: CheckCardProps
                                 disabled={busy !== null}
                                 onClick={() => onApply(item.vendor, kind, change)}
                               >
-                                添加（停用）
+                                {t('Add (disabled)')}
                               </Button>
                             )}
                             <Button
@@ -401,7 +405,7 @@ function CheckCard({ item, vendorName, busy, onApply, onIgnore }: CheckCardProps
                               disabled={busy !== null}
                               onClick={() => onIgnore(item.vendor, change, false)}
                             >
-                              忽略
+                              {t('Ignore')}
                             </Button>
                           </>
                         )}
@@ -412,7 +416,7 @@ function CheckCard({ item, vendorName, busy, onApply, onIgnore }: CheckCardProps
                             disabled={busy !== null}
                             onClick={() => onIgnore(item.vendor, change, true)}
                           >
-                            恢复提醒
+                            {t('Resume reminders')}
                           </Button>
                         )}
                       </span>

@@ -62,6 +62,7 @@ import {
   PROMOTION_STATES,
   type CodingPlanPromotion,
 } from '../types'
+import { useTranslation } from 'react-i18next'
 
 type PromotionForm = {
   vendor: string
@@ -106,6 +107,7 @@ function fromUnix(value?: number | null): string {
   return dayjs.unix(Number(value)).format('YYYY-MM-DDTHH:mm')
 }
 export function PromotionsTab() {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<CodingPlanPromotion | null>(null)
@@ -142,11 +144,11 @@ export function PromotionsTab() {
     },
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '活动已保存')
+        toast.success(res.message ?? t('Promotion saved'))
         setOpen(false)
         qc.invalidateQueries({ queryKey: ['coding-plan-promotions'] })
       } else {
-        toast.error(res.message ?? '保存失败')
+        toast.error(res.message ?? t('Failed to save'))
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -156,10 +158,10 @@ export function PromotionsTab() {
     mutationFn: (id: number) => destroyPromotion(id),
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '已删除')
+        toast.success(res.message ?? t('Deleted'))
         qc.invalidateQueries({ queryKey: ['coding-plan-promotions'] })
       } else {
-        toast.error(res.message ?? '删除失败')
+        toast.error(res.message ?? t('Failed to delete'))
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -177,9 +179,9 @@ export function PromotionsTab() {
     setForm((prev) => ({ ...prev, [key]: value }))
 
   const stateBadge = (state?: string) => {
-    if (state === 'ongoing') return <Badge>进行中</Badge>
-    if (state === 'scheduled') return <Badge variant='outline'>未开始</Badge>
-    if (state === 'expired') return <Badge variant='destructive'>已结束</Badge>
+    if (state === 'ongoing') return <Badge>{t('Ongoing')}</Badge>
+    if (state === 'scheduled') return <Badge variant='outline'>{t('Not started')}</Badge>
+    if (state === 'expired') return <Badge variant='destructive'>{t('Ended')}</Badge>
     return (
       <Badge variant='outline'>
         {PROMOTION_STATES.find((s) => s.value === state)?.label ?? '-'}
@@ -189,22 +191,22 @@ export function PromotionsTab() {
 
   const countdown = (p: CodingPlanPromotion) => {
     if (p.remaining_seconds === null || p.remaining_seconds === undefined)
-      return '长期 / 未公布'
+      return t('Long-term / not announced')
     const days = Math.floor(Number(p.remaining_seconds) / 86400)
     const hours = Math.floor((Number(p.remaining_seconds) % 86400) / 3600)
-    return days > 0 ? `剩 ${days} 天 ${hours} 小时` : `剩 ${hours} 小时`
+    return days > 0 ? t('{{days}} days {{hours}} hours left', { days, hours }) : t('{{hours}} hours left', { hours })
   }
 
   return (
     <div className='flex flex-col gap-3'>
       <div className='flex flex-wrap items-center justify-between gap-2'>
         <p className='text-muted-foreground text-sm'>
-          官方厂商活动（限时价 / 时段折扣 /
-          模型退市）。每日 09:00 自动提醒 remind_days
-          内到期的活动（站内公告 + 订阅用户邮件），到期后自动标记已结束。
+          {t('Official vendor promotions (limited-time prices / time-window discounts /')}
+          {t('model retirements). Every day at 09:00 the system reminds about promotions expiring within remind_days')}
+          {t('days (site notice + subscriber email) and marks them ended automatically.')}
         </p>
         <div className='flex items-center gap-2'>
-          <span className='text-muted-foreground text-xs'>含停用/过期</span>
+          <span className='text-muted-foreground text-xs'>{t('Include disabled/expired')}</span>
           <Switch checked={showAll} onCheckedChange={setShowAll} />
           <Button
             size='sm'
@@ -214,7 +216,7 @@ export function PromotionsTab() {
               setOpen(true)
             }}
           >
-            <Plus className='mr-1 size-4' /> 新增活动
+            <Plus className='mr-1 size-4' /> {t('Add promotion')}
           </Button>
         </div>
       </div>
@@ -223,23 +225,23 @@ export function PromotionsTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>厂商</TableHead>
-              <TableHead>类型</TableHead>
-              <TableHead>标题</TableHead>
-              <TableHead>折扣</TableHead>
-              <TableHead>截止</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>倒计时</TableHead>
-              <TableHead>提醒</TableHead>
-              <TableHead>启停</TableHead>
-              <TableHead className='text-right'>操作</TableHead>
+              <TableHead>{t('Vendor')}</TableHead>
+              <TableHead>{t('Type')}</TableHead>
+              <TableHead>{t('Title')}</TableHead>
+              <TableHead>{t('Discount')}</TableHead>
+              <TableHead>{t('Deadline')}</TableHead>
+              <TableHead>{t('Status')}</TableHead>
+              <TableHead>{t('Countdown')}</TableHead>
+              <TableHead>{t('Reminder')}</TableHead>
+              <TableHead>{t('On/Off')}</TableHead>
+              <TableHead className='text-right'>{t('Actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {promotionsQuery.isLoading ? (
               <TableRow>
                 <TableCell colSpan={10} className='py-8 text-center'>
-                  加载中…
+                  {t('Loading…')}
                 </TableCell>
               </TableRow>
             ) : promotions.length === 0 ? (
@@ -248,7 +250,7 @@ export function PromotionsTab() {
                   colSpan={10}
                   className='text-muted-foreground py-8 text-center'
                 >
-                  暂无活动；迁移 000015 已预置已知厂商活动，可「编辑」调整
+                  {t('No promotions yet; migration 000015 has preset known vendor promotions, click "Edit" to adjust')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -268,26 +270,26 @@ export function PromotionsTab() {
                   </TableCell>
                   <TableCell>
                     {p.discount !== null && p.discount !== undefined
-                      ? `${Number(p.discount) * 10} 折`
+                      ? t('{{value}}% off', { value: Math.round(Number(p.discount) * 1000) / 10 })
                       : '-'}
                   </TableCell>
                   <TableCell className='text-xs'>
                     {p.ends_at
                       ? dayjs.unix(Number(p.ends_at)).format('MM-DD HH:mm')
-                      : '未公布'}
+                      : t('Not announced')}
                   </TableCell>
                   <TableCell>{stateBadge(p.state)}</TableCell>
                   <TableCell className='text-muted-foreground text-xs'>
                     {countdown(p)}
                   </TableCell>
                   <TableCell className='text-muted-foreground text-xs'>
-                    {p.remind_days} 天
+                    {t('{{days}} days', { days: p.remind_days })}
                   </TableCell>
                   <TableCell>
                     {Number(p.status) === 1 ? (
-                      <Badge>启用</Badge>
+                      <Badge>{t('Enabled')}</Badge>
                     ) : (
-                      <Badge variant='destructive'>停用</Badge>
+                      <Badge variant='destructive'>{t('Disabled')}</Badge>
                     )}
                   </TableCell>
                   <TableCell className='text-right'>
@@ -317,13 +319,13 @@ export function PromotionsTab() {
                           setOpen(true)
                         }}
                       >
-                        编辑
+                        {t('Edit')}
                       </Button>
                       <Button
                         variant='ghost'
                         size='sm'
                         onClick={() => {
-                          if (window.confirm(`确认删除活动「${p.title}」？`)) {
+                          if (window.confirm(t('Delete promotion "{{title}}"?', { title: p.title }))) {
                             deleteMutation.mutate(p.id)
                           }
                         }}
@@ -342,12 +344,12 @@ export function PromotionsTab() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className='sm:max-w-lg'>
           <DialogHeader>
-            <DialogTitle>{editing ? '编辑活动' : '新增活动'}</DialogTitle>
+            <DialogTitle>{editing ? t('Edit promotion') : t('Add promotion')}</DialogTitle>
           </DialogHeader>
           <div className='grid gap-3'>
             <div className='grid grid-cols-2 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>厂商代码</Label>
+                <Label>{t('Vendor code')}</Label>
                 <Input
                   value={form.vendor}
                   onChange={(e) => set('vendor', e.target.value.toLowerCase())}
@@ -361,7 +363,7 @@ export function PromotionsTab() {
                 </datalist>
               </div>
               <div className='grid gap-1.5'>
-                <Label>类型</Label>
+                <Label>{t('Type')}</Label>
                 <Select value={form.kind} onValueChange={(v) => set('kind', v ?? 'discount')}>
                   <SelectTrigger>
                     <SelectValue />
@@ -377,25 +379,25 @@ export function PromotionsTab() {
               </div>
             </div>
             <div className='grid gap-1.5'>
-              <Label>标题</Label>
+              <Label>{t('Title')}</Label>
               <Input
                 value={form.title}
                 onChange={(e) => set('title', e.target.value)}
-                placeholder='夜间畅用（每日 23:00–次日 09:00）'
+                placeholder={t('Overnight unlimited (daily 23:00–09:00)')}
               />
             </div>
             <div className='grid gap-1.5'>
-              <Label>说明</Label>
+              <Label>{t('Description')}</Label>
               <Textarea
                 value={form.description}
                 onChange={(e) => set('description', e.target.value)}
                 rows={2}
-                placeholder='面向用户的活动说明，展示在介绍页与站内公告'
+                placeholder={t('User-facing description shown on the intro page and in site announcements')}
               />
             </div>
             <div className='grid grid-cols-3 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>折扣乘数（可选）</Label>
+                <Label>{t('Discount multiplier (optional)')}</Label>
                 <Input
                   type='number'
                   step='0.01'
@@ -407,7 +409,7 @@ export function PromotionsTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>开始时间（可选）</Label>
+                <Label>{t('Starts at (optional)')}</Label>
                 <Input
                   type='datetime-local'
                   value={form.starts_at}
@@ -415,7 +417,7 @@ export function PromotionsTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>截止（留空=未公布）</Label>
+                <Label>{t('Deadline (empty = not announced)')}</Label>
                 <Input
                   type='datetime-local'
                   value={form.ends_at}
@@ -424,7 +426,7 @@ export function PromotionsTab() {
               </div>
             </div>
             <div className='grid gap-1.5'>
-              <Label>官方来源 URL（可选）</Label>
+              <Label>{t('Official source URL (optional)')}</Label>
               <Input
                 value={form.source_url}
                 onChange={(e) => set('source_url', e.target.value)}
@@ -433,19 +435,19 @@ export function PromotionsTab() {
             </div>
             <div className='grid grid-cols-4 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>状态</Label>
+                <Label>{t('Status')}</Label>
                 <Select value={form.status} onValueChange={(v) => set('status', v ?? '1')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='1'>启用</SelectItem>
-                    <SelectItem value='0'>停用</SelectItem>
+                    <SelectItem value='1'>{t('Enabled')}</SelectItem>
+                    <SelectItem value='0'>{t('Disabled')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className='grid gap-1.5'>
-                <Label>提前提醒（天）</Label>
+                <Label>{t('Remind days in advance')}</Label>
                 <Input
                   type='number'
                   min='0'
@@ -455,7 +457,7 @@ export function PromotionsTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>排序</Label>
+                <Label>{t('Sort')}</Label>
                 <Input
                   type='number'
                   value={form.sort}
@@ -463,7 +465,7 @@ export function PromotionsTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>备注（内部）</Label>
+                <Label>{t('Remark (internal)')}</Label>
                 <Input
                   value={form.remark}
                   onChange={(e) => set('remark', e.target.value)}
@@ -473,13 +475,13 @@ export function PromotionsTab() {
           </div>
           <DialogFooter>
             <Button variant='outline' onClick={() => setOpen(false)}>
-              取消
+              {t('Cancel')}
             </Button>
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending || !form.vendor || !form.title}
             >
-              保存
+              {t('Save')}
             </Button>
           </DialogFooter>
         </DialogContent>

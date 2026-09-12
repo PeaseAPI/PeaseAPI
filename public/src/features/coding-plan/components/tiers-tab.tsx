@@ -56,6 +56,7 @@ import {
   updateTier,
 } from '../api'
 import type { CodingPlanVendorTier } from '../types'
+import { useTranslation } from 'react-i18next'
 
 type TierForm = {
   vendor_code: string
@@ -86,6 +87,7 @@ const EMPTY: TierForm = {
 }
 
 export function TiersTab() {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<CodingPlanVendorTier | null>(null)
@@ -122,11 +124,11 @@ export function TiersTab() {
     },
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '已保存')
+        toast.success(res.message ?? t('Saved'))
         setOpen(false)
         qc.invalidateQueries({ queryKey: ['coding-plan-tiers'] })
       } else {
-        toast.error(res.message ?? '保存失败')
+        toast.error(res.message ?? t('Failed to save'))
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -136,10 +138,10 @@ export function TiersTab() {
     mutationFn: (id: number) => deleteTier(id),
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '已删除')
+        toast.success(res.message ?? t('Deleted'))
         qc.invalidateQueries({ queryKey: ['coding-plan-tiers'] })
       } else {
-        toast.error(res.message ?? '删除失败')
+        toast.error(res.message ?? t('Failed to delete'))
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -151,27 +153,27 @@ export function TiersTab() {
     vendors.find((v) => v.code === code)?.name ?? code
   const set = (key: keyof TierForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }))
-  const priceLabel = (t: CodingPlanVendorTier) => {
-    if (t.price === null || t.price === undefined || t.price === '') {
-      return t.price_note || '待核对'
+  const priceLabel = (tier: CodingPlanVendorTier) => {
+    if (tier.price === null || tier.price === undefined || tier.price === '') {
+      return tier.price_note || t('Pending check')
     }
-    return `¥${Number(t.price)}${t.price_note ? `（${t.price_note}）` : ''}`
+    return `¥${Number(tier.price)}${tier.price_note ? `（${tier.price_note}）` : ''}`
   }
-  const quotaLabel = (t: CodingPlanVendorTier) => {
+  const quotaLabel = (tier: CodingPlanVendorTier) => {
     const quota =
-      t.quota === null || t.quota === undefined || t.quota === ''
+      tier.quota === null || tier.quota === undefined || tier.quota === ''
         ? '—'
-        : Number(t.quota).toLocaleString()
-    const unit = t.quota_unit ? ` ${t.quota_unit}` : ''
-    return `${quota}${unit}${t.quota_note ? ` · ${t.quota_note}` : ''}`
+        : Number(tier.quota).toLocaleString()
+    const unit = tier.quota_unit ? ` ${tier.quota_unit}` : ''
+    return `${quota}${unit}${tier.quota_note ? ` · ${tier.quota_note}` : ''}`
   }
 
   return (
     <div className='flex flex-col gap-3'>
       <div className='flex flex-wrap items-center justify-between gap-2'>
         <p className='text-muted-foreground text-sm'>
-          各厂商官方套餐档位（个人版/团队版/坐席/用量包），仅「展示中」档位会出现在公开介绍页
-          /coding-plan；价格留空表示以官网为准。预置档位来自官方文档（迁移 2026_09_11_000003）。
+          {t('Official tiers per vendor (personal/team/seat/usage packs); only "Visible" tiers appear on the public intro page')}
+          {t('/coding-plan; empty price means "see official site". Presets come from official docs (migration 2026_09_11_000003).')}
         </p>
         <div className='flex items-center gap-2'>
           <Select
@@ -182,7 +184,7 @@ export function TiersTab() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value='all'>全部厂商</SelectItem>
+              <SelectItem value='all'>{t('All vendors')}</SelectItem>
               {vendors.map((v) => (
                 <SelectItem key={v.code} value={v.code}>
                   {v.name}
@@ -201,7 +203,7 @@ export function TiersTab() {
               setOpen(true)
             }}
           >
-            <Plus className='mr-1 size-4' /> 新增档位
+            <Plus className='mr-1 size-4' /> {t('Add plan tier')}
           </Button>
         </div>
       </div>
@@ -209,19 +211,19 @@ export function TiersTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>厂商</TableHead>
-              <TableHead>档位</TableHead>
-              <TableHead>价格</TableHead>
-              <TableHead>额度</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead className='text-right'>操作</TableHead>
+              <TableHead>{t('Vendor')}</TableHead>
+              <TableHead>{t('Tier')}</TableHead>
+              <TableHead>{t('Price')}</TableHead>
+              <TableHead>{t('Quota')}</TableHead>
+              <TableHead>{t('Status')}</TableHead>
+              <TableHead className='text-right'>{t('Actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {tiersQuery.isLoading ? (
               <TableRow>
                 <TableCell colSpan={6} className='py-8 text-center'>
-                  加载中…
+                  {t('Loading…')}
                 </TableCell>
               </TableRow>
             ) : tiers.length === 0 ? (
@@ -230,23 +232,23 @@ export function TiersTab() {
                   colSpan={6}
                   className='text-muted-foreground py-8 text-center'
                 >
-                  暂无套餐档位（预置档位随迁移写入，可在官网核对价格后补充）
+                  {t('No plan tiers yet (presets are written by migration; verify against official sites and fill in)')}
                 </TableCell>
               </TableRow>
             ) : (
-              tiers.map((t) => (
-                <TableRow key={t.id}>
+              tiers.map((tier) => (
+                <TableRow key={tier.id}>
                   <TableCell className='font-mono text-xs'>
-                    {vendorName(t.vendor_code)}
+                    {vendorName(tier.vendor_code)}
                   </TableCell>
-                  <TableCell className='text-xs'>{t.name}</TableCell>
-                  <TableCell className='text-xs'>{priceLabel(t)}</TableCell>
-                  <TableCell className='text-xs'>{quotaLabel(t)}</TableCell>
+                  <TableCell className='text-xs'>{tier.name}</TableCell>
+                  <TableCell className='text-xs'>{priceLabel(tier)}</TableCell>
+                  <TableCell className='text-xs'>{quotaLabel(tier)}</TableCell>
                   <TableCell>
-                    {Number(t.status) === 1 ? (
-                      <Badge>展示中</Badge>
+                    {Number(tier.status) === 1 ? (
+                      <Badge>{t('Visible')}</Badge>
                     ) : (
-                      <Badge variant='secondary'>隐藏</Badge>
+                      <Badge variant='secondary'>{t('Hidden')}</Badge>
                     )}
                   </TableCell>
                   <TableCell className='text-right'>
@@ -255,37 +257,37 @@ export function TiersTab() {
                         variant='ghost'
                         size='sm'
                         onClick={() => {
-                          setEditing(t)
+                          setEditing(tier)
                           setForm({
-                            vendor_code: t.vendor_code,
-                            name: t.name,
+                            vendor_code: tier.vendor_code,
+                            name: tier.name,
                             price:
-                              t.price === null || t.price === undefined
+                              tier.price === null || tier.price === undefined
                                 ? ''
-                                : String(t.price),
-                            price_note: t.price_note ?? '',
-                            period: t.period ?? '',
+                                : String(tier.price),
+                            price_note: tier.price_note ?? '',
+                            period: tier.period ?? '',
                             quota:
-                              t.quota === null || t.quota === undefined
+                              tier.quota === null || tier.quota === undefined
                                 ? ''
-                                : String(t.quota),
-                            quota_unit: t.quota_unit ?? '',
-                            quota_note: t.quota_note ?? '',
-                            status: String(t.status ?? 1),
-                            sort: String(t.sort ?? 0),
-                            remark: t.remark ?? '',
+                                : String(tier.quota),
+                            quota_unit: tier.quota_unit ?? '',
+                            quota_note: tier.quota_note ?? '',
+                            status: String(tier.status ?? 1),
+                            sort: String(tier.sort ?? 0),
+                            remark: tier.remark ?? '',
                           })
                           setOpen(true)
                         }}
                       >
-                        编辑
+                        {t('Edit')}
                       </Button>
                       <Button
                         variant='ghost'
                         size='sm'
                         onClick={() => {
-                          if (window.confirm(`确认删除档位「${t.name}」？`)) {
-                            deleteMutation.mutate(t.id)
+                          if (window.confirm(t('Delete tier "{{name}}"?', { name: tier.name }))) {
+                            deleteMutation.mutate(tier.id)
                           }
                         }}
                       >
@@ -304,12 +306,12 @@ export function TiersTab() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className='max-h-[85vh] max-w-xl overflow-y-auto'>
           <DialogHeader>
-            <DialogTitle>{editing ? '编辑套餐档位' : '新增套餐档位'}</DialogTitle>
+            <DialogTitle>{editing ? t('Edit plan tier') : t('Add plan tier')}</DialogTitle>
           </DialogHeader>
           <div className='flex flex-col gap-3'>
             <div className='grid grid-cols-2 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>厂商</Label>
+                <Label>{t('Vendor')}</Label>
                 <Select
                   value={form.vendor_code}
                   onValueChange={(v) => set('vendor_code', v ?? '')}
@@ -327,45 +329,45 @@ export function TiersTab() {
                 </Select>
               </div>
               <div className='grid gap-1.5'>
-                <Label>档位名称</Label>
+                <Label>{t('Tier name')}</Label>
                 <Input
                   value={form.name}
                   onChange={(e) => set('name', e.target.value)}
-                  placeholder='个人版 · Lite / 团队版 · 标准坐席'
+                  placeholder={t('Personal · Lite / Team · Standard seat')}
                 />
               </div>
             </div>
             <div className='grid grid-cols-3 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>价格（元）</Label>
+                <Label>{t('Price (CNY)')}</Label>
                 <Input
                   type='number'
                   step='0.01'
                   value={form.price}
                   onChange={(e) => set('price', e.target.value)}
-                  placeholder='留空 = 待核对'
+                  placeholder={t('Leave empty = pending check')}
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>价格备注</Label>
+                <Label>{t('Price note')}</Label>
                 <Input
                   value={form.price_note}
                   onChange={(e) => set('price_note', e.target.value)}
-                  placeholder='原价 60 元/月'
+                  placeholder={t('Original price ¥60/month')}
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>周期</Label>
+                <Label>{t('Period')}</Label>
                 <Input
                   value={form.period}
                   onChange={(e) => set('period', e.target.value)}
-                  placeholder='月 / 月/座席'
+                  placeholder='month / seat/month'
                 />
               </div>
             </div>
             <div className='grid grid-cols-3 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>额度</Label>
+                <Label>{t('Quota')}</Label>
                 <Input
                   type='number'
                   value={form.quota}
@@ -373,37 +375,37 @@ export function TiersTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>额度单位</Label>
+                <Label>{t('Quota unit')}</Label>
                 <Input
                   value={form.quota_unit}
                   onChange={(e) => set('quota_unit', e.target.value)}
-                  placeholder='Credits / 资源点'
+                  placeholder={t('Credits / resource points')}
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>额度说明</Label>
+                <Label>{t('Quota note')}</Label>
                 <Input
                   value={form.quota_note}
                   onChange={(e) => set('quota_note', e.target.value)}
-                  placeholder='每 7 天限额 2,500 Credits'
+                  placeholder={t('2,500 Credits per 7 days')}
                 />
               </div>
             </div>
             <div className='grid grid-cols-3 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>状态</Label>
+                <Label>{t('Status')}</Label>
                 <Select value={form.status} onValueChange={(v) => set('status', v ?? '')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='1'>展示中</SelectItem>
-                    <SelectItem value='0'>隐藏</SelectItem>
+                    <SelectItem value='1'>{t('Visible')}</SelectItem>
+                    <SelectItem value='0'>{t('Hidden')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className='grid gap-1.5'>
-                <Label>排序</Label>
+                <Label>{t('Sort')}</Label>
                 <Input
                   type='number'
                   value={form.sort}
@@ -411,7 +413,7 @@ export function TiersTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>备注</Label>
+                <Label>{t('Remark')}</Label>
                 <Input
                   value={form.remark}
                   onChange={(e) => set('remark', e.target.value)}
@@ -421,13 +423,13 @@ export function TiersTab() {
           </div>
           <DialogFooter>
             <Button variant='outline' onClick={() => setOpen(false)}>
-              取消
+              {t('Cancel')}
             </Button>
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending || !form.vendor_code || !form.name}
             >
-              保存
+              {t('Save')}
             </Button>
           </DialogFooter>
         </DialogContent>

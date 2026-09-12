@@ -53,6 +53,7 @@ import type { SubscriptionPlan } from '@/features/subscriptions/types'
 
 import { attachPlan, detachPlan, getPlans, getVendors } from '../api'
 import type { CodingPlanAdminPlan } from '../types'
+import { useTranslation } from 'react-i18next'
 
 type AttachFormState = {
   plan_id: string
@@ -74,6 +75,7 @@ type AttachCandidate = {
 }
 
 export function PlansTab() {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<AttachFormState>(EMPTY_ATTACH)
@@ -109,11 +111,11 @@ export function PlansTab() {
       }),
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '已绑定')
+        toast.success(res.message ?? t('Bound'))
         setOpen(false)
         invalidate()
       } else {
-        toast.error(res.message ?? '绑定失败')
+        toast.error(res.message ?? t('Failed to bind'))
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -124,23 +126,23 @@ export function PlansTab() {
       detachPlan(id, force),
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '已解绑')
+        toast.success(res.message ?? t('Unbound'))
         invalidate()
       } else {
-        toast.error(res.message ?? '解绑失败')
+        toast.error(res.message ?? t('Failed to unbind'))
       }
     },
     onError: (e: unknown, vars) => {
       const err = e as {
         response?: { status?: number; data?: { message?: string } }
       }
-      const message = err?.response?.data?.message ?? '解绑失败'
+      const message = err?.response?.data?.message ?? t('Failed to unbind')
       toast.error(message)
       // 后端 422：仍有活跃订阅 → 引导强制解绑（force=1，保留订阅记录以便重绑）
       if (!vars.force && err?.response?.status === 422) {
         if (
           window.confirm(
-            `${message}\n\n是否强制解绑？订阅记录将保留，重新绑定后可继续使用。`
+            t('{{message}}\n\nForce unbind? The subscription record is kept; you can re-bind to continue.', { message })
           )
         ) {
           detachMutation.mutate({ id: vars.id, force: true })
@@ -170,11 +172,11 @@ export function PlansTab() {
     <div className='flex flex-col gap-3'>
       <div className='flex items-center justify-between'>
         <p className='text-muted-foreground text-sm'>
-          将订阅套餐绑定到对应厂商的账号池；用户购买套餐即获得该厂商的
-          Coding Plan 用量（0 表示不限）。
+          {t('Bind subscription plans to vendor account pools; buying a plan grants the vendor')}
+          {t('Coding Plan usage (0 = unlimited).')}
         </p>
         <Button size='sm' onClick={openAttach}>
-          <Plus className='mr-1 size-4' /> 绑定套餐
+          <Plus className='mr-1 size-4' /> {t('Bind plan')}
         </Button>
       </div>
 
@@ -182,12 +184,12 @@ export function PlansTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>套餐</TableHead>
-              <TableHead>厂商</TableHead>
-              <TableHead>每次提交数</TableHead>
-              <TableHead>月配额</TableHead>
-              <TableHead>账号池概览</TableHead>
-              <TableHead className='text-right'>操作</TableHead>
+              <TableHead>{t('Plan')}</TableHead>
+              <TableHead>{t('Vendor')}</TableHead>
+              <TableHead>{t('Submits/request')}</TableHead>
+              <TableHead>{t('Monthly quota')}</TableHead>
+              <TableHead>{t('Pool overview')}</TableHead>
+              <TableHead className='text-right'>{t('Actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -205,7 +207,7 @@ export function PlansTab() {
                   colSpan={6}
                   className='text-muted-foreground py-8 text-center'
                 >
-                  暂无绑定的套餐，点击右上角「绑定套餐」创建
+                  {t('No bound plans yet; click "Bind plan" at the top right to create one')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -215,7 +217,7 @@ export function PlansTab() {
                     {p.title}
                     {p.enabled === false ? (
                       <Badge variant='outline' className='ml-2'>
-                        已下架
+                        {t('Delisted')}
                       </Badge>
                     ) : null}
                   </TableCell>
@@ -230,11 +232,11 @@ export function PlansTab() {
                   <TableCell>
                     {Number(p.coding_quota ?? 0) > 0
                       ? Number(p.coding_quota)
-                      : '不限'}
+                      : t('Unlimited')}
                   </TableCell>
                   <TableCell>
                     {p.pool_overview
-                      ? `总数 ${p.pool_overview.total} · 可用 ${p.pool_overview.active} · 耗尽 ${p.pool_overview.exhausted}`
+                      ? t('Total {{total}} · Active {{active}} · Exhausted {{exhausted}}', { total: p.pool_overview.total, active: p.pool_overview.active, exhausted: p.pool_overview.exhausted })
                       : '—'}
                   </TableCell>
                   <TableCell className='text-right'>
@@ -244,7 +246,7 @@ export function PlansTab() {
                       onClick={() => {
                         if (
                           window.confirm(
-                            `解绑套餐「${p.title}」？解绑后 plan_type 将还原为 quota，该厂商的 Coding Plan 中转将无法匹配到此套餐。`
+                            t('Unbind plan "{{title}}"? plan_type reverts to quota and the Coding Plan relay will no longer match this plan for the vendor.', { title: p.title })
                           )
                         ) {
                           detachMutation.mutate({ id: p.id, force: false })
@@ -265,17 +267,17 @@ export function PlansTab() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
-            <DialogTitle>绑定套餐到账号池</DialogTitle>
+            <DialogTitle>{t('Bind plan to account pool')}</DialogTitle>
           </DialogHeader>
           <div className='flex flex-col gap-3'>
             <div className='flex flex-col gap-1.5'>
-              <Label>订阅套餐</Label>
+              <Label>{t('Subscription plan')}</Label>
               <Select
                 value={form.plan_id}
                 onValueChange={(v) => set('plan_id', v ?? '')}
               >
                 <SelectTrigger className='w-full'>
-                  <SelectValue placeholder='选择普通订阅套餐' />
+                  <SelectValue placeholder={t('Select a standard subscription plan')} />
                 </SelectTrigger>
                 <SelectContent>
                   {(candidates ?? []).map((c) => (
@@ -287,18 +289,18 @@ export function PlansTab() {
               </Select>
               {candidates && candidates.length === 0 ? (
                 <p className='text-muted-foreground text-xs'>
-                  暂无可绑定的普通套餐，请先在订阅管理中创建
+                  {t('No bindable standard plans; create one in subscription management first')}
                 </p>
               ) : null}
             </div>
             <div className='flex flex-col gap-1.5'>
-              <Label>厂商</Label>
+              <Label>{t('Vendor')}</Label>
               <Select
                 value={form.vendor}
                 onValueChange={(v) => set('vendor', v ?? '')}
               >
                 <SelectTrigger className='w-full'>
-                  <SelectValue placeholder='选择厂商' />
+                  <SelectValue placeholder={t('Select a vendor')} />
                 </SelectTrigger>
                 <SelectContent>
                   {vendors.map((v) => (
@@ -310,7 +312,7 @@ export function PlansTab() {
               </Select>
             </div>
             <div className='flex flex-col gap-1.5'>
-              <Label>每次请求提交数</Label>
+              <Label>{t('Submits per request')}</Label>
               <Input
                 type='number'
                 min={1}
@@ -321,7 +323,7 @@ export function PlansTab() {
               />
             </div>
             <div className='flex flex-col gap-1.5'>
-              <Label>月配额（0 表示不限）</Label>
+              <Label>{t('Monthly quota (0 = unlimited)')}</Label>
               <Input
                 type='number'
                 min={0}
@@ -332,7 +334,7 @@ export function PlansTab() {
           </div>
           <DialogFooter>
             <Button variant='outline' onClick={() => setOpen(false)}>
-              取消
+              {t('Cancel')}
             </Button>
             <Button
               onClick={() => attachMutation.mutate()}
@@ -340,7 +342,7 @@ export function PlansTab() {
                 !form.plan_id || !form.vendor || attachMutation.isPending
               }
             >
-              {attachMutation.isPending ? '绑定中…' : '绑定'}
+              {attachMutation.isPending ? t('Binding…') : t('Bind')}
             </Button>
           </DialogFooter>
         </DialogContent>

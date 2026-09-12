@@ -55,28 +55,31 @@ import {
   ignoreCheckChange,
 } from '../api'
 import type { CodingPlanVendorModelRow, OfficialModelState } from '../types'
+import { t } from 'i18next'
+import { useTranslation } from 'react-i18next'
 
 const OFFICIAL_BADGE: Record<
   OfficialModelState,
   { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
 > = {
-  in_catalog: { label: '官方在列', variant: 'secondary' },
-  missing: { label: '官方未列', variant: 'destructive' },
-  new: { label: '官方新增', variant: 'default' },
-  unknown: { label: '目录未知', variant: 'outline' },
+  in_catalog: { label: 'In official catalog', variant: 'secondary' },
+  missing: { label: 'Missing from catalog', variant: 'destructive' },
+  new: { label: 'New in catalog', variant: 'default' },
+  unknown: { label: 'Catalog unknown', variant: 'outline' },
 }
 
 function costText(row: CodingPlanVendorModelRow): string {
   if (row.cost_mode === 'per_token_parts') {
-    return `分段 ${row.input_rate}/${row.cached_rate}/${row.output_rate}`
+    return t('tiered {{input}}/{{cached}}/{{output}}', { input: row.input_rate, cached: row.cached_rate, output: row.output_rate })
   }
-  if (row.cost_mode === 'per_1k_tokens') return `千token ${row.unit_cost}`
-  if (row.cost_mode === 'per_request') return `按次 ${row.unit_cost}`
+  if (row.cost_mode === 'per_1k_tokens') return t('per 1k tokens {{cost}}', { cost: row.unit_cost })
+  if (row.cost_mode === 'per_request') return t('per request {{cost}}', { cost: row.unit_cost })
 
   return '—'
 }
 
 export function ModelsTab() {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const [vendor, setVendor] = useState('')
   const [selected, setSelected] = useState<number[]>([])
@@ -107,7 +110,7 @@ export function ModelsTab() {
     mutationFn: ({ status }: { status: 0 | 1 }) =>
       batchUpdateModelStatus(vendor, selected, status),
     onSuccess: (res) => {
-      toast.success(res.message ?? '操作成功')
+      toast.success(res.message ?? t('Operation successful'))
       setSelected([])
       invalidate()
     },
@@ -118,7 +121,7 @@ export function ModelsTab() {
     mutationFn: (input: { action: 'new' | 'missing'; models: string[] }) =>
       applyCatalogChanges({ vendor, ...input }),
     onSuccess: (res) => {
-      toast.success(res.message ?? '已应用')
+      toast.success(res.message ?? t('Applied'))
       invalidate()
     },
     onError: (e: Error) => toast.error(e.message),
@@ -127,7 +130,7 @@ export function ModelsTab() {
   const ignoreMutation = useMutation({
     mutationFn: (key: string) => ignoreCheckChange(vendor, key, false),
     onSuccess: (res) => {
-      toast.success(res.message ?? '已忽略该变更提醒')
+      toast.success(res.message ?? t('Change reminder ignored'))
       invalidate()
     },
     onError: (e: Error) => toast.error(e.message),
@@ -154,10 +157,10 @@ export function ModelsTab() {
         <CardHeader>
           <CardTitle className='flex items-center gap-2'>
             <PackageCheck className='h-4 w-4' />
-            模型上架流
+            {t('Model listing flow')}
           </CardTitle>
           <CardDescription>
-            选择厂商查看模型清单（库内比率 × 官方目录快照），勾选批量启用/停用；官方目录新增/下架可一键应用或忽略
+            {t('Select a vendor to view its model list (library ratios × official catalog snapshot); tick to batch enable/disable; official additions/removals can be applied or ignored in one click')}
           </CardDescription>
         </CardHeader>
         <CardContent className='flex flex-col gap-3'>
@@ -170,7 +173,7 @@ export function ModelsTab() {
               }}
             >
               <SelectTrigger className='w-64'>
-                <SelectValue placeholder='选择厂商' />
+                <SelectValue placeholder={t('Select a vendor')} />
               </SelectTrigger>
               <SelectContent>
                 {vendors.map((v) => (
@@ -182,30 +185,30 @@ export function ModelsTab() {
             </Select>
             {summary && (
               <div className='flex flex-wrap items-center gap-1.5 text-xs'>
-                <Badge variant='secondary'>启用 {summary.enabled}</Badge>
-                <Badge variant='outline'>停用 {summary.disabled}</Badge>
-                <Badge variant='default'>官方新增 {summary.official_new}</Badge>
+                <Badge variant='secondary'>{t('{{count}} enabled', { count: summary.enabled })}</Badge>
+                <Badge variant='outline'>{t('{{count}} disabled', { count: summary.disabled })}</Badge>
+                <Badge variant='default'>{t('{{count}} new in catalog', { count: summary.official_new })}</Badge>
                 <Badge variant='destructive'>
-                  官方未列 {summary.official_missing}
+                  {t('{{count}} missing from catalog', { count: summary.official_missing })}
                 </Badge>
                 <span className='text-muted-foreground'>
-                  目录 {summary.catalog_total ?? '—'} 个
+                  {t('Catalog {{count}} items', { count: summary.catalog_total ?? '—' })}
                   {summary.catalog_fetched_at
-                    ? `，快照 ${new Date(summary.catalog_fetched_at * 1000).toLocaleString()}`
-                    : '，无目录快照'}
+                    ? t(', snapshot {{time}}', { time: new Date(summary.catalog_fetched_at * 1000).toLocaleString() })
+                    : t(', no catalog snapshot')}
                 </span>
               </div>
             )}
           </div>
           {vendor !== '' && selected.length > 0 && (
             <div className='flex items-center gap-2 rounded-md border px-3 py-2'>
-              <span className='text-sm'>已选 {selected.length} 个模型</span>
+              <span className='text-sm'>{t('{{count}} models selected', { count: selected.length })}</span>
               <Button
                 size='sm'
                 disabled={busy}
                 onClick={() => batchMutation.mutate({ status: 1 })}
               >
-                批量启用
+                {t('Enable selected')}
               </Button>
               <Button
                 size='sm'
@@ -213,7 +216,7 @@ export function ModelsTab() {
                 disabled={busy}
                 onClick={() => batchMutation.mutate({ status: 0 })}
               >
-                批量停用
+                {t('Disable selected')}
               </Button>
               <Button
                 size='sm'
@@ -221,7 +224,7 @@ export function ModelsTab() {
                 disabled={busy}
                 onClick={() => setSelected([])}
               >
-                取消选择
+                {t('Clear selection')}
               </Button>
             </div>
           )}
@@ -233,7 +236,7 @@ export function ModelsTab() {
           <CardContent className='pt-6'>
             {models.length === 0 ? (
               <div className='text-muted-foreground text-sm'>
-                该厂商暂无模型清单。
+                {t('No model list for this vendor.')}
               </div>
             ) : (
               <Table>
@@ -243,15 +246,15 @@ export function ModelsTab() {
                       <Checkbox
                         checked={allSelected}
                         onCheckedChange={toggleAll}
-                        aria-label='全选'
+                        aria-label={t('Select all')}
                       />
                     </TableHead>
-                    <TableHead>模型</TableHead>
-                    <TableHead>匹配</TableHead>
-                    <TableHead>口径 / 系数</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead>官方目录</TableHead>
-                    <TableHead className='text-right'>操作</TableHead>
+                    <TableHead>{t('Model')}</TableHead>
+                    <TableHead>{t('Match')}</TableHead>
+                    <TableHead>{t('Mode / factor')}</TableHead>
+                    <TableHead>{t('Status')}</TableHead>
+                    <TableHead>{t('Official catalog')}</TableHead>
+                    <TableHead className='text-right'>{t('Actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -285,6 +288,7 @@ function ModelRowItem(props: {
   onIgnore: (key: string) => void
 }) {
   const { row, selected, busy, onToggle, onApply, onIgnore } = props
+  const { t } = useTranslation()
   const badge = OFFICIAL_BADGE[row.official]
   const changeKey =
     row.catalog_change?.key ?? `model_catalog|${row.model.toLowerCase()}|`
@@ -301,7 +305,7 @@ function ModelRowItem(props: {
           <Checkbox
             checked={selected}
             onCheckedChange={() => onToggle(row.id as number)}
-            aria-label={`选择 ${row.model}`}
+            aria-label={t('Select {{model}}', { model: row.model })}
           />
         ) : null}
       </TableCell>
@@ -309,25 +313,25 @@ function ModelRowItem(props: {
         {row.model}
         {row.stale && (
           <Badge variant='outline' className='ml-1.5'>
-            待复核
+            {t('Pending re-check')}
           </Badge>
         )}
       </TableCell>
-      <TableCell>{row.match_type === 'prefix' ? '前缀' : '精确'}</TableCell>
+      <TableCell>{row.match_type === 'prefix' ? t('Prefix') : t('Exact')}</TableCell>
       <TableCell>{costText(row)}</TableCell>
       <TableCell>
         {row.status === null ? (
-          <Badge variant='outline'>未落地</Badge>
+          <Badge variant='outline'>{t('Not created')}</Badge>
         ) : row.status === 1 ? (
-          <Badge variant='secondary'>已提供</Badge>
+          <Badge variant='secondary'>{t('Offered')}</Badge>
         ) : (
-          <Badge variant='outline'>已停用</Badge>
+          <Badge variant='outline'>{t('Disabled')}</Badge>
         )}
       </TableCell>
       <TableCell>
         <div className='flex flex-wrap items-center gap-1'>
-          <Badge variant={badge.variant}>{badge.label}</Badge>
-          {row.change_ignored && <Badge variant='outline'>已忽略</Badge>}
+          <Badge variant={badge.variant}>{t(badge.label)}</Badge>
+          {row.change_ignored && <Badge variant='outline'>{t('Ignored')}</Badge>}
         </div>
       </TableCell>
       <TableCell className='text-right'>
@@ -339,7 +343,7 @@ function ModelRowItem(props: {
               disabled={busy || row.change_ignored}
               onClick={() => onApply({ action: 'new', models: [row.model] })}
             >
-              落地（停用态）
+              {t('Create (disabled)')}
             </Button>
             <Button
               size='sm'
@@ -347,7 +351,7 @@ function ModelRowItem(props: {
               disabled={busy || row.change_ignored}
               onClick={() => onIgnore(changeKey)}
             >
-              忽略
+              {t('Ignore')}
             </Button>
           </div>
         ) : row.official === 'missing' && !row.change_ignored ? (
@@ -360,7 +364,7 @@ function ModelRowItem(props: {
                 onApply({ action: 'missing', models: [row.model] })
               }
             >
-              下架（停用）
+              {t('Delist (disable)')}
             </Button>
             <Button
               size='sm'
@@ -368,7 +372,7 @@ function ModelRowItem(props: {
               disabled={busy}
               onClick={() => onIgnore(changeKey)}
             >
-              忽略
+              {t('Ignore')}
             </Button>
           </div>
         ) : null}

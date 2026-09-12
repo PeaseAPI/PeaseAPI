@@ -44,8 +44,8 @@ export const PLAN_KIND_CODING = 1
 export const PLAN_KIND_TOKEN = 2
 
 export const PLAN_KINDS: { value: string; label: string }[] = [
-  { value: String(PLAN_KIND_CODING), label: '订阅制 Coding Plan' },
-  { value: String(PLAN_KIND_TOKEN), label: '按量 Token Plan' },
+  { value: String(PLAN_KIND_CODING), label: 'Subscription Coding Plan' },
+  { value: String(PLAN_KIND_TOKEN), label: 'Pay-as-you-go Token Plan' },
 ]
 
 /** 比率匹配模式：精确 */
@@ -61,14 +61,14 @@ export const COST_PER_1K_TOKENS = 'per_1k_tokens'
 export const COST_PER_TOKEN_PARTS = 'per_token_parts'
 
 export const MATCH_TYPES: { value: string; label: string }[] = [
-  { value: MATCH_EXACT, label: '精确匹配' },
-  { value: MATCH_PREFIX, label: '前缀匹配' },
+  { value: MATCH_EXACT, label: 'Exact match' },
+  { value: MATCH_PREFIX, label: 'Prefix match' },
 ]
 
 export const COST_MODES: { value: string; label: string }[] = [
-  { value: COST_PER_REQUEST, label: '每次请求' },
-  { value: COST_PER_1K_TOKENS, label: '每千 token' },
-  { value: COST_PER_TOKEN_PARTS, label: '分段（输入/缓存/输出）' },
+  { value: COST_PER_REQUEST, label: 'Per request' },
+  { value: COST_PER_1K_TOKENS, label: 'Per 1k tokens' },
+  { value: COST_PER_TOKEN_PARTS, label: 'Tiered (input/cache/output)' },
 ]
 
 export interface CodingPlanAccount {
@@ -347,16 +347,16 @@ export interface CodingPlanRates {
 // ============================================================================
 
 export const PROMOTION_KINDS: { value: string; label: string }[] = [
-  { value: 'discount', label: '折扣' },
-  { value: 'free', label: '免费' },
-  { value: 'price_change', label: '价格调整' },
-  { value: 'model_retirement', label: '模型退市' },
+  { value: 'discount', label: 'Discount' },
+  { value: 'free', label: 'Free' },
+  { value: 'price_change', label: 'Price change' },
+  { value: 'model_retirement', label: 'Model retirement' },
 ]
 
 export const PROMOTION_STATES: { value: string; label: string }[] = [
-  { value: 'scheduled', label: '未开始' },
-  { value: 'ongoing', label: '进行中' },
-  { value: 'expired', label: '已结束' },
+  { value: 'scheduled', label: 'Not started' },
+  { value: 'ongoing', label: 'Ongoing' },
+  { value: 'expired', label: 'Ended' },
 ]
 
 export interface CodingPlanPromotion {

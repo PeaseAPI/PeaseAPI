@@ -63,6 +63,8 @@ import {
   MATCH_TYPES,
   type CodingPlanModelRatio,
 } from '../types'
+import { t } from 'i18next'
+import { useTranslation } from 'react-i18next'
 
 // 分时段折扣窗口 JSON 前端校验（仅提示，不阻断保存——服务端会最终规范化并丢弃非法条目）
 function validateTimeDiscountsJson(raw: string): string | null {
@@ -72,21 +74,21 @@ function validateTimeDiscountsJson(raw: string): string | null {
   try {
     parsed = JSON.parse(text)
   } catch {
-    return 'JSON 语法错误：请检查引号/逗号/方括号'
+    return t('JSON syntax error: check quotes/commas/brackets')
   }
-  if (!Array.isArray(parsed)) return '顶层必须是数组 [...]'
+  if (!Array.isArray(parsed)) return t('Top level must be an array [...]')
   for (let i = 0; i < parsed.length; i++) {
     const w = parsed[i] as Record<string, unknown>
     if (typeof w !== 'object' || w === null) {
-      return `第 ${i + 1} 条不是对象`
+      return t('Entry {{index}} is not an object', { index: i + 1 })
     }
     const discount = Number(w.discount)
     if (!(discount > 0 && discount < 1)) {
-      return `第 ${i + 1} 条 discount 必须在 (0,1) 区间，如 0.5 = 五折`
+      return t('Entry {{index}} discount must be in (0,1), e.g. 0.5 = 50% off', { index: i + 1 })
     }
     for (const key of ['start', 'end'] as const) {
       if (!/^\d{1,2}:\d{2}$/.test(String(w[key] ?? ''))) {
-        return `第 ${i + 1} 条 ${key} 需为 HH:MM 格式，如 22:00`
+        return t('Entry {{index}} {{key}} must be in HH:MM format, e.g. 22:00', { index: i + 1, key })
       }
     }
   }
@@ -127,6 +129,7 @@ const EMPTY: RatioForm = {
 }
 
 export function RatiosTab() {
+  const { t } = useTranslation()
 
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -158,7 +161,7 @@ export function RatiosTab() {
           const raw = form.time_discounts.trim()
           if (raw === '' || raw === 'null') return null
           const parsed = JSON.parse(raw)
-          if (!Array.isArray(parsed)) throw new Error('时段折扣必须是窗口数组 JSON')
+          if (!Array.isArray(parsed)) throw new Error(t('Time discounts must be a JSON array of windows'))
           return parsed
         })(),
         status: Number(form.status),
@@ -170,11 +173,11 @@ export function RatiosTab() {
     },
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '已保存')
+        toast.success(res.message ?? t('Saved'))
         setOpen(false)
         qc.invalidateQueries({ queryKey: ['coding-plan-ratios'] })
       } else {
-        toast.error(res.message ?? '保存失败')
+        toast.error(res.message ?? t('Failed to save'))
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -184,10 +187,10 @@ export function RatiosTab() {
     mutationFn: (id: number) => deleteRatio(id),
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '已删除')
+        toast.success(res.message ?? t('Deleted'))
         qc.invalidateQueries({ queryKey: ['coding-plan-ratios'] })
       } else {
-        toast.error(res.message ?? '删除失败')
+        toast.error(res.message ?? t('Failed to delete'))
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -207,8 +210,8 @@ export function RatiosTab() {
     <div className='flex flex-col gap-3'>
       <div className='flex items-center justify-between'>
         <p className='text-muted-foreground text-sm'>
-          credits = 原生用量 × 单位成本(unit_cost) × 供应商单位汇率；exact
-          优先于前缀，前缀最长优先。平台每 6 小时自动校对，超过核对窗口未复核的规则会标记「待复核」。
+          {t('credits = raw usage × unit_cost × vendor unit exchange rate; exact')}
+          {t('takes precedence over prefix, longest prefix wins. The platform auto-checks every 6 hours; rules not re-checked within the window are marked "pending re-check".')}
         </p>
         <Button
           size='sm'
@@ -218,27 +221,27 @@ export function RatiosTab() {
             setOpen(true)
           }}
         >
-          <Plus className='mr-1 size-4' /> 新增规则
+          <Plus className='mr-1 size-4' /> {t('Add rule')}
         </Button>
       </div>
       <div className='rounded-md border'>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>厂商</TableHead>
-              <TableHead>模型</TableHead>
-              <TableHead>匹配</TableHead>
-              <TableHead>计费口径</TableHead>
-              <TableHead>单位成本</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead className='text-right'>操作</TableHead>
+              <TableHead>{t('Vendor')}</TableHead>
+              <TableHead>{t('Model')}</TableHead>
+              <TableHead>{t('Match')}</TableHead>
+              <TableHead>{t('Cost mode')}</TableHead>
+              <TableHead>{t('Unit cost')}</TableHead>
+              <TableHead>{t('Status')}</TableHead>
+              <TableHead className='text-right'>{t('Actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {ratiosQuery.isLoading ? (
               <TableRow>
                 <TableCell colSpan={7} className='py-8 text-center'>
-                  加载中…
+                  {t('Loading…')}
                 </TableCell>
               </TableRow>
             ) : ratios.length === 0 ? (
@@ -247,7 +250,7 @@ export function RatiosTab() {
                   colSpan={7}
                   className='text-muted-foreground py-8 text-center'
                 >
-                  暂无折算规则，将按账号/供应商默认汇率计费
+                  {t('No conversion rules yet; account/vendor default rates apply')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -259,23 +262,23 @@ export function RatiosTab() {
                   <TableCell>{costLabel(r.cost_mode)}</TableCell>
                   <TableCell>
                     {r.cost_mode === COST_PER_TOKEN_PARTS
-                      ? `入${Number(r.input_rate ?? 0)} / 缓存${Number(r.cached_rate ?? 0)} / 出${Number(r.output_rate ?? 0)}`
+                      ? t('in {{input}} / cache {{cached}} / out {{output}}', { input: Number(r.input_rate ?? 0), cached: Number(r.cached_rate ?? 0), output: Number(r.output_rate ?? 0) })
                       : `×${Number(r.unit_cost)}`}
                   </TableCell>
                   <TableCell>
                     <div className='flex flex-wrap items-center gap-1'>
                       {Number(r.status) === 1 ? (
-                        <Badge>启用</Badge>
+                        <Badge>{t('Enabled')}</Badge>
                       ) : (
-                        <Badge variant='secondary'>停用</Badge>
+                        <Badge variant='secondary'>{t('Disabled')}</Badge>
                       )}
                       {r.stale === true && (
                         <Badge
                           variant='outline'
                           className='border-amber-500/60 text-amber-500'
-                          title='超过核对窗口未人工复核，公开介绍页（/coding-plan）将标记「待复核」'
+                          title={t('Not manually re-checked within the review window; the public intro page (/coding-plan) will mark it as "pending re-check"')}
                         >
-                          待复核
+                          {t('Pending re-check')}
                         </Badge>
                       )}
                       {(r.time_discounts?.length ?? 0) > 0 && (
@@ -285,11 +288,11 @@ export function RatiosTab() {
                           title={r.time_discounts!
                             .map(
                               (w) =>
-                                `${w.name || '窗口'}：周${(w.days ?? [1, 2, 3, 4, 5, 6, 7]).join('/')} ${w.start}-${w.end} ×${w.discount}`,
+                                `${w.name || t('Window')}：${t('week {{days}} {{start}}-{{end}} ×{{discount}}', { days: (w.days ?? [1, 2, 3, 4, 5, 6, 7]).join('/'), start: w.start, end: w.end, discount: w.discount })}`,
                             )
-                            .join('\n') + '\n（按计费时刻自动生效）'}
+                            .join('\n') + '\n' + t('(applied automatically at billing time)')}
                         >
-                          时段×{r.time_discounts!.length}
+                          {t('{{count}} windows', { count: r.time_discounts!.length })}
                         </Badge>
                       )}
                     </div>
@@ -320,13 +323,13 @@ export function RatiosTab() {
                           setOpen(true)
                         }}
                       >
-                        编辑
+                        {t('Edit')}
                       </Button>
                       <Button
                         variant='ghost'
                         size='sm'
                         onClick={() => {
-                          if (window.confirm(`确认删除规则「${r.model}」？`)) {
+                          if (window.confirm(t('Delete rule "{{model}}"?', { model: r.model }))) {
                             deleteMutation.mutate(r.id)
                           }
                         }}
@@ -344,15 +347,15 @@ export function RatiosTab() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
-            <DialogTitle>{editing ? '编辑规则' : '新增规则'}</DialogTitle>
+            <DialogTitle>{editing ? t('Edit rule') : t('Add rule')}</DialogTitle>
           </DialogHeader>
           <div className='grid gap-3'>
             <div className='grid grid-cols-2 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>厂商</Label>
+                <Label>{t('Vendor')}</Label>
                 <Select value={form.vendor} onValueChange={(v) => set('vendor', v ?? '')}>
                   <SelectTrigger>
-                    <SelectValue placeholder='选择厂商' />
+                    <SelectValue placeholder={t('Select a vendor')} />
                   </SelectTrigger>
                   <SelectContent>
                     {vendors.map((v) => (
@@ -364,7 +367,7 @@ export function RatiosTab() {
                 </Select>
               </div>
               <div className='grid gap-1.5'>
-                <Label>匹配模式</Label>
+                <Label>{t('Match mode')}</Label>
                 <Select
                   value={form.match_type}
                   onValueChange={(v) => set('match_type', v ?? '')}
@@ -383,16 +386,16 @@ export function RatiosTab() {
               </div>
             </div>
             <div className='grid gap-1.5'>
-              <Label>模型（exact 全等 / prefix 前缀）</Label>
+              <Label>{t('Model (exact match / prefix)')}</Label>
               <Input
                 value={form.model}
                 onChange={(e) => set('model', e.target.value)}
-                placeholder='claude-sonnet-4-5 或 claude-'
+                placeholder={t('claude-sonnet-4-5 or claude-')}
               />
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>计费口径</Label>
+                <Label>{t('Cost mode')}</Label>
                 <Select
                   value={form.cost_mode}
                   onValueChange={(v) => set('cost_mode', v ?? '')}
@@ -412,8 +415,8 @@ export function RatiosTab() {
               <div className='grid gap-1.5'>
                 <Label>
                   {form.cost_mode === COST_PER_TOKEN_PARTS
-                    ? '单位成本（分段口径不参与计算）'
-                    : '单位成本'}
+                    ? t('Unit cost (not used in tiered mode)')
+                    : t('Unit cost')}
                 </Label>
                 <Input
                   type='number'
@@ -426,52 +429,52 @@ export function RatiosTab() {
             {form.cost_mode === COST_PER_TOKEN_PARTS && (
               <div className='grid grid-cols-3 gap-3'>
                 <div className='grid gap-1.5'>
-                  <Label>输入系数 /千token</Label>
+                  <Label>{t('Input rate /1k tokens')}</Label>
                   <Input
                     type='number'
                     step='0.0001'
                     value={form.input_rate}
                     onChange={(e) => set('input_rate', e.target.value)}
-                    placeholder='如 0.69'
+                    placeholder={t('e.g. 0.69')}
                   />
                 </div>
                 <div className='grid gap-1.5'>
-                  <Label>缓存命中系数 /千token</Label>
+                  <Label>{t('Cache hit rate /1k tokens')}</Label>
                   <Input
                     type='number'
                     step='0.0001'
                     value={form.cached_rate}
                     onChange={(e) => set('cached_rate', e.target.value)}
-                    placeholder='如 0.17'
+                    placeholder={t('e.g. 0.17')}
                   />
                 </div>
                 <div className='grid gap-1.5'>
-                  <Label>输出系数 /千token</Label>
+                  <Label>{t('Output rate /1k tokens')}</Label>
                   <Input
                     type='number'
                     step='0.0001'
                     value={form.output_rate}
                     onChange={(e) => set('output_rate', e.target.value)}
-                    placeholder='如 2.4'
+                    placeholder={t('e.g. 2.4')}
                   />
                 </div>
               </div>
             )}
             <div className='grid grid-cols-3 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>状态</Label>
+                <Label>{t('Status')}</Label>
                 <Select value={form.status} onValueChange={(v) => set('status', v ?? '')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='1'>启用</SelectItem>
-                    <SelectItem value='0'>停用</SelectItem>
+                    <SelectItem value='1'>{t('Enabled')}</SelectItem>
+                    <SelectItem value='0'>{t('Disabled')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className='grid gap-1.5'>
-                <Label>排序</Label>
+                <Label>{t('Sort')}</Label>
                 <Input
                   type='number'
                   value={form.sort}
@@ -479,7 +482,7 @@ export function RatiosTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>备注</Label>
+                <Label>{t('Remark')}</Label>
                 <Input
                   value={form.remark}
                   onChange={(e) => set('remark', e.target.value)}
@@ -487,7 +490,7 @@ export function RatiosTab() {
               </div>
             </div>
             <div className='grid gap-1.5'>
-              <Label>分时段折扣窗口（可选，JSON 数组）</Label>
+              <Label>{t('Time discount windows (optional, JSON array)')}</Label>
               <Textarea
                 className='font-mono text-xs'
                 rows={4}
@@ -500,21 +503,21 @@ export function RatiosTab() {
                 return err ? <p className='text-destructive text-xs'>{err}</p> : null
               })()}
               <p className='text-muted-foreground text-xs'>
-                按计费时刻自动命中折扣乘到消耗上，官方窗口为北京时间口径
-                （智谱非高峰 5 折、DeepSeek 空闲减半、阿里云夜间 22:00-08:00 五折等）。
-                留空 = 全时段原价。
+                {t('Discounts are applied automatically at billing time; official windows use Beijing time')}
+                {t('(e.g. Zhipu off-peak 50% off, DeepSeek idle half price, Aliyun night 22:00-08:00 50% off).')}
+                {t('Leave empty for full price all day.')}
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant='outline' onClick={() => setOpen(false)}>
-              取消
+              {t('Cancel')}
             </Button>
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending || !form.vendor || !form.model}
             >
-              保存
+              {t('Save')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -37,6 +37,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { t } from 'i18next'
+import { useTranslation } from 'react-i18next'
 
 // ---------------------------------------------------------------------------
 // 公开数据结构（GET /api/coding_plan/offers 与 /api/coding_plan/public_promotions）
@@ -106,21 +108,21 @@ type PublicPromotion = {
 }
 
 const KIND_LABEL: Record<string, string> = {
-  discount: '限时优惠',
-  free: '免费活动',
-  price_change: '价格调整',
-  model_retirement: '模型退市',
+  discount: 'Limited-time offer',
+  free: 'Free giveaway',
+  price_change: 'Price change',
+  model_retirement: 'Model retirement',
 }
 
 const COST_MODE_LABEL: Record<string, string> = {
-  per_request: '按次',
-  per_1k_tokens: '千 Token',
-  per_token_parts: '分段 Token',
+  per_request: 'Per request',
+  per_1k_tokens: 'Per 1k tokens',
+  per_token_parts: 'Tiered (input/cache/output)',
 }
 
 const BILLING_LABEL: Record<number, string> = {
-  1: '按次计费',
-  2: '积分计费',
+  1: 'Per-request billing',
+  2: 'Credits billing',
 }
 
 /** Unix 秒 → 本地时间展示；0/空 → '-' */
@@ -132,18 +134,18 @@ function fmtUnix(value?: number | null): string {
 /** 倒计时徽标文案与样式：72h 内红色、7 天内黄色警示、其余中性 */
 function countdownBadge(p: PublicPromotion) {
   if (p.state === 'scheduled') {
-    return { text: '未开始', variant: 'outline' as const }
+    return { text: t('Not started'), variant: 'outline' as const }
   }
   if (p.remaining_seconds === null || p.remaining_seconds === undefined) {
-    return { text: '长期 / 未公布截止', variant: 'outline' as const }
+    return { text: t('Long-term / no end date announced'), variant: 'outline' as const }
   }
   const seconds = Number(p.remaining_seconds)
   if (seconds <= 0) {
-    return { text: '即将截止', variant: 'destructive' as const }
+    return { text: t('Ending soon'), variant: 'destructive' as const }
   }
   const days = Math.floor(seconds / 86400)
   const hours = Math.floor((seconds % 86400) / 3600)
-  const text = days > 0 ? `剩 ${days} 天 ${hours} 小时` : `剩 ${hours} 小时`
+  const text = days > 0 ? t('{{days}} days {{hours}} hours left', { days, hours }) : t('{{hours}} hours left', { hours })
   if (seconds <= 72 * 3600) {
     return { text, variant: 'destructive' as const }
   }
@@ -155,20 +157,22 @@ function countdownBadge(p: PublicPromotion) {
 }
 
 /** 官方原币价 + 折算 CNY 双列展示 */
-function priceText(t: OfferTier): { original: string; cny: string } {
-  if (t.price === null || t.price === undefined) {
-    return { original: '待核对', cny: '-' }
+
+function priceText(tier: OfferTier): { original: string; cny: string } {
+  if (tier.price === null || tier.price === undefined) {
+    return { original: t('Pending check'), cny: '-' }
   }
-  const price = Number(t.price)
-  const symbol = t.currency === 'CNY' ? '¥' : `${t.currency} `
+  const price = Number(tier.price)
+  const symbol = tier.currency === 'CNY' ? '¥' : `${tier.currency} `
   const cny =
-    t.price_cny === null || t.price_cny === undefined
+    tier.price_cny === null || tier.price_cny === undefined
       ? '-'
-      : `≈ ¥${Number(t.price_cny).toFixed(2)}`
+      : `≈ ¥${Number(tier.price_cny).toFixed(2)}`
 
   return { original: `${symbol}${price}`, cny }
 }
 export function CodingPlanIntroduce() {
+  const { t } = useTranslation()
   const offersQuery = useQuery({
     queryKey: ['coding-plan-offers'],
     queryFn: async () => {
@@ -199,19 +203,19 @@ export function CodingPlanIntroduce() {
         {/* 页头 */}
         <header className='flex flex-col gap-2'>
           <h1 className='text-3xl font-semibold'>
-            Coding Plan 厂商套餐与官方活动
+            {t('Coding Plan vendor tiers and official promotions')}
           </h1>
           <p className='text-muted-foreground max-w-3xl text-sm'>
-            汇总各厂商官方 Coding Plan
-            套餐档位（官方原币价与折算人民币价）、模型抵扣比率与最新核对状态；官方限时优惠、价格调整与模型退市活动自动同步并倒计时提醒。核对数据每
-            6 小时刷新一次，本页缓存约 5 分钟。
+            {t('Aggregates official Coding Plan tiers from every vendor (original-currency and CNY-converted prices), model conversion ratios and latest check status; official limited-time offers, price changes and model retirements sync automatically with countdown reminders. Check data refreshes every')}
+            {t('6 hours')}
+            {t('and the page is cached for about 5 minutes.')}
           </p>
         </header>
 
         {/* 活动公告（P4-1 倒计时徽标 + P2 上下架公告位） */}
         {promotions.length > 0 ? (
           <section className='flex flex-col gap-3'>
-            <h2 className='text-xl font-semibold'>官方活动</h2>
+            <h2 className='text-xl font-semibold'>{t('Official promotions')}</h2>
             <div className='grid gap-3 md:grid-cols-2 lg:grid-cols-3'>
               {promotions.map((p) => {
                 const badge = countdownBadge(p)
@@ -222,7 +226,7 @@ export function CodingPlanIntroduce() {
                         <Badge variant='outline' className='font-mono text-xs'>
                           {p.vendor}
                         </Badge>
-                        <Badge>{KIND_LABEL[p.kind] ?? p.kind}</Badge>
+                        <Badge>{t(KIND_LABEL[p.kind] ?? p.kind)}</Badge>
                         <Badge variant={badge.variant}>{badge.text}</Badge>
                       </div>
                       <CardTitle className='text-base'>{p.title}</CardTitle>
@@ -236,8 +240,8 @@ export function CodingPlanIntroduce() {
                       <div className='text-muted-foreground mt-auto flex flex-wrap items-center justify-between gap-2 text-xs'>
                         <span>
                           {p.ends_at
-                            ? `截止 ${fmtUnix(p.ends_at)}`
-                            : '官方未公布截止'}
+                            ? t('Ends at {{time}}', { time: fmtUnix(p.ends_at) })
+                            : t('No end date announced')}
                         </span>
                         {p.source_url ? (
                           <a
@@ -246,7 +250,7 @@ export function CodingPlanIntroduce() {
                             rel='noreferrer'
                             className='text-primary inline-flex items-center gap-1 hover:underline'
                           >
-                            官方公告 <ExternalLink className='size-3' />
+                            {t('Official announcement')} <ExternalLink className='size-3' />
                           </a>
                         ) : null}
                       </div>
@@ -260,8 +264,8 @@ export function CodingPlanIntroduce() {
 
         {/* 厂商卡片（订阅制 / 按量两组） */}
         {[
-          { title: '订阅制 Coding Plan', list: subscriptionVendors },
-          { title: '按量 Token Plan', list: usageVendors },
+          { title: t('Subscription Coding Plan'), list: subscriptionVendors },
+          { title: t('Pay-as-you-go Token Plan'), list: usageVendors },
         ].map((group) =>
           group.list.length > 0 ? (
             <section key={group.title} className='flex flex-col gap-3'>
@@ -277,15 +281,15 @@ export function CodingPlanIntroduce() {
 
         {/* 加载 / 空态 */}
         {offersQuery.isLoading ? (
-          <p className='text-muted-foreground text-sm'>数据加载中…</p>
+          <p className='text-muted-foreground text-sm'>{t('Loading data…')}</p>
         ) : vendors.length === 0 ? (
           <p className='text-muted-foreground text-sm'>
-            暂无启用中的厂商数据。
+            {t('No enabled vendors yet.')}
           </p>
         ) : null}
 
         <footer className='text-muted-foreground border-t pt-4 text-xs'>
-          官方套餐与比率数据由系统每 6 小时自动核对（人工确认后应用变更）；活动与倒计时来自官方公告，截止时间为北京时间。
+          {t('Official tier and ratio data is checked automatically every 6 hours (changes are applied after manual confirmation); promotions and countdowns come from official announcements, deadlines are in Beijing time.')}
         </footer>
       </div>
     </div>
@@ -294,15 +298,16 @@ export function CodingPlanIntroduce() {
 
 /** 单厂商卡片：核对状态 + 套餐档位（原币/折算双列）+ 模型抵扣比率 */
 function VendorCard({ vendor }: { vendor: OfferVendor }) {
+  const { t } = useTranslation()
   const checkBadge = () => {
     if (vendor.source_status === 1) {
-      return <Badge>核对一致</Badge>
+      return <Badge>{t('In sync')}</Badge>
     }
     if (vendor.source_status === 2) {
-      return <Badge variant='destructive'>源异常</Badge>
+      return <Badge variant='destructive'>{t('Source error')}</Badge>
     }
 
-    return <Badge variant='outline'>未核对</Badge>
+    return <Badge variant='outline'>{t('Not checked')}</Badge>
   }
 
   return (
@@ -316,16 +321,16 @@ function VendorCard({ vendor }: { vendor: OfferVendor }) {
             </span>
           </CardTitle>
           <Badge variant='outline'>
-            {BILLING_LABEL[vendor.billing_mode] ?? '未知计费'}
+            {t(BILLING_LABEL[vendor.billing_mode] ?? 'Unknown billing')}
           </Badge>
           {vendor.currency !== 'CNY' ? (
-            <Badge variant='secondary'>官方计价 {vendor.currency}</Badge>
+            <Badge variant='secondary'>{t('Official pricing {{currency}}', { currency: vendor.currency })}</Badge>
           ) : null}
           {vendor.stale_count > 0 ? (
-            <Badge variant='secondary'>{vendor.stale_count} 条超期未复核</Badge>
+            <Badge variant='secondary'>{t('{{count}} entries overdue for re-check', { count: vendor.stale_count })}</Badge>
           ) : null}
           {vendor.change_count > 0 ? (
-            <Badge variant='secondary'>{vendor.change_count} 条待确认变更</Badge>
+            <Badge variant='secondary'>{t('{{count}} entries pending confirmation', { count: vendor.change_count })}</Badge>
           ) : null}
           {vendor.docs_url ? (
             <a
@@ -334,13 +339,13 @@ function VendorCard({ vendor }: { vendor: OfferVendor }) {
               rel='noreferrer'
               className='text-primary inline-flex items-center gap-1 text-sm hover:underline'
             >
-              官方文档 <ExternalLink className='size-3' />
+              {t('Official docs')} <ExternalLink className='size-3' />
             </a>
           ) : null}
         </div>
         <p className='text-muted-foreground text-xs'>
-          最近核对：
-          {vendor.last_checked_at ? fmtUnix(vendor.last_checked_at) : '尚未核对'}
+          {t('Last checked:')}
+          {vendor.last_checked_at ? fmtUnix(vendor.last_checked_at) : t('Not checked yet')}
           <span className='ml-2 inline-flex items-center gap-1 align-middle'>
             {checkBadge()}
           </span>
@@ -354,12 +359,12 @@ function VendorCard({ vendor }: { vendor: OfferVendor }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>档位</TableHead>
-                  <TableHead>官方价</TableHead>
-                  <TableHead>折算人民币</TableHead>
-                  <TableHead>周期</TableHead>
-                  <TableHead>额度</TableHead>
-                  <TableHead>备注</TableHead>
+                  <TableHead>{t('Tier')}</TableHead>
+                  <TableHead>{t('Official price')}</TableHead>
+                  <TableHead>{t('CNY converted')}</TableHead>
+                  <TableHead>{t('Period')}</TableHead>
+                  <TableHead>{t('Quota')}</TableHead>
+                  <TableHead>{t('Remark')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -404,13 +409,13 @@ function VendorCard({ vendor }: { vendor: OfferVendor }) {
             <Table>
               <TableHeader className='bg-background sticky top-0'>
                 <TableRow>
-                  <TableHead>模型</TableHead>
-                  <TableHead>计费</TableHead>
-                  <TableHead>单位成本</TableHead>
-                  <TableHead>输入/1k</TableHead>
-                  <TableHead>缓存/1k</TableHead>
-                  <TableHead>输出/1k</TableHead>
-                  <TableHead>时段折扣</TableHead>
+                  <TableHead>{t('Model')}</TableHead>
+                  <TableHead>{t('Billing')}</TableHead>
+                  <TableHead>{t('Unit cost')}</TableHead>
+                  <TableHead>{t('Input/1k')}</TableHead>
+                  <TableHead>{t('Cache/1k')}</TableHead>
+                  <TableHead>{t('Output/1k')}</TableHead>
+                  <TableHead>{t('Time discounts')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -420,12 +425,12 @@ function VendorCard({ vendor }: { vendor: OfferVendor }) {
                       {r.model}
                       {r.stale ? (
                         <Badge variant='outline' className='ml-1.5 text-[10px]'>
-                          超期
+                          {t('Stale')}
                         </Badge>
                       ) : null}
                     </TableCell>
                     <TableCell className='text-xs'>
-                      {COST_MODE_LABEL[r.cost_mode] ?? r.cost_mode}
+                      {t(COST_MODE_LABEL[r.cost_mode] ?? r.cost_mode)}
                     </TableCell>
                     <TableCell className='text-xs'>{r.unit_cost}</TableCell>
                     <TableCell className='text-xs'>

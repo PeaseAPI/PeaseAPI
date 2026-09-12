@@ -19,12 +19,14 @@ For commercial licensing, please contact support@quantumnous.com
 import { Switch } from '@/components/ui/switch'
 import { useSystemOptions } from '@/features/system-settings/hooks/use-system-options'
 import { useUpdateOption } from '@/features/system-settings/hooks/use-update-option'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Coding Plan 强制订阅校验开关（OptionService: CodingPlanRequireSubscription）。
  * 开启后 RelayInfo::resolveCodingPlanSubscription 会拒绝未持有对应厂商套餐的用户。
  */
 export function SubscriptionGateCard() {
+  const { t } = useTranslation()
   const { data, isLoading } = useSystemOptions()
   const updateOption = useUpdateOption()
 
@@ -33,9 +35,9 @@ export function SubscriptionGateCard() {
   return (
     <div className='flex items-center justify-between gap-4 rounded-md border p-4 md:w-96'>
       <div className='min-w-0'>
-        <p className='text-sm font-medium'>强制订阅校验</p>
+        <p className='text-sm font-medium'>{t('Enforce subscription check')}</p>
         <p className='text-muted-foreground text-xs'>
-          开启后，未持有对应厂商套餐的用户调用 Coding Plan 中转将被拒绝
+          {t('When enabled, users without the matching vendor plan are rejected when calling the Coding Plan relay')}
         </p>
       </div>
       <Switch

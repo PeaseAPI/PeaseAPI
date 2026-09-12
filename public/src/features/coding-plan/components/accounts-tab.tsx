@@ -63,19 +63,21 @@ import {
   BILLING_MODE_PER_REQUEST,
   type CodingPlanAccount,
 } from '../types'
+import { t } from 'i18next'
+import { useTranslation } from 'react-i18next'
 
 const STATUS_MAP: Record<
   number,
   { label: string; variant: 'default' | 'secondary' | 'destructive' }
 > = {
-  0: { label: '禁用', variant: 'destructive' },
-  1: { label: '启用', variant: 'default' },
-  2: { label: '已耗尽', variant: 'secondary' },
+  0: { label: 'Disabled', variant: 'destructive' },
+  1: { label: 'Enabled', variant: 'default' },
+  2: { label: 'Exhausted', variant: 'secondary' },
 }
 
 function statusBadge(status: number) {
   const s = STATUS_MAP[status] ?? STATUS_MAP[0]
-  return <Badge variant={s.variant}>{s.label}</Badge>
+  return <Badge variant={s.variant}>{t(s.label)}</Badge>
 }
 
 type FormState = {
@@ -138,6 +140,7 @@ function accountToForm(a: CodingPlanAccount): FormState {
 }
 
 export function AccountsTab() {
+  const { t } = useTranslation()
 
   const qc = useQueryClient()
   const [editing, setEditing] = useState<CodingPlanAccount | null>(null)
@@ -192,11 +195,11 @@ export function AccountsTab() {
     },
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '已保存')
+        toast.success(res.message ?? t('Saved'))
         setOpen(false)
         invalidate()
       } else {
-        toast.error(res.message ?? '保存失败')
+        toast.error(res.message ?? t('Failed to save'))
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -206,10 +209,10 @@ export function AccountsTab() {
     mutationFn: (id: number) => deleteAccount(id),
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '已删除')
+        toast.success(res.message ?? t('Deleted'))
         invalidate()
       } else {
-        toast.error(res.message ?? '删除失败')
+        toast.error(res.message ?? t('Failed to delete'))
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -219,10 +222,10 @@ export function AccountsTab() {
     mutationFn: (id: number) => resetAccountUsage(id, 'all'),
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '已重置')
+        toast.success(res.message ?? t('Reset'))
         invalidate()
       } else {
-        toast.error(res.message ?? '重置失败')
+        toast.error(res.message ?? t('Failed to reset'))
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -252,10 +255,10 @@ export function AccountsTab() {
     <div className='flex flex-col gap-3'>
       <div className='flex items-center justify-between'>
         <p className='text-muted-foreground text-sm'>
-          账号池按优先级轮询，仅成功请求计入用量；积分模式按折算比率表计费。
+          {t('Account pools rotate by priority; only successful requests count toward usage; credits mode bills via the conversion ratio table.')}
         </p>
         <Button size='sm' onClick={openCreate}>
-          <Plus className='mr-1 size-4' /> 新增账号
+          <Plus className='mr-1 size-4' /> {t('Add account')}
         </Button>
       </div>
 
@@ -263,14 +266,14 @@ export function AccountsTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>厂商</TableHead>
-              <TableHead>名称</TableHead>
-              <TableHead>计费</TableHead>
-              <TableHead>月已用/配额</TableHead>
-              <TableHead>汇率</TableHead>
-              <TableHead>优先级</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead className='text-right'>操作</TableHead>
+              <TableHead>{t('Vendor')}</TableHead>
+              <TableHead>{t('Name')}</TableHead>
+              <TableHead>{t('Billing')}</TableHead>
+              <TableHead>{t('Monthly used/quota')}</TableHead>
+              <TableHead>{t('Exchange rates')}</TableHead>
+              <TableHead>{t('Priority')}</TableHead>
+              <TableHead>{t('Status')}</TableHead>
+              <TableHead className='text-right'>{t('Actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -288,7 +291,7 @@ export function AccountsTab() {
                   colSpan={8}
                   className='text-muted-foreground py-8 text-center'
                 >
-                  暂无账号
+                  {t('No accounts')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -299,10 +302,10 @@ export function AccountsTab() {
                   <TableCell>
                     {Number(a.billing_mode) === BILLING_MODE_CREDIT ? (
                       <Badge variant='secondary'>
-                        积分{a.unit_name ? ` · ${a.unit_name}` : ''}
+                        {t('Credits{{suffix}}', { suffix: a.unit_name ? ` · ${a.unit_name}` : '' })}
                       </Badge>
                     ) : (
-                      <Badge variant='outline'>按次</Badge>
+                      <Badge variant='outline'>{t('Per request')}</Badge>
                     )}
                   </TableCell>
                   <TableCell>
@@ -311,14 +314,14 @@ export function AccountsTab() {
                   <TableCell>
                     {Number(a.unit_exchange_rate) > 0
                       ? `×${Number(a.unit_exchange_rate)}`
-                      : '默认'}
+                      : t('Default')}
                   </TableCell>
                   <TableCell>{a.priority}</TableCell>
                   <TableCell>{statusBadge(Number(a.status))}</TableCell>
                   <TableCell className='text-right'>
                     <div className='flex justify-end gap-1'>
                       <Button variant='ghost' size='sm' onClick={() => openEdit(a)}>
-                        编辑
+                        {t('Edit')}
                       </Button>
                       <Button
                         variant='ghost'
@@ -340,7 +343,7 @@ export function AccountsTab() {
                         onClick={() => {
                           if (
                             window.confirm(
-                              `确认删除账号「${a.account_name}」？`
+                              t('Delete account "{{name}}"?', { name: a.account_name })
                             )
                           ) {
                             deleteMutation.mutate(a.id)
@@ -360,15 +363,15 @@ export function AccountsTab() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className='max-h-[85vh] overflow-y-auto sm:max-w-lg'>
           <DialogHeader>
-            <DialogTitle>{editing ? '编辑账号' : '新增账号'}</DialogTitle>
+            <DialogTitle>{editing ? t('Edit account') : t('Add account')}</DialogTitle>
           </DialogHeader>
           <div className='grid gap-3'>
             <div className='grid grid-cols-2 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>厂商</Label>
+                <Label>{t('Vendor')}</Label>
                 <Select value={form.vendor} onValueChange={(v) => set('vendor', v ?? '')}>
                   <SelectTrigger>
-                    <SelectValue placeholder='选择厂商' />
+                    <SelectValue placeholder={t('Select a vendor')} />
                   </SelectTrigger>
                   <SelectContent>
                     {vendors.map((v) => (
@@ -380,17 +383,17 @@ export function AccountsTab() {
                 </Select>
               </div>
               <div className='grid gap-1.5'>
-                <Label>账号名称</Label>
+                <Label>{t('Account name')}</Label>
                 <Input
                   value={form.account_name}
                   onChange={(e) => set('account_name', e.target.value)}
-                  placeholder='例如 claude-max-01'
+                  placeholder={t('e.g. claude-max-01')}
                 />
               </div>
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>计费模式</Label>
+                <Label>{t('Billing mode')}</Label>
                 <Select
                   value={form.billing_mode}
                   onValueChange={(v) => set('billing_mode', v ?? '')}
@@ -400,26 +403,26 @@ export function AccountsTab() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={String(BILLING_MODE_PER_REQUEST)}>
-                      按次提交
+                      {t('Per-request submits')}
                     </SelectItem>
                     <SelectItem value={String(BILLING_MODE_CREDIT)}>
-                      按积分折算
+                      {t('Credits conversion')}
                     </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className='grid gap-1.5'>
-                <Label>计数单位（可选）</Label>
+                <Label>{t('Count unit (optional)')}</Label>
                 <Input
                   value={form.unit_name}
                   onChange={(e) => set('unit_name', e.target.value)}
-                  placeholder='次 / 点 / 积分'
+                  placeholder={t('times / points / credits')}
                 />
               </div>
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>单位汇率（0=跟随供应商）</Label>
+                <Label>{t('Unit rate (0 = follow vendor)')}</Label>
                 <Input
                   type='number'
                   step='0.0001'
@@ -428,7 +431,7 @@ export function AccountsTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>关联渠道 ID</Label>
+                <Label>{t('Linked channel ID')}</Label>
                 <Input
                   type='number'
                   value={form.channel_id}
@@ -438,7 +441,7 @@ export function AccountsTab() {
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>API Key{editing ? '（留空不修改）' : ''}</Label>
+                <Label>API Key{editing ? t('(leave empty to keep unchanged)') : ''}</Label>
                 <Input
                   type='password'
                   value={form.api_key}
@@ -446,7 +449,7 @@ export function AccountsTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>Base URL（可选）</Label>
+                <Label>{t('Base URL (optional)')}</Label>
                 <Input
                   value={form.base_url}
                   onChange={(e) => set('base_url', e.target.value)}
@@ -455,7 +458,7 @@ export function AccountsTab() {
             </div>
             <div className='grid grid-cols-3 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>5h 配额</Label>
+                <Label>{t('5h quota')}</Label>
                 <Input
                   type='number'
                   value={form.quota_5h}
@@ -463,7 +466,7 @@ export function AccountsTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>周配额</Label>
+                <Label>{t('Weekly quota')}</Label>
                 <Input
                   type='number'
                   value={form.quota_weekly}
@@ -471,7 +474,7 @@ export function AccountsTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>月配额</Label>
+                <Label>{t('Monthly quota')}</Label>
                 <Input
                   type='number'
                   value={form.quota_monthly}
@@ -481,7 +484,7 @@ export function AccountsTab() {
             </div>
             <div className='grid grid-cols-3 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>月阈值 %</Label>
+                <Label>{t('Monthly threshold %')}</Label>
                 <Input
                   type='number'
                   value={form.monthly_usage_threshold}
@@ -489,7 +492,7 @@ export function AccountsTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>优先级</Label>
+                <Label>{t('Priority')}</Label>
                 <Input
                   type='number'
                   value={form.priority}
@@ -497,30 +500,30 @@ export function AccountsTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>状态</Label>
+                <Label>{t('Status')}</Label>
                 <Select value={form.status} onValueChange={(v) => set('status', v ?? '')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='1'>启用</SelectItem>
-                    <SelectItem value='0'>禁用</SelectItem>
-                    <SelectItem value='2'>已耗尽</SelectItem>
+                    <SelectItem value='1'>{t('Enabled')}</SelectItem>
+                    <SelectItem value='0'>{t('Disabled')}</SelectItem>
+                    <SelectItem value='2'>{t('Exhausted')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>到期时间（可选，Unix 秒或日期）</Label>
+                <Label>{t('Expires at (optional, Unix seconds or date)')}</Label>
                 <Input
                   value={form.expires_at}
                   onChange={(e) => set('expires_at', e.target.value)}
-                  placeholder='例如 2026-12-31'
+                  placeholder={t('e.g. 2026-12-31')}
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>备注</Label>
+                <Label>{t('Remark')}</Label>
                 <Input
                   value={form.remark}
                   onChange={(e) => set('remark', e.target.value)}
@@ -530,7 +533,7 @@ export function AccountsTab() {
           </div>
           <DialogFooter>
             <Button variant='outline' onClick={() => setOpen(false)}>
-              取消
+              {t('Cancel')}
             </Button>
             <Button
               onClick={() => saveMutation.mutate()}
@@ -538,7 +541,7 @@ export function AccountsTab() {
                 saveMutation.isPending || !form.vendor || !form.account_name
               }
             >
-              保存
+              {t('Save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -552,26 +555,26 @@ export function AccountsTab() {
         <DialogContent className='sm:max-w-3xl'>
           <DialogHeader>
             <DialogTitle>
-              使用流水 — {usageAccount?.account_name ?? ''}
+              {t('Usage logs — {{name}}', { name: usageAccount?.account_name ?? '' })}
             </DialogTitle>
           </DialogHeader>
           <div className='max-h-[60vh] overflow-y-auto rounded-md border'>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>时间</TableHead>
-                  <TableHead>模型</TableHead>
+                  <TableHead>{t('Time')}</TableHead>
+                  <TableHead>{t('Model')}</TableHead>
                   <TableHead>Tokens</TableHead>
-                  <TableHead>单位消耗</TableHead>
-                  <TableHead>积分</TableHead>
-                  <TableHead>状态</TableHead>
+                  <TableHead>{t('Units')}</TableHead>
+                  <TableHead>{t('Credits')}</TableHead>
+                  <TableHead>{t('Status')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {usageQuery.isLoading ? (
                   <TableRow>
                     <TableCell colSpan={6} className='py-8 text-center'>
-                      加载中…
+                      {t('Loading…')}
                     </TableCell>
                   </TableRow>
                 ) : (usageQuery.data?.data?.items ?? []).length === 0 ? (
@@ -580,7 +583,7 @@ export function AccountsTab() {
                       colSpan={6}
                       className='text-muted-foreground py-8 text-center'
                     >
-                      暂无流水
+                      {t('No usage records')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -603,13 +606,13 @@ export function AccountsTab() {
                       </TableCell>
                       <TableCell>
                         {log.success ? (
-                          <Badge>成功</Badge>
+                          <Badge>{t('Success')}</Badge>
                         ) : (
                           <Badge
                             variant='destructive'
                             title={log.error ?? undefined}
                           >
-                            失败
+                            {t('Failed')}
                           </Badge>
                         )}
                       </TableCell>

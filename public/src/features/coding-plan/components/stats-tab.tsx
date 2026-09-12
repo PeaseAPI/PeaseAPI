@@ -39,6 +39,7 @@ import {
 
 import { getStats } from '../api'
 import type { CodingPlanDailyUsage } from '../types'
+import { useTranslation } from 'react-i18next'
 
 const pct = (used: number, quota: number) =>
   quota > 0 ? Math.min(100, (used / quota) * 100) : 0
@@ -66,6 +67,7 @@ function QuotaBar({
 }
 
 export function StatsTab() {
+  const { t } = useTranslation()
   const { data, isLoading } = useQuery({
     queryKey: ['coding-plan-stats'],
     queryFn: getStats,
@@ -98,7 +100,7 @@ export function StatsTab() {
         <Card>
           <CardHeader className='pb-2'>
             <CardTitle className='flex items-center gap-2 text-sm font-medium'>
-              <Users className='size-4' /> 账号总数
+              <Users className='size-4' /> {t('Total accounts')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -106,7 +108,7 @@ export function StatsTab() {
               {vendors.reduce((s, v) => s + (v.total ?? 0), 0)}
             </p>
             <p className='text-muted-foreground mt-1 text-xs'>
-              启用 {vendors.reduce((s, v) => s + (v.active ?? 0), 0)} · 耗尽{' '}
+              {t('Enabled')} {vendors.reduce((s, v) => s + (v.active ?? 0), 0)} · {t('Exhausted')}{' '}
               {vendors.reduce((s, v) => s + (v.exhausted ?? 0), 0)}
             </p>
           </CardContent>
@@ -114,20 +116,20 @@ export function StatsTab() {
         <Card>
           <CardHeader className='pb-2'>
             <CardTitle className='flex items-center gap-2 text-sm font-medium'>
-              <Zap className='size-4' /> 近 7 天提交
+              <Zap className='size-4' /> {t('Submits (7d)')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className='text-2xl font-semibold'>{totals.submits}</p>
             <p className='text-muted-foreground mt-1 text-xs'>
-              成功请求次数
+              {t('Successful requests')}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className='pb-2'>
             <CardTitle className='flex items-center gap-2 text-sm font-medium'>
-              <CreditCard className='size-4' /> 近 7 天消耗
+              <CreditCard className='size-4' /> {t('Spend (7d)')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -142,11 +144,11 @@ export function StatsTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>厂商</TableHead>
-              <TableHead>账号（启用/总数）</TableHead>
-              <TableHead>本月用量 / 配额</TableHead>
-              <TableHead>积分已用 / 总额</TableHead>
-              <TableHead>剩余</TableHead>
+              <TableHead>{t('Vendor')}</TableHead>
+              <TableHead>{t('Accounts (active/total)')}</TableHead>
+              <TableHead>{t('Monthly usage / quota')}</TableHead>
+              <TableHead>{t('Credits used / total')}</TableHead>
+              <TableHead>{t('Remaining')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -156,7 +158,7 @@ export function StatsTab() {
                   colSpan={5}
                   className='text-muted-foreground py-8 text-center'
                 >
-                  暂无数据
+                  {t('No data')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -188,7 +190,7 @@ export function StatsTab() {
                         {Number(v.credits_remaining ?? 0).toFixed(2)}
                       </Badge>
                     ) : (
-                      <Badge variant='destructive'>已用尽</Badge>
+                      <Badge variant='destructive'>{t('Exhausted')}</Badge>
                     )}
                   </TableCell>
                 </TableRow>

@@ -31,45 +31,47 @@ import { SubscriptionGateCard } from './components/subscription-gate-card'
 import { SyncTab } from './components/sync-tab'
 import { TiersTab } from './components/tiers-tab'
 import { VendorsTab } from './components/vendors-tab'
+import { useTranslation } from 'react-i18next'
 
 const TABS = [
-  { value: 'accounts', label: '账号池', node: <AccountsTab /> },
-  { value: 'plans', label: '套餐绑定', node: <PlansTab /> },
-  { value: 'vendors', label: '供应商', node: <VendorsTab /> },
-  { value: 'tiers', label: '套餐档位', node: <TiersTab /> },
-  { value: 'rates', label: '汇率', node: <RatesTab /> },
-  { value: 'promotions', label: '厂商活动', node: <PromotionsTab /> },
-  { value: 'models', label: '模型上架', node: <ModelsTab /> },
-  { value: 'ratios', label: '折算比率', node: <RatiosTab /> },
-  { value: 'sync', label: '官方同步', node: <SyncTab /> },
-  { value: 'stats', label: '用量统计', node: <StatsTab /> },
+  { value: 'accounts', label: 'Account pools', node: <AccountsTab /> },
+  { value: 'plans', label: 'Plan binding', node: <PlansTab /> },
+  { value: 'vendors', label: 'Vendors', node: <VendorsTab /> },
+  { value: 'tiers', label: 'Plan tiers', node: <TiersTab /> },
+  { value: 'rates', label: 'Exchange rates', node: <RatesTab /> },
+  { value: 'promotions', label: 'Vendor promotions', node: <PromotionsTab /> },
+  { value: 'models', label: 'Model listing', node: <ModelsTab /> },
+  { value: 'ratios', label: 'Conversion ratios', node: <RatiosTab /> },
+  { value: 'sync', label: 'Official sync', node: <SyncTab /> },
+  { value: 'stats', label: 'Usage stats', node: <StatsTab /> },
 ]
 
 export function CodingPlan() {
+  const { t } = useTranslation()
   const [tab, setTab] = useState('accounts')
 
   return (
     <div className='flex flex-col gap-4 p-4 md:p-6'>
       <div className='flex flex-wrap items-start justify-between gap-4'>
         <div>
-          <h1 className='text-xl font-semibold'>Coding Plan 积分管理</h1>
+          <h1 className='text-xl font-semibold'>{t('Coding Plan Credits Management')}</h1>
           <p className='text-muted-foreground text-sm'>
-            管理订阅账号池、供应商与用量折算规则
+            {t('Manage subscription account pools, vendors and usage conversion rules')}
           </p>
         </div>
         <SubscriptionGateCard />
       </div>
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          {TABS.map((t) => (
-            <TabsTrigger key={t.value} value={t.value}>
-              {t.label}
+          {TABS.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>
+              {t(tab.label)}
             </TabsTrigger>
           ))}
         </TabsList>
-        {TABS.map((t) => (
-          <TabsContent key={t.value} value={t.value} className='mt-3'>
-            {t.node}
+        {TABS.map((tab) => (
+          <TabsContent key={tab.value} value={tab.value} className='mt-3'>
+            {tab.node}
           </TabsContent>
         ))}
       </Tabs>

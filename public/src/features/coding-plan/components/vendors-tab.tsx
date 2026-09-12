@@ -56,6 +56,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useTranslation } from 'react-i18next'
 
 type VendorForm = {
   code: string
@@ -86,6 +87,7 @@ const EMPTY: VendorForm = {
 }
 
 export function VendorsTab() {
+  const { t } = useTranslation()
 
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -117,11 +119,11 @@ export function VendorsTab() {
     },
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '已保存')
+        toast.success(res.message ?? t('Saved'))
         setOpen(false)
         qc.invalidateQueries({ queryKey: ['coding-plan-vendors'] })
       } else {
-        toast.error(res.message ?? '保存失败')
+        toast.error(res.message ?? t('Failed to save'))
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -131,10 +133,10 @@ export function VendorsTab() {
     mutationFn: (id: number) => deleteVendor(id),
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message ?? '已删除')
+        toast.success(res.message ?? t('Deleted'))
         qc.invalidateQueries({ queryKey: ['coding-plan-vendors'] })
       } else {
-        toast.error(res.message ?? '删除失败')
+        toast.error(res.message ?? t('Failed to delete'))
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -149,7 +151,7 @@ export function VendorsTab() {
     <div className='flex flex-col gap-3'>
       <div className='flex items-center justify-between'>
         <p className='text-muted-foreground text-sm'>
-          供应商定义默认计费单位与汇率；账号未单独设置汇率时使用此处默认值。
+          {t('Vendors define default billing unit and exchange rate; accounts inherit them unless set individually.')}
         </p>
         <Button
           size='sm'
@@ -159,29 +161,29 @@ export function VendorsTab() {
             setOpen(true)
           }}
         >
-          <Plus className='mr-1 size-4' /> 新增供应商
+          <Plus className='mr-1 size-4' /> {t('Add vendor')}
         </Button>
       </div>
       <div className='rounded-md border'>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>标识</TableHead>
-              <TableHead>名称</TableHead>
-              <TableHead>类型</TableHead>
-              <TableHead>币种</TableHead>
-              <TableHead>默认单位</TableHead>
-              <TableHead>默认汇率</TableHead>
-              <TableHead>账号池</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead className='text-right'>操作</TableHead>
+              <TableHead>{t('Identifier')}</TableHead>
+              <TableHead>{t('Name')}</TableHead>
+              <TableHead>{t('Type')}</TableHead>
+              <TableHead>{t('Currency')}</TableHead>
+              <TableHead>{t('Default unit')}</TableHead>
+              <TableHead>{t('Default rate')}</TableHead>
+              <TableHead>{t('Account pools')}</TableHead>
+              <TableHead>{t('Status')}</TableHead>
+              <TableHead className='text-right'>{t('Actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {vendorsQuery.isLoading ? (
               <TableRow>
                 <TableCell colSpan={9} className='py-8 text-center'>
-                  加载中…
+                  {t('Loading…')}
                 </TableCell>
               </TableRow>
             ) : vendors.length === 0 ? (
@@ -190,7 +192,7 @@ export function VendorsTab() {
                   colSpan={9}
                   className='text-muted-foreground py-8 text-center'
                 >
-                  暂无供应商；迁移已预置主流厂商目录（默认停用），可直接「编辑」启用
+                  {t('No vendors yet; migration has preset major vendor catalogs (disabled by default), click "Edit" to enable')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -201,8 +203,8 @@ export function VendorsTab() {
                   <TableCell>
                     <Badge variant='outline'>
                       {Number(v.plan_kind) === PLAN_KIND_TOKEN
-                        ? '按量'
-                        : '订阅制'}
+                        ? t('Pay-as-you-go')
+                        : t('Subscription')}
                     </Badge>
                   </TableCell>
                   <TableCell className='font-mono text-xs'>
@@ -215,9 +217,9 @@ export function VendorsTab() {
                   </TableCell>
                   <TableCell>
                     {Number(v.status) === 1 ? (
-                      <Badge>启用</Badge>
+                      <Badge>{t('Enabled')}</Badge>
                     ) : (
-                      <Badge variant='destructive'>停用</Badge>
+                      <Badge variant='destructive'>{t('Disabled')}</Badge>
                     )}
                   </TableCell>
                   <TableCell className='text-right'>
@@ -243,7 +245,7 @@ export function VendorsTab() {
                           setOpen(true)
                         }}
                       >
-                        编辑
+                        {t('Edit')}
                       </Button>
                       <Button
                         variant='ghost'
@@ -251,7 +253,7 @@ export function VendorsTab() {
                         onClick={() => {
                           if (
                             window.confirm(
-                              `确认删除供应商「${v.name}」？其比率配置将一并删除；${v.accounts_total ?? 0} 个账号（活跃 ${v.accounts_active ?? 0} 个）会保留，需改绑其他供应商后才能继续中转。`
+                              t('Delete vendor "{{name}}"? Its ratio config is deleted too; {{total}} accounts ({{active}} active) are kept and must be re-bound to another vendor before relaying resumes.', { name: v.name, total: v.accounts_total ?? 0, active: v.accounts_active ?? 0 })
                             )
                           ) {
                             deleteMutation.mutate(v.id)
@@ -271,12 +273,12 @@ export function VendorsTab() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
-            <DialogTitle>{editing ? '编辑供应商' : '新增供应商'}</DialogTitle>
+            <DialogTitle>{editing ? t('Edit vendor') : t('Add vendor')}</DialogTitle>
           </DialogHeader>
           <div className='grid gap-3'>
             <div className='grid grid-cols-2 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>标识（唯一）</Label>
+                <Label>{t('Identifier (unique)')}</Label>
                 <Input
                   value={form.code}
                   onChange={(e) => set('code', e.target.value)}
@@ -285,7 +287,7 @@ export function VendorsTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>名称</Label>
+                <Label>{t('Name')}</Label>
                 <Input
                   value={form.name}
                   onChange={(e) => set('name', e.target.value)}
@@ -294,7 +296,7 @@ export function VendorsTab() {
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>套餐类型</Label>
+                <Label>{t('Plan type')}</Label>
                 <Select
                   value={form.plan_kind}
                   onValueChange={(v) => set('plan_kind', v ?? '')}
@@ -320,7 +322,7 @@ export function VendorsTab() {
               </div>
             </div>
             <div className='grid gap-1.5'>
-              <Label>定价源 URL（可选，JSON 价格清单，供每 6 小时自动校对比对）</Label>
+              <Label>{t('Pricing source URL (optional, JSON price list for 6-hour auto comparison)')}</Label>
               <Input
                 value={form.pricing_source_url}
                 onChange={(e) => set('pricing_source_url', e.target.value)}
@@ -339,16 +341,16 @@ export function VendorsTab() {
                     )
                   }
                 >
-                  使用内置官方源
+                  {t('Use built-in official source')}
                 </Button>
                 <span className='text-muted-foreground text-xs'>
-                  指向本站由官方模板目录生成的 JSON（需先填厂商代码），官方改价随目录更新自动进入待确认清单
+                  {t('Points to the JSON generated by the built-in official catalog (fill in the vendor code first); official price changes flow into the pending list automatically')}
                 </span>
               </div>
             </div>
             <div className='grid grid-cols-4 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>币种</Label>
+                <Label>{t('Currency')}</Label>
                 <Select value={form.currency} onValueChange={(v) => set('currency', v ?? 'CNY')}>
                   <SelectTrigger>
                     <SelectValue />
@@ -363,15 +365,15 @@ export function VendorsTab() {
                 </Select>
               </div>
               <div className='grid gap-1.5'>
-                <Label>默认单位</Label>
+                <Label>{t('Default unit')}</Label>
                 <Input
                   value={form.unit_name}
                   onChange={(e) => set('unit_name', e.target.value)}
-                  placeholder='次'
+                  placeholder={t('times')}
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>默认汇率</Label>
+                <Label>{t('Default rate')}</Label>
                 <Input
                   type='number'
                   step='0.0001'
@@ -380,7 +382,7 @@ export function VendorsTab() {
                 />
               </div>
               <div className='grid gap-1.5'>
-                <Label>排序</Label>
+                <Label>{t('Sort')}</Label>
                 <Input
                   type='number'
                   value={form.sort}
@@ -390,19 +392,19 @@ export function VendorsTab() {
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div className='grid gap-1.5'>
-                <Label>状态</Label>
+                <Label>{t('Status')}</Label>
                 <Select value={form.status} onValueChange={(v) => set('status', v ?? '')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='1'>启用</SelectItem>
-                    <SelectItem value='0'>停用</SelectItem>
+                    <SelectItem value='1'>{t('Enabled')}</SelectItem>
+                    <SelectItem value='0'>{t('Disabled')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className='grid gap-1.5'>
-                <Label>备注</Label>
+                <Label>{t('Remark')}</Label>
                 <Input
                   value={form.remark}
                   onChange={(e) => set('remark', e.target.value)}
@@ -412,13 +414,13 @@ export function VendorsTab() {
           </div>
           <DialogFooter>
             <Button variant='outline' onClick={() => setOpen(false)}>
-              取消
+              {t('Cancel')}
             </Button>
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending || !form.code || !form.name}
             >
-              保存
+              {t('Save')}
             </Button>
           </DialogFooter>
         </DialogContent>

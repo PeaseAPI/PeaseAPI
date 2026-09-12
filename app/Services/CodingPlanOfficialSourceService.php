@@ -14,6 +14,7 @@ use App\Services\CodingPlanParsers\GoogleParser;
 use App\Services\CodingPlanParsers\MiniMaxParser;
 use App\Services\CodingPlanParsers\MoonshotParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
+use App\Services\CodingPlanParsers\ScnetParser;
 use App\Services\CodingPlanParsers\TencentTokenHubParser;
 use App\Services\CodingPlanParsers\UnicomParser;
 use App\Services\CodingPlanParsers\VolcengineDocParser;
@@ -200,6 +201,16 @@ class CodingPlanOfficialSourceService
             'model_catalog_url' => null,
             'catalog_from_pricing' => true,
             'notes' => '旧 doc hlpl7xe2f 已 302 → 从 index 定位新页 qianfan/s/wmh4sv6ya（415KB SSR，217 行价格表）；「版本名称」列=API id（连排格按 ernie-/bce- 前缀切分）→ catalog；按量价元/千 tokens（CNY，单位天然 /千无需换算）→ 三率归 P7-1',
+        ],
+        'scnet' => [
+            'label' => '超算互联网 SCNet',
+            'pricing_url' => 'https://www.scnet.cn/ac/openapi/doc/2.0/moduleapi/plans/token-plan.html',
+            'format' => 'html',
+            'parser' => ScnetParser::class,
+            'proxy' => false,
+            'model_catalog_url' => null,
+            'catalog_from_pricing' => true,
+            'notes' => 'VitePress 文档站 SSR 直出正文（无需挖 JS/XHR）：「可用模型」表（品牌|模型ID|能力|协议，18 款国产模型）按表头「模型ID」定位列 → catalog；套餐档位（基础/标准/高级/旗舰 ¥30~764 活动价 CNY，月度 Credits 额度）→ 归 P2-1；Credits 扣减倍率表 → 折算系数仅参考归 P7-1',
         ],
     ];
 

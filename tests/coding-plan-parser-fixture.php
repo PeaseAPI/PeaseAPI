@@ -15,6 +15,7 @@ use App\Services\CodingPlanParsers\GoogleParser;
 use App\Services\CodingPlanParsers\MiniMaxParser;
 use App\Services\CodingPlanParsers\MoonshotParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
+use App\Services\CodingPlanParsers\ScnetParser;
 use App\Services\CodingPlanParsers\TencentTokenHubParser;
 use App\Services\CodingPlanParsers\UnicomParser;
 use App\Services\CodingPlanParsers\VolcengineDocParser;
@@ -392,6 +393,23 @@ check('unicom 内嵌文档树提取 + 两篇「支持模型」列合并', $unico
 check('unicom 注释行/中文说明不入目录', ! in_array('注', $unicomCatalog, true) && ! in_array('deepseek-v4-flash 仅供尝鲜体验', $unicomCatalog, true));
 check('unicom parsePricing 空（套餐档位 CNY 次数/credits→P2-1/P7）', $unicomParser->parsePricing($unicomPage) === []);
 check('unicom 无 totalList 的壳页安全返回空', $unicomParser->parseCatalog('<html>shell</html>') === []);
+
+// ---- scnet（超算互联网 SCNet，VitePress SSR：「可用模型」表按表头「模型ID」定位列）----
+$scnetPage = '<main><p>Token Plan 是超算互联网（SCNet）的大模型包月订阅服务（Credits 计量）。</p>'
+    .'<table><thead><tr><th><strong>套餐</strong></th><th><strong>原价（¥/月）</strong></th><th><strong>活动价（¥/月）</strong></th><th><strong>月度额度</strong></th></tr></thead>'
+    .'<tbody><tr><td>基础版</td><td>¥50</td><td>¥30</td><td>60,000 Credits</td></tr><tr><td>旗舰版</td><td>¥1274</td><td>¥764</td><td>1,800,000 Credits</td></tr></tbody></table>'
+    .'<table tabindex="0"><thead><tr><th><strong>品牌</strong></th><th><strong>模型ID</strong></th><th><strong>模型能力</strong></th><th><strong>支持协议</strong></th></tr></thead><tbody>'
+    .'<tr><td>智谱AI</td><td>GLM-5.3</td><td>文本生成、深度思考</td><td>OpenAI、Anthropic</td></tr>'
+    .'<tr><td>DeepSeek</td><td>DeepSeek-V4-Pro-0813</td><td>文本生成、深度思考</td><td>OpenAI、Anthropic</td></tr>'
+    .'<tr><td>月之暗面</td><td>Kimi-K3</td><td>文本生成、深度思考</td><td>OpenAI、Anthropic</td></tr>'
+    .'<tr><td>MiniMax</td><td>MiniMax-M3</td><td>文本生成</td><td>OpenAI</td></tr>'
+    .'</tbody></table>'
+    .'<table><thead><tr><th><strong>模型名称</strong></th><th><strong>2026年9月1日扣减倍率</strong></th></tr></thead><tbody><tr><td>GLM-5.3</td><td>2.29</td></tr><tr><td>Kimi-K3</td><td>4.12</td></tr></tbody></table>'
+    .'</main>';
+$scnetParser = new ScnetParser;
+check('scnet「可用模型」表抽「模型ID」列（跳过档位/倍率表）', $scnetParser->parseCatalog($scnetPage) === ['glm-5.3', 'deepseek-v4-pro-0813', 'kimi-k3', 'minimax-m3']);
+check('scnet parsePricing 空（Credits 套餐 CNY→P2-1/P7）', $scnetParser->parsePricing($scnetPage) === []);
+check('scnet 无表格页面安全返回空', $scnetParser->parseCatalog('<main><p>empty</p></main>') === []);
 
 echo $fail === 0 ? "\n✅ 解析器 fixture 全部通过\n" : "\n❌ {$fail} 项失败\n";
 exit($fail === 0 ? 0 : 1);

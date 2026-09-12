@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Relay\Channel\Vertex;
 
 use App\Relay\Channel\BaseAdapter;
+use App\Relay\Channel\GeminiCompatibleTrait;
 use App\Relay\Common\RelayInfo;
 
 /**
@@ -17,9 +18,14 @@ use App\Relay\Common\RelayInfo;
  * 渠道 key 支持两种格式：
  *   1. JSON Service Account 凭据（含 private_key / client_email / project_id）
  *   2. 直接的 access token（配合 other 字段填写 project_id / region）
+ *
+ * 流式走 GeminiCompatibleTrait（SSE→OpenAI chunk 转换 + usageMetadata 计费 + 断连感知）；
+ * base_url 可覆盖网关根（默认按 region 拼官方域名）。
  */
 class VertexAdapter extends BaseAdapter
 {
+    use GeminiCompatibleTrait;
+
     protected string $name = 'vertex';
 
     protected int $apiType = 21; // ChannelType::VERTEX
@@ -30,93 +36,39 @@ class VertexAdapter extends BaseAdapter
     public function formatRequest(RelayInfo $info): void
     {
         $body = $info->requestBody;
-        $model = $body['model'] ?? 'gemini-1.5-pro';
+        $info->isStream = (bool) ($body['stream'] ?? false);
 
-        $geminiBody = [
-            'contents' => $this->convertMessages($body['messages'] ?? []),
-            'generationConfig' => [
-                'maxOutputTokens' => $body['max_tokens'] ?? 4096,
-                'temperature' => $body['temperature'] ?? 0.7,
-                'topP' => $body['top_p'] ?? 0.95,
-            ],
-        ];
+        $model = $info->upstreamModelName !== ''
+            ? $info->upstreamModelName
+            : (string) ($body['model'] ?? 'gemini-1.5-pro');
 
-        if (! empty($body['system'])) {
-            $geminiBody['systemInstruction'] = ['parts' => [['text' => $body['system']]]];
-        }
-
-        $info->upstreamBody = json_encode($geminiBody);
+        $info->upstreamBody = json_encode($this->buildGeminiChatBody($body));
 
         [$project, $region] = $this->resolveProjectRegion($info);
-        $action = ! empty($body['stream']) ? 'streamGenerateContent' : 'generateContent';
-        $info->upstreamUrl = sprintf(
-            'https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:%s',
-            $region,
-            $project,
-            $region,
-            $model,
-            $action
-        );
+        $action = $info->isStream ? 'streamGenerateContent' : 'generateContent';
+        $info->upstreamUrl = $this->buildVertexUrl($info, $project, $region, $model, $action);
     }
 
     public function formatResponse(RelayInfo $info): void
     {
-        $body = json_decode($info->responseBody, true);
+        $this->formatGeminiCompatibleResponse($info);
+    }
 
-        $reqBody = $info->requestBody ?? [];
-        $model = is_array($reqBody) ? ($reqBody['model'] ?? 'gemini-1.5-pro') : 'gemini-1.5-pro';
-
-        $openai = [
-            'id' => 'chatcmpl-'.uniqid(),
-            'object' => 'chat.completion',
-            'created' => time(),
-            'model' => $model,
-            'choices' => [],
-        ];
-
-        if (! empty($body['candidates'])) {
-            $content = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
-            $openai['choices'][] = [
-                'index' => 0,
-                'message' => ['role' => 'assistant', 'content' => $content],
-                'finish_reason' => 'stop',
-            ];
-        }
-
-        $info->responseBody = json_encode($openai);
+    public function errorHandler(RelayInfo $info): void
+    {
+        $this->formatGeminiCompatibleError($info);
     }
 
     public function doRequest(RelayInfo $info): void
     {
+        if ($info->isStream) {
+            return; // 流式由 streamHandler 处理
+        }
+
         $channel = $info->channel;
-        $accessToken = $this->getAccessToken($channel->key);
+        $accessToken = $this->getAccessToken((string) ($channel->key ?? ''));
 
         $ch = curl_init($info->upstreamUrl);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $info->upstreamBody,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'Authorization: Bearer '.$accessToken,
-            ],
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 120,
-        ]);
-
-        $info->responseBody = curl_exec($ch);
-        $info->responseStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-    }
-
-    public function streamHandler(RelayInfo $info, ?callable $callback = null): void
-    {
-        $channel = $info->channel;
-        $accessToken = $this->getAccessToken($channel->key);
-
-        // Vertex 流式需 alt=sse
-        $url = $info->upstreamUrl.'?alt=sse';
-
-        $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $info->upstreamBody,
@@ -131,6 +83,44 @@ class VertexAdapter extends BaseAdapter
         $info->responseBody = curl_exec($ch);
         $info->responseStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+    }
+
+    protected function buildGeminiStreamUrl(RelayInfo $info): string
+    {
+        // formatRequest 已按 isStream 选择 :streamGenerateContent，仅补 SSE 标记
+        return $info->upstreamUrl.'?alt=sse';
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function buildGeminiStreamHeaders(RelayInfo $info): array
+    {
+        $accessToken = $this->getAccessToken((string) ($info->channel->key ?? ''));
+
+        return [
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer '.$accessToken,
+        ];
+    }
+
+    /**
+     * 构造 Vertex 端点 URL（base_url 可覆盖网关根，默认按 region 拼官方域名）
+     */
+    private function buildVertexUrl(RelayInfo $info, string $project, string $region, string $model, string $action): string
+    {
+        $base = $info->channelBaseUrl !== ''
+            ? rtrim($info->channelBaseUrl, '/')
+            : sprintf('https://%s-aiplatform.googleapis.com', $region);
+
+        return sprintf(
+            '%s/v1/projects/%s/locations/%s/publishers/google/models/%s:%s',
+            $base,
+            $project !== '' ? $project : '-',
+            $region,
+            rawurlencode($model),
+            $action
+        );
     }
 
     /**
@@ -272,21 +262,5 @@ class VertexAdapter extends BaseAdapter
         $segments[] = rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
 
         return implode('.', $segments);
-    }
-
-    /**
-     * 转换 OpenAI messages -> Gemini contents
-     */
-    protected function convertMessages(array $messages): array
-    {
-        $contents = [];
-        foreach ($messages as $msg) {
-            $contents[] = [
-                'role' => $msg['role'] === 'user' ? 'user' : 'model',
-                'parts' => [['text' => $msg['content']]],
-            ];
-        }
-
-        return $contents;
     }
 }

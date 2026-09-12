@@ -590,10 +590,34 @@ class RelayInfo
 
     /**
      * 获取上游 URL
+     *
+     * 版本段去重：base 以版本段结尾（…/v1、…/api/v3、…/v1beta）而 path 又以版本段开头时，
+     * 只保留一个版本段，避免拼出 /api/v3/v1/... 或 /v1/v1/... 双重版本导致上游 404。
+     * - 同版本号（base …/v1 + path /v1/x）：以 path 为准，去掉 base 的版本段
+     *   （moonshot 式 base 显式声明版本，实测 /chat/completions 404、/v1/chat/completions 401）
+     * - 不同版本号（base …/api/v3 + path /v1/x）：base 是版本化根，path 的 /v1 是
+     *   OpenAI 客户端样板路径，去掉 path 的版本段（ark 式网关，实测 /api/v3/chat/completions 401）
      */
     public function getUpstreamUrl(string $path = ''): string
     {
         $baseUrl = rtrim($this->channelBaseUrl, '/');
+
+        if ($path !== '' && str_starts_with($path, '/')) {
+            $basePath = (string) parse_url($baseUrl, PHP_URL_PATH);
+            $baseSeg = $basePath === '' ? '' : basename($basePath);
+
+            if (preg_match('/^v(\d+)[a-z0-9]*$/i', $baseSeg, $baseVer) === 1
+                && preg_match('#^/v(\d+)[a-z0-9]*(?=/|$)#i', $path, $pathVer) === 1) {
+                if ($baseVer[1] === $pathVer[1]) {
+                    // 同版本：去掉 base 末尾的版本段，path 原样保留
+                    $baseUrl = rtrim(substr($baseUrl, 0, -strlen($baseSeg)), '/');
+                } else {
+                    // 不同版本：去掉 path 开头的版本段，base 原样保留
+                    $path = substr($path, strlen($pathVer[0]));
+                }
+            }
+        }
+
         if ($path !== '' && str_starts_with($path, '/')) {
             $path = substr($path, 1);
         }

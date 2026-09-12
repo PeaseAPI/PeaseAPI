@@ -198,11 +198,6 @@ abstract class TaskAdapter extends BaseAdapter implements ChannelAdapterInterfac
         $info->setResponseBody(json_encode($data));
     }
 
-    public function streamHandler(RelayInfo $info, ?callable $callback = null): void
-    {
-        // Task 不支持流式
-    }
-
     public function errorHandler(RelayInfo $info): void
     {
         $error = $info->getError() ?? ['message' => __('Unknown error')];

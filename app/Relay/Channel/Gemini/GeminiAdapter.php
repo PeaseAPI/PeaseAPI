@@ -5,73 +5,55 @@ declare(strict_types=1);
 namespace App\Relay\Channel\Gemini;
 
 use App\Relay\Channel\BaseAdapter;
+use App\Relay\Channel\GeminiCompatibleTrait;
 use App\Relay\Common\RelayInfo;
 
 /**
- * Gemini 适配器
+ * Google Gemini API 适配器（Generative Language API）
+ *
+ * - 入站 OpenAI Chat Completions → Gemini 协议转换（system → systemInstruction、
+ *   assistant → model、多模态数组聚合 text 段）
+ * - 流式：:streamGenerateContent?alt=sse → OpenAI chunk 转换 + usageMetadata 计费
+ *   （GeminiCompatibleTrait：断连感知 + curl_multi 每秒探活，与 OpenAICompatibleTrait 同构）
+ * - 非流式 usageMetadata 计费（prompt/candidates/thoughts/cachedContent）
+ * - 渠道 base_url 可覆盖网关根（getUpstreamUrl 版本段去重）
  */
 class GeminiAdapter extends BaseAdapter
 {
+    use GeminiCompatibleTrait;
+
+    protected string $name = 'gemini';
+
+    protected int $apiType = 50; // ChannelType::GOOGLE_GEMINI
+
     public function formatRequest(RelayInfo $info): void
     {
         $body = $info->requestBody;
+        $info->isStream = (bool) ($body['stream'] ?? false);
 
-        $geminiBody = [
-            'contents' => $this->convertMessages($body['messages'] ?? []),
-            'generationConfig' => [
-                'maxOutputTokens' => $body['max_tokens'] ?? 4096,
-                'temperature' => $body['temperature'] ?? 0.7,
-                'topP' => $body['top_p'] ?? 0.95,
-            ],
-        ];
+        $model = $info->upstreamModelName !== ''
+            ? $info->upstreamModelName
+            : (string) ($body['model'] ?? 'gemini-1.5-pro');
 
-        if (! empty($body['system'])) {
-            $geminiBody['systemInstruction'] = ['parts' => [['text' => $body['system']]]];
-        }
+        $info->upstreamBody = json_encode($this->buildGeminiChatBody($body));
 
-        $info->upstreamBody = json_encode($geminiBody);
-        $model = $body['model'] ?? 'gemini-1.5-pro';
-        $info->upstreamUrl = 'https://generativelanguage.googleapis.com/v1beta/models/'.$model.':generateContent';
-    }
-
-    public function formatResponse(RelayInfo $info): void
-    {
-        $body = json_decode($info->responseBody, true);
-
-        $openai = [
-            'id' => 'chatcmpl-'.uniqid(),
-            'object' => 'chat.completion',
-            'created' => time(),
-            'model' => $info->model,
-            'choices' => [],
-        ];
-
-        if (! empty($body['candidates'])) {
-            $content = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
-            $openai['choices'][] = [
-                'index' => 0,
-                'message' => ['role' => 'assistant', 'content' => $content],
-                'finish_reason' => 'stop',
-            ];
-        }
-
-        $info->responseBody = json_encode($openai);
+        $action = $info->isStream ? 'streamGenerateContent' : 'generateContent';
+        $info->upstreamUrl = $info->getUpstreamUrl('/v1beta/models/'.rawurlencode($model).':'.$action);
     }
 
     public function doRequest(RelayInfo $info): void
     {
-        $channel = $info->channel;
-        $apiKey = $channel->key;
+        if ($info->isStream) {
+            return; // 流式由 streamHandler 处理（对齐 OpenAIAdapter 结构）
+        }
 
-        $url = $info->upstreamUrl.'?key='.$apiKey;
-
-        $ch = curl_init($url);
+        $ch = curl_init($info->upstreamUrl.'?key='.rawurlencode($this->resolveApiKey($info)));
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $info->upstreamBody,
             CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 120,
+            CURLOPT_TIMEOUT => 300,
         ]);
 
         $info->responseBody = curl_exec($ch);
@@ -79,16 +61,32 @@ class GeminiAdapter extends BaseAdapter
         curl_close($ch);
     }
 
-    protected function convertMessages(array $messages): array
+    public function formatResponse(RelayInfo $info): void
     {
-        $contents = [];
-        foreach ($messages as $msg) {
-            $contents[] = [
-                'role' => $msg['role'] === 'user' ? 'user' : 'model',
-                'parts' => [['text' => $msg['content']]],
-            ];
-        }
+        $this->formatGeminiCompatibleResponse($info);
+    }
 
-        return $contents;
+    public function errorHandler(RelayInfo $info): void
+    {
+        $this->formatGeminiCompatibleError($info);
+    }
+
+    protected function buildGeminiStreamUrl(RelayInfo $info): string
+    {
+        // formatRequest 已按 isStream 选择 :streamGenerateContent，仅补 SSE 标记
+        return $info->upstreamUrl.'?alt=sse&key='.rawurlencode($this->resolveApiKey($info));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function buildGeminiStreamHeaders(RelayInfo $info): array
+    {
+        return ['Content-Type' => 'application/json'];
+    }
+
+    private function resolveApiKey(RelayInfo $info): string
+    {
+        return $info->apiKey !== '' ? $info->apiKey : (string) ($info->channel->key ?? '');
     }
 }

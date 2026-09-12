@@ -55,7 +55,9 @@ abstract class BaseAdapter implements ChannelAdapterInterface
 
     public function streamHandler(RelayInfo $info, ?callable $callback = null): void
     {
-        // 默认实现
+        // 默认不支持流式：宁可让客户端收到明确错误事件（handleStream 捕获后退款），
+        // 也不能静默返回空流——旧默认行为会把流式黑洞伪装成 200 成功且计费恒 0
+        throw new \RuntimeException(sprintf('适配器 [%s] 不支持流式请求', $this->name));
     }
 
     public function errorHandler(RelayInfo $info): void

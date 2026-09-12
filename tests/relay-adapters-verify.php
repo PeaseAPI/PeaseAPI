@@ -158,9 +158,17 @@ function runStreamE2E(int $port, BaseAdapter $adapter, RelayInfo $info): array
     }
     fclose($pipes[0]);
 
-    // 等 mock bind 完成就绪行（避免 fsockopen 预检吃掉单次 accept）
-    $readyLine = fgets($pipes[2]);
-    if ($readyLine === false || ! str_contains($readyLine, 'READY')) {
+    // 等 mock bind 完成就绪行（避免 fsockopen 预检吃掉单次 accept）。
+    // 循环跳过 stderr 上的 ini 噪音（如部分环境 CLI 启动即报 mbstring 重复加载警告），
+    // 直到出现 READY；mock 启动失败（如端口占用）则读到此进程输出/EOF，作失败处理
+    $ready = false;
+    while (($line = fgets($pipes[2])) !== false) {
+        if (str_contains($line, 'READY')) {
+            $ready = true;
+            break;
+        }
+    }
+    if (! $ready) {
         proc_terminate($proc);
 
         return [null, ''];

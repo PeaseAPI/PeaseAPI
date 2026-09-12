@@ -26,7 +26,7 @@ abstract class AbstractCodingPlanParser implements CodingPlanParserInterface
             if (! preg_match_all('/<t([hd])[^>]*>(.*?)<\/t\1>/is', $row, $cellMatches)) {
                 continue;
             }
-            $cells = array_map(fn (string $cell): string => $this->cleanText($cell), $cellMatches[2]);
+            $cells = array_map(fn (string $cell): string => $this->cleanText($this->prepareCellHtml($cell)), $cellMatches[2]);
             if (trim(implode('', $cells)) === '') {
                 continue; // 分隔行 / 空行
             }
@@ -114,6 +114,16 @@ abstract class AbstractCodingPlanParser implements CodingPlanParserInterface
     /**
      * HTML 片段 → 单行纯文本。
      */
+    /**
+     * 单元格 HTML 在 cleanText 之前的预处理钩子（默认恒等）。
+     * unicom 的格内模型是多个独立 <p> 段（</p><p> 之间无空白），剥标签后会粘连，
+     * 覆盖本钩子把块级结束标签换成换行，使 cleanText 后留有空格分隔。
+     */
+    protected function prepareCellHtml(string $cellHtml): string
+    {
+        return $cellHtml;
+    }
+
     protected function cleanText(string $html): string
     {
         $html = preg_replace('/<br\s*\/?>/i', ' ', $html) ?? $html;

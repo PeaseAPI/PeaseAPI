@@ -16,6 +16,7 @@ use App\Services\CodingPlanParsers\MiniMaxParser;
 use App\Services\CodingPlanParsers\MoonshotParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
 use App\Services\CodingPlanParsers\TencentTokenHubParser;
+use App\Services\CodingPlanParsers\UnicomParser;
 use App\Services\CodingPlanParsers\VolcengineDocParser;
 use App\Services\CodingPlanParsers\XaiMarkdownParser;
 use App\Services\CodingPlanParsers\ZhipuMarkdownParser;
@@ -369,6 +370,28 @@ check('volcengine Quill delta 逐 zone 提取（正文+cell）', $volcCatalog ==
 check('volcengine 叙述句不整体入库（模型 id 精准切分）', ! in_array('doubao-seed-1.6 系列支持分段计费，doubao-seedance-2.5 为视频模型。', $volcCatalog, true));
 check('volcengine parsePricing 空（元/百万 token CNY→P7）', $volcParser->parsePricing($volcBody) === []);
 check('volcengine 非 API 响应（壳 HTML）安全返回空', $volcParser->parseCatalog('<html>doc center shell</html>') === []);
+
+// ---- unicom（DedeCMS 页面内嵌 totalList 全站文档树：抽 7015/7080 两篇「支持模型」列）----
+$unicomCoding = '<table><tr><th>云区域</th><th>支持模型</th><th>BaseURL</th></tr>'
+    .'<tr><td>贵阳基地二区</td><td>aisp-auto-route：智能路由，系统通过算法自动匹配当前最优模型<br />DeepSeek-V4-Flash</td><td>https://aigw-gzgy2.cucloud.cn:8443/v1</td></tr>'
+    .'<tr><td>贵阳基地二区</td><td>glm-5.1、glm-5</td><td>同上</td></tr>'
+    .'<tr><td>贵阳基地二区</td><td>kimi-k2.6、kimi-k2.5</td><td>同上</td></tr>'
+    .'<tr><td colspan="3">注： DeepSeek-V4-Flash&nbsp;仅供尝鲜体验，上下文窗口目前仅支持 200K。</td></tr></table>';
+$unicomToken = '<table><tr><th>云区域</th><th>云区域支持套餐类型</th><th>支持模型</th><th>BaseURL</th></tr>'
+    .'<tr><td>贵阳基地二区</td><td>Token Plan 团队版</td><td>DeepSeek-V4-Pro<br />MiniMax-M2.5</td><td>https://aigw-gzgy2.cucloud.cn:8443/v1</td></tr>'
+    .'<tr><td>武汉四区</td><td>Token Plan 个人版</td><td>DeepSeek-V4-Flash<br />MiniMax-M2.5</td><td>同上</td></tr></table>';
+$unicomPage = '<html><script>var totalList = '.json_encode([
+    ['childList' => [
+        ['documentEntityList' => [['id' => '7015', 'title' => 'Coding Plan概述', 'content' => $unicomCoding]]],
+        ['documentEntityList' => [['id' => '7080', 'title' => 'Token Plan概述', 'content' => $unicomToken]]],
+    ]],
+], JSON_UNESCAPED_UNICODE).';</script></html>'; // JSON 自带 root "]", 后接语句 ";" —— 与真实页面 "totalList = [...];" 一致
+$unicomParser = new UnicomParser;
+$unicomCatalog = $unicomParser->parseCatalog($unicomPage);
+check('unicom 内嵌文档树提取 + 两篇「支持模型」列合并', $unicomCatalog === ['aisp-auto-route', 'deepseek-v4-flash', 'glm-5.1', 'glm-5', 'kimi-k2.6', 'kimi-k2.5', 'deepseek-v4-pro', 'minimax-m2.5']);
+check('unicom 注释行/中文说明不入目录', ! in_array('注', $unicomCatalog, true) && ! in_array('deepseek-v4-flash 仅供尝鲜体验', $unicomCatalog, true));
+check('unicom parsePricing 空（套餐档位 CNY 次数/credits→P2-1/P7）', $unicomParser->parsePricing($unicomPage) === []);
+check('unicom 无 totalList 的壳页安全返回空', $unicomParser->parseCatalog('<html>shell</html>') === []);
 
 echo $fail === 0 ? "\n✅ 解析器 fixture 全部通过\n" : "\n❌ {$fail} 项失败\n";
 exit($fail === 0 ? 0 : 1);

@@ -15,6 +15,7 @@ use App\Services\CodingPlanParsers\MiniMaxParser;
 use App\Services\CodingPlanParsers\MoonshotParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
 use App\Services\CodingPlanParsers\TencentTokenHubParser;
+use App\Services\CodingPlanParsers\UnicomParser;
 use App\Services\CodingPlanParsers\VolcengineDocParser;
 use App\Services\CodingPlanParsers\XaiMarkdownParser;
 use App\Services\CodingPlanParsers\ZhipuMarkdownParser;
@@ -164,12 +165,13 @@ class CodingPlanOfficialSourceService
         ],
         'unicom' => [
             'label' => '联通云',
-            'pricing_url' => null,
-            'format' => 'spa',
-            'parser' => null,
+            'pricing_url' => 'https://support.cucloud.cn/document/127/591/2357.html?id=2357&arcid=7015',
+            'format' => 'html',
+            'parser' => UnicomParser::class,
             'proxy' => false,
             'model_catalog_url' => null,
-            'notes' => '16MB Vue 骨架数据内嵌 → 探测 window.__INITIAL_STATE__ / 文档 API',
+            'catalog_from_pricing' => true,
+            'notes' => '无 XHR——文档树+全部正文内嵌页面 JS（totalList=全站树 16.5MB，documentEntityList[].content=富文本 HTML，id=arcid；7015=Coding Plan概述、7080=Token Plan概述）→ 抽两篇「支持模型」列（顿号/空白拆分，「别名：说明」取冒号前段）→ catalog；套餐档位（Lite 40/Pro 200 元/月，Token Plan 15/30/45、团队 198/698/1398 元 CNY，量纲=次数/credits）→ 归 P2-1，credits 折算综合单价（元/百万 tokens CNY）仅参考 → 币种归 P7-1',
         ],
         'cmcc' => [
             'label' => '移动云',
@@ -178,7 +180,7 @@ class CodingPlanOfficialSourceService
             'parser' => null,
             'proxy' => false,
             'model_catalog_url' => null,
-            'notes' => 'cloud-cms-service-web Vue SPA',
+            'notes' => 'React 壳（cloud-cms-service-web）→ API 模式已定位：/api/web/op-help-center/request-api/{record,service}-api/…（chunk 内可见 frontend-favorite 端点），getArticleAndProductRecommends 的文档端点未命中（/service-api/article 变体 curl 挂起=WAF drop）→ 待继续探测；预置数据（迁移 000008）暂不阻塞',
         ],
         'minimax' => [
             'label' => 'MiniMax',

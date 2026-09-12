@@ -493,6 +493,20 @@ class RelayController extends Controller
             // 跳过 handleStream 的计费/退款/日志，导致预扣额度（PreConsumedQuota）泄漏
             ignore_user_abort(true);
 
+            // QA-13 临时追踪（诊断后移除）
+            $qaTrace = function (string $step): void {
+                file_put_contents(
+                    storage_path('logs/qa13_trace.log'),
+                    sprintf("[%s] step=%s aborted=%d status=%d\n", now()->toDateTimeString(), $step, connection_aborted(), connection_status()),
+                    FILE_APPEND
+                );
+            };
+            $qaTrace('closure-start');
+            register_shutdown_function(function () use ($qaTrace): void {
+                $last = error_get_last();
+                $qaTrace('shutdown last_error='.($last !== null ? json_encode($last, JSON_UNESCAPED_SLASHES) : 'null'));
+            });
+
             // 设置 SSE 头
             header('Content-Type: text/event-stream');
             header('Cache-Control: no-cache');
@@ -506,8 +520,16 @@ class RelayController extends Controller
                 $sensitive = app(SensitiveWordService::class);
                 $sensitiveWindow = '';
                 $sensitiveHit = false;
-                $this->relayHandler->handleStream($relayInfo, function ($chunk) use (&$doneSent, $sensitive, &$sensitiveWindow, &$sensitiveHit, $isAnthropicNative, $relayInfo) {
+                $this->relayHandler->handleStream($relayInfo, function ($chunk) use (&$doneSent, $sensitive, &$sensitiveWindow, &$sensitiveHit, $isAnthropicNative, $relayInfo, $qaTrace) {
                     $chunk = (string) $chunk;
+                    static $qaChunkCount = 0;
+                    $qaChunkCount++;
+                    if ($qaChunkCount === 1) {
+                        $qaTrace('first-chunk');
+                    }
+                    if (str_contains($chunk, 'message_stop') || str_contains($chunk, '[DONE]')) {
+                        $qaTrace('final-chunk');
+                    }
 
                     if ($sensitive->shouldCheckResponse() && ! $sensitiveHit) {
                         $sensitiveWindow = mb_substr($sensitiveWindow.$chunk, -SensitiveWordService::STREAM_WINDOW);
@@ -543,6 +565,7 @@ class RelayController extends Controller
 
                 // 记录日志
                 $this->logStreamRequest($request, $relayInfo);
+                $qaTrace('after-logStreamRequest');
 
                 if (! $doneSent) {
                     echo "data: [DONE]\n\n";

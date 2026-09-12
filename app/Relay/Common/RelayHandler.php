@@ -16,8 +16,12 @@ use App\Relay\Channel\Vertex\VertexAdapter;
 use App\Relay\Constant\RelayMode;
 use App\Relay\Constant\RelayProtocol;
 use App\Services\BillingService;
+use App\Services\ChannelSelectService;
+use App\Services\CostRouteService;
 use App\Services\LogService;
+use App\Setting\OperationSetting\ModelRouteSetting;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -64,7 +68,8 @@ class RelayHandler
             $this->parseRequestBody();
 
             // Coding Plan 账号池：在上游请求前选取可用账号并覆盖凭证
-            $this->info->applyCodingPlanAccount();
+            // （P9-2：池耗尽时自动跨源 failover 到次选渠道）
+            $this->establishUpstreamChannel();
 
             $this->adapter->formatRequest($this->info);
             $this->adapter->doRequest($this->info);
@@ -135,7 +140,8 @@ class RelayHandler
             $this->parseRequestBody();
 
             // Coding Plan 账号池：在上游请求前选取可用账号并覆盖凭证
-            $this->info->applyCodingPlanAccount();
+            // （P9-2：池耗尽时自动跨源 failover 到次选渠道）
+            $this->establishUpstreamChannel();
 
             $this->adapter->formatRequest($this->info);
             $this->adapter->streamHandler($this->info, $callback);
@@ -229,6 +235,137 @@ class RelayHandler
                 'pre_consumed' => $this->info->preConsumedQuota,
             ]);
         }
+    }
+
+    /**
+     * 选定上游渠道与 Coding Plan 账号（P9-2 跨源 failover）
+     *
+     * 正常路径与 RelayInfo::applyCodingPlanAccount 零差异；仅当渠道关联的
+     * 账号池耗尽（pickAccount 无可用账号 / 全员 STATUS_EXHAUSTED，抛
+     * RuntimeException 且消息含 account pool exhausted）时，按当前路由策略序
+     * 自动切换次选源渠道：
+     *  - cost_first：CostRouteService 成本升序（P9-1 排序器）
+     *  - static：priority 降序 + id 升序（现网兜底语义）
+     * 候选来自 candidateChannels（abilities 精确匹配 + status=1），排除已失败
+     * 渠道，最多尝试 5 个；普通 API 渠道（无账号池）applyCodingPlanAccount
+     * 直接通过，是跨源兜底的天然归宿。次选成功后重跑 setModel（各渠道
+     * model_mapping 可能不同）并重选适配器。
+     *
+     * 路由决策（reason=cost_failover、落选候选与成本）记入
+     * RelayInfo::routeDecision，最终随用量流水写入 coding_plan_usage_logs.meta.route。
+     */
+    protected function establishUpstreamChannel(): void
+    {
+        $failedChannelId = $this->info->channelId;
+
+        try {
+            $this->info->applyCodingPlanAccount();
+
+            return;
+        } catch (RuntimeException $e) {
+            // 订阅校验失败等非池耗尽异常原样抛出，不参与 failover
+            if (! str_contains($e->getMessage(), 'account pool exhausted')) {
+                throw $e;
+            }
+
+            $this->failoverChannel($failedChannelId, $e);
+        }
+    }
+
+    /**
+     * 跨源 failover：按策略序逐个尝试次选渠道，全部失败时抛原始池耗尽异常
+     */
+    protected function failoverChannel(int $failedChannelId, RuntimeException $original): void
+    {
+        $model = $this->info->modelName;
+        $group = $this->info->tokenGroup !== '' ? $this->info->tokenGroup : 'default';
+
+        // 已失败渠道（首选源）作为首个落选记录，cost 首次失败时尚未计算
+        $attempted = [[
+            'channel_id' => $failedChannelId,
+            'vendor' => $this->info->codingVendor,
+            'cost_per_1k' => null,
+            'reason' => 'pool_exhausted',
+            'error' => $original->getMessage(),
+        ]];
+
+        $candidates = app(ChannelSelectService::class)->candidateChannels($model, $group)
+            ->reject(fn (Channel $channel) => (int) $channel->id === $failedChannelId)
+            ->values();
+
+        if ($candidates->isEmpty()) {
+            throw $original;
+        }
+
+        $strategy = ModelRouteSetting::strategy();
+        if ($strategy === CostRouteService::STRATEGY_COST_FIRST) {
+            // 成本升序明细（含 vendor/cost_per_1k，落选记录据此留痕）
+            $details = app(CostRouteService::class)->sortChannelsByCost($candidates, $model);
+        } else {
+            // static：priority 降序 + id 升序（现网兜底语义）；不做成本计算，
+            // 明细结构与 cost_first 对齐便于统一处理
+            $details = $candidates
+                ->sortBy('id')
+                ->sortByDesc('priority')
+                ->map(fn (Channel $channel) => [
+                    'channel' => $channel,
+                    'channel_id' => (int) $channel->id,
+                    'priority' => (int) $channel->priority,
+                    'vendor' => null,
+                    'cost_per_1k' => null,
+                ])
+                ->values()
+                ->all();
+        }
+
+        foreach (array_slice($details, 0, 5) as $detail) {
+            /** @var Channel $candidate */
+            $candidate = $detail['channel'];
+
+            try {
+                $this->info->setChannel($candidate);
+                // 换渠道后重映射 model_mapping（各渠道映射可能不同）并重选适配器
+                $this->info->setModel($this->info->requestModel !== '' ? $this->info->requestModel : $model);
+                $this->selectAdapter();
+                $this->info->applyCodingPlanAccount();
+            } catch (RuntimeException $e) {
+                $attempted[] = [
+                    'channel_id' => (int) $candidate->id,
+                    'vendor' => $detail['vendor'],
+                    'cost_per_1k' => $detail['cost_per_1k'],
+                    'reason' => str_contains($e->getMessage(), 'account pool exhausted')
+                        ? 'pool_exhausted'
+                        : 'apply_failed',
+                    'error' => $e->getMessage(),
+                ];
+
+                continue;
+            }
+
+            $this->info->routeDecision = [
+                'reason' => 'cost_failover',
+                'strategy' => $strategy,
+                'failed_channel_id' => $failedChannelId,
+                'final_channel_id' => $this->info->channelId,
+                'attempted' => $attempted,
+                'decided_at' => time(),
+            ];
+
+            Log::info('Coding Plan 账号池耗尽，跨源 failover', [
+                'request_id' => $this->info->requestId,
+                'model' => $model,
+                'group' => $group,
+                'strategy' => $strategy,
+                'failed_channel_id' => $failedChannelId,
+                'final_channel_id' => $this->info->channelId,
+                'attempted_count' => count($attempted),
+            ]);
+
+            return;
+        }
+
+        // 全部候选失败：抛原始池耗尽异常（外层按现有路径退款并返回错误）
+        throw $original;
     }
 
     protected function selectAdapter(): void

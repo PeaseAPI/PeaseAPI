@@ -226,6 +226,15 @@ class RelayInfo
     public array $codingPlanCost = [];
 
     /**
+     * P9-2 跨源 failover 路由决策
+     *
+     * 仅当发生账号池耗尽 failover（reason=cost_failover）时非空：
+     * strategy / final_channel_id / failed_channel_id / attempted（落选候选与成本）。
+     * 由 recordCodingPlanUsage 随用量流水写入 coding_plan_usage_logs.meta.route。
+     */
+    public array $routeDecision = [];
+
+    /**
      * 从请求属性补齐身份信息
      *
      * TokenAuth 中间件已将 token / api_user 放入 request attributes，
@@ -338,6 +347,12 @@ class RelayInfo
             ->first();
 
         if (! $firstAccount) {
+            // 非 coding plan 渠道（含 P9-2 failover 换源场景）：
+            // 清残留池状态（前渠道在池耗尽抛异常前可能已设置 vendor），走默认凭证
+            $this->codingVendor = '';
+            $this->codingPlanAccount = null;
+            $this->codingPlanAccountId = null;
+
             return; // 非 coding plan 渠道，走默认凭证
         }
 
@@ -483,6 +498,11 @@ class RelayInfo
             $cost['time_window'] ?? null
         );
 
+        // P9-2：发生过跨源 failover 时，把路由决策（落选候选与成本）随流水落库
+        if ($this->routeDecision !== []) {
+            $snapshot['route'] = $this->routeDecision;
+        }
+
         // 2) 池计数 + 写流水
         /** @var CodingPlanPoolService $pool */
         $pool = app(CodingPlanPoolService::class);
@@ -562,9 +582,13 @@ class RelayInfo
                 $this->isModelMapped = true;
             } else {
                 $this->upstreamModelName = $model;
+                // 重映射未命中需重置：failover 换渠道后 setModel 会重跑，
+                // 前一渠道的映射状态不得残留（isModelMapped 消费点=适配器请求体模型名替换）
+                $this->isModelMapped = false;
             }
         } else {
             $this->upstreamModelName = $model;
+            $this->isModelMapped = false;
         }
     }
 

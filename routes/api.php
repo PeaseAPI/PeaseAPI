@@ -442,6 +442,10 @@ Route::middleware([UserAuth::class, AdminAuth::class])->group(function () {
     Route::post('/coding_plan/tiers', [CodingPlanController::class, 'storeTier']);
     Route::put('/coding_plan/tiers/{id}', [CodingPlanController::class, 'updateTier']);
     Route::delete('/coding_plan/tiers/{id}', [CodingPlanController::class, 'destroyTier']);
+    // 汇率配置（P7-2：币种→人民币；USD 无行时回落 Option UsdExchangeRate）
+    Route::get('/coding_plan/rates', [CodingPlanController::class, 'rates']);
+    Route::post('/coding_plan/rates', [CodingPlanController::class, 'storeRate']);
+    Route::delete('/coding_plan/rates/{code}', [CodingPlanController::class, 'destroyRate']);
     // Coding Plan Plans / Stats (Admin)
     Route::post('/coding_plan/plans/{id}/attach', [CodingPlanController::class, 'attachPlan']);
     Route::post('/coding_plan/plans/{id}/detach', [CodingPlanController::class, 'detachPlan']);

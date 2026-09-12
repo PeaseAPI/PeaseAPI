@@ -11,11 +11,13 @@ use App\Models\CodingPlanRatioCheck;
 use App\Models\CodingPlanUsageLog;
 use App\Models\CodingPlanVendor;
 use App\Models\CodingPlanVendorTier;
+use App\Models\CurrencyRate;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Services\CodingPlanCatalog;
 use App\Services\CodingPlanPoolService;
 use App\Services\CodingPlanRatioService;
+use App\Services\CurrencyExchangeService;
 use App\Services\OptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -328,6 +330,8 @@ class CodingPlanController extends Controller
             'plan_kind' => ['nullable', 'integer', 'in:1,2'],
             'unit_name' => ['nullable', 'string', 'max:16'],
             'unit_exchange_rate' => ['nullable', 'numeric', 'min:0'],
+            // 官方计价币种（ISO 4217；P7-1 迁移 000010，缺省 CNY）
+            'currency' => ['nullable', 'string', 'max:8'],
             'docs_url' => ['nullable', 'string', 'max:255'],
             'pricing_source_url' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'integer', 'in:0,1'],
@@ -339,6 +343,7 @@ class CodingPlanController extends Controller
         $data['plan_kind'] ??= CodingPlanVendor::PLAN_KIND_CODING;
         $data['unit_name'] ??= '';
         $data['unit_exchange_rate'] ??= 1.0;
+        $data['currency'] ??= CurrencyExchangeService::BASE_CURRENCY;
         $data['status'] ??= 1;
         $data['sort'] ??= 0;
         $data['created_at'] = $data['updated_at'] = time();
@@ -368,6 +373,8 @@ class CodingPlanController extends Controller
             'plan_kind' => ['sometimes', 'integer', 'in:1,2'],
             'unit_name' => ['nullable', 'string', 'max:16'],
             'unit_exchange_rate' => ['nullable', 'numeric', 'min:0'],
+            // 官方计价币种（ISO 4217；P7-1 迁移 000010，缺省 CNY）
+            'currency' => ['nullable', 'string', 'max:8'],
             'docs_url' => ['nullable', 'string', 'max:255'],
             'pricing_source_url' => ['nullable', 'string', 'max:255'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
@@ -759,6 +766,8 @@ class CodingPlanController extends Controller
             // 官方价格（可空 = 待核对，仅展示 price_note）
             'price' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
             'price_note' => ['nullable', 'string', 'max:64'],
+            // 档位标价币种（P7-1 迁移 000010；空 = 继承厂商 currency）
+            'currency' => ['nullable', 'string', 'max:8'],
             'period' => ['nullable', 'string', 'max:16'],
             'quota' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],
             'quota_unit' => ['nullable', 'string', 'max:32'],
@@ -794,6 +803,8 @@ class CodingPlanController extends Controller
             'name' => ['sometimes', 'string', 'max:64'],
             'price' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
             'price_note' => ['nullable', 'string', 'max:64'],
+            // 档位标价币种（P7-1 迁移 000010；空 = 继承厂商 currency）
+            'currency' => ['nullable', 'string', 'max:8'],
             'period' => ['nullable', 'string', 'max:16'],
             'quota' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],
             'quota_unit' => ['nullable', 'string', 'max:32'],
@@ -826,6 +837,83 @@ class CodingPlanController extends Controller
         $this->ratioService->flushCache($vendorCode);
 
         return $this->success(null, '套餐档位已删除');
+    }
+
+    /**
+     * 汇率列表（含回落生效值，便于管理端判断哪些币种靠 Option 兜底）
+     * GET /coding_plan/rates
+     */
+    public function rates(): JsonResponse
+    {
+        $rows = CurrencyRate::query()->orderBy('code')->get();
+
+        $data = $rows->map(function (CurrencyRate $row) {
+            $arr = $row->toArray();
+            $arr['rate'] = (float) $row->rate;
+            // 该币种当前的生效汇率（表值，或 USD 的 Option 回落）
+            $arr['effective_rate'] = CurrencyExchangeService::rate($row->code);
+
+            return $arr;
+        })->all();
+
+        // 未维护但平台关心的币种提示（USD 走 Option 兜底；CNY 基准恒 1）
+        $hints = [
+            ['code' => CurrencyExchangeService::BASE_CURRENCY, 'effective_rate' => 1.0, 'managed' => false],
+        ];
+        $usdRow = CurrencyRate::query()->where('code', 'USD')->first();
+        if ($usdRow === null) {
+            $usdFallback = CurrencyExchangeService::rate('USD');
+            if ($usdFallback !== null) {
+                $hints[] = ['code' => 'USD', 'effective_rate' => $usdFallback, 'managed' => false, 'fallback_option' => CurrencyExchangeService::USD_FALLBACK_OPTION];
+            }
+        }
+
+        return $this->success(['rates' => $data, 'hints' => $hints]);
+    }
+
+    /**
+     * 新增/更新汇率（upsert：以币种代码为主键，重复即覆盖）
+     * POST /coding_plan/rates
+     */
+    public function storeRate(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            // ISO 4217 币种代码（基准 CNY 不需要维护）
+            'code' => ['required', 'string', 'max:8', 'not_in:'.CurrencyExchangeService::BASE_CURRENCY],
+            // 1 单位该币种 = rate 人民币
+            'rate' => ['required', 'numeric', 'min:0.000001', 'max:1000000'],
+            'source' => ['nullable', 'string', 'max:16', 'in:manual,api'],
+            'remark' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $rate = CurrencyRate::updateOrCreate(
+            ['code' => strtoupper($data['code'])],
+            [
+                'rate' => $data['rate'],
+                'source' => $data['source'] ?? CurrencyRate::SOURCE_MANUAL,
+                'remark' => $data['remark'] ?? null,
+                'updated_at' => time(),
+            ]
+        );
+        CurrencyExchangeService::flushMemo();
+
+        return $this->success($rate, '汇率已保存');
+    }
+
+    /**
+     * 删除汇率（删除后该币种回落默认规则：USD→Option，其余→不可折算）
+     * DELETE /coding_plan/rates/{code}
+     */
+    public function destroyRate(string $code): JsonResponse
+    {
+        $code = strtoupper($code);
+        $deleted = CurrencyRate::query()->where('code', $code)->delete();
+        if (! $deleted) {
+            return $this->error('汇率不存在', 404);
+        }
+        CurrencyExchangeService::flushMemo();
+
+        return $this->success(null, '汇率已删除（该币种将按回落规则取值）');
     }
 
     /**

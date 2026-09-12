@@ -55,6 +55,8 @@ class RelayHandler
 
     public function handle(RelayInfo $info): array|string
     {
+        // 客户端断开（取消/超时）不再杀死脚本：输出写入静默失败，链路走完整结算
+        ignore_user_abort(true);
         $this->info = $info;
         $this->ensureChannelInitialized();
 
@@ -136,6 +138,14 @@ class RelayHandler
 
             $this->adapter->formatRequest($this->info);
             $this->adapter->streamHandler($this->info, $callback);
+
+            // 客户端中断：curl 已在上游传输中途中止，按已解析 usage 立即结算
+            // （logConsume 内 postConsume 会冲销预扣额度并落消费日志），杜绝预扣泄漏
+            if ($this->info->clientAborted) {
+                $this->logConsume();
+
+                return;
+            }
 
             if ($this->isError()) {
                 // 上游失败：退回请求前预扣额度，不计费不记消费日志

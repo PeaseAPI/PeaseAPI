@@ -146,6 +146,14 @@ class ClaudeAdapter extends BaseAdapter
             CURLOPT_RETURNTRANSFER => false,
             CURLOPT_TIMEOUT => 120,
             CURLOPT_WRITEFUNCTION => function ($ch, $data) use ($info, $callback) {
+                // 客户端中断：不再继续读上游（模型可能仍在长时间生成），立即结算已解析 usage，
+                // 避免脚本被 FPM request_terminate_timeout 硬杀导致计费/退款全部跳过
+                if (connection_aborted() !== 0) {
+                    $info->clientAborted = true;
+
+                    return 0; // 返回值 != 数据长度 → curl 以 CURLE_WRITE_ERROR 中止传输
+                }
+
                 $info->recordFirstResponse();
 
                 // 解析 Anthropic SSE usage 计费计数：message_start → 输入 token（含缓存命中），

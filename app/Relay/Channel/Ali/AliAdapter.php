@@ -124,6 +124,14 @@ class AliAdapter extends BaseAdapter
             CURLOPT_POSTFIELDS => json_encode($info->requestBody),
             CURLOPT_HTTPHEADER => $this->formatCurlHeaders($headers),
             CURLOPT_WRITEFUNCTION => function ($curl, $data) use ($info) {
+                // 客户端中断：不再继续读上游（模型可能仍在长时间生成），立即结算，
+                // 避免脚本被 FPM request_terminate_timeout 硬杀导致计费/退款全部跳过
+                if (connection_aborted() !== 0) {
+                    $info->clientAborted = true;
+
+                    return 0; // 返回值 != 数据长度 → curl 以 CURLE_WRITE_ERROR 中止传输
+                }
+
                 $info->recordFirstResponse();
                 echo $data;
                 flush();

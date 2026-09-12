@@ -43,6 +43,10 @@ class RelayInfo
 
     public ?User $user = null;
 
+    // 客户端中断标记（流式 WRITEFUNCTION 检测 connection_aborted 后置位，
+    // RelayHandler 据此立即结算已解析 usage 并冲销预扣额度）
+    public bool $clientAborted = false;
+
     // 渠道信息
     public int $channelType = 0;
 

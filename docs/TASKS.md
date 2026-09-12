@@ -112,7 +112,7 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
   - Google Gemini 促销价 **至 2026-12-31**（2027-01-01 恢复原价）
   - OpenAI gpt-5.6-sol 促销价 **至少至 2026-11-21**
   - xAI Imagine 图像相关 **2026-11-02 退役**（kind=model_retirement）
-- [ ] P2-3 提醒链路：调度每日 09:00（新命令 `coding-plan:remind-promotions`）扫描 remind_days 内到期活动 → ①站内公告 ②`EmailService` 邮件通知订阅对应厂商套餐的用户 ③介绍页倒计时徽标；到期后自动置过期并记流水防重发
+- [x] P2-3 提醒链路：调度每日 09:00（新命令 `coding-plan:remind-promotions`）扫描 remind_days 内到期活动 → ①站内公告 ②邮件通知订阅对应厂商套餐的用户 ③介绍页倒计时徽标（前端归 P7-5）；到期后自动置过期并记流水防重发 ✅ 2026-09-12（十五）——①迁移 000016 `coding_plan_promotion_reminders` 流水表（promotion_id+kind+user_id 唯一防重发；user_id=0=站内公告全局、>0=用户邮件；kind=ending/expired）。②模型 `CodingPlanPromotionReminder` + `CodingPlanPromotion::STATUS_EXPIRED=2`（到期自动置 2，前台 enabled 口径自然退出、管理员 all=1 可见）。③Mailable `PromotionReminderMail`（ShouldQueue 队列发送）+ `emails/promotion-reminder` blade。④命令 `coding-plan:remind-promotions`（--dry-run 全程零写入）：临期（remaining ≤ remind_days×86400）→ Option「Notice」追加活动段落（全局一次）+ 订阅对应厂商套餐的有效用户（subscriptions ⋈ subscription_plans.coding_vendor，status=1 且 period_end≥now）各一封队列邮件；已过期 → status 置 2 + kind=expired 流水留痕；防重发全靠流水唯一约束（insertOrIgnore 冲突跳过，删流水可强制重发）。⑤调度 routes/console.php 注册（Schema::hasTable('coding_plan_promotions') 守卫，onOneServer dailyAt 09:00）。自检 14 项（dry-run 零写入/公告段落/流水防重发双跑/自动置过期/退出前台/无订阅 0 封/订阅用户 2 封含补发/唯一索引/回滚零残留）
 - [ ] P2-4 公开 API `GET /api/coding_plan/promotions`（仅 status=1 且未过期）+ 管理端维护页 + i18n
 
 ### P3 数据补全与新增厂商预置（R1/R3/R4）
@@ -186,6 +186,8 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 ---
 
 ## 6. 变更记录
+
+- 2026-09-12（十五）：**P2-3 活动提醒链路**——①迁移 000016 流水表 `coding_plan_promotion_reminders`（unique(promotion_id,kind,user_id) 防重发，user_id=0=站内公告全局）。②`CodingPlanPromotionReminder` 模型 + `STATUS_EXPIRED=2`（到期自动置过期，前台 enabled 口径自然退出）。③`PromotionReminderMail`（ShouldQueue）+ blade。④命令 `coding-plan:remind-promotions --dry-run`：临期 → Option「Notice」追加段落（用户端已有 GET Notice 消费）+ 订阅对应厂商套餐的有效用户（subscriptions⋈plans.coding_vendor，status=1 且 period_end≥now）队列邮件；过期 → 置 2 + expired 流水。⑤调度 dailyAt('09:00') 守卫注册。**踩坑复盘**：a) 验证脚本最初用外层事务回滚保护 Notice 写入——`Option::get` 走 `Cache::remember(60s)`，事务内读值回滚后残留缓存 60s 导致「行未回滚」假象；**断言一律 DB 直查 + 脚本首尾 Cache::forget('option:Notice')**。b) 自检脚本漏 `use App\Mail\PromotionReminderMail`，`::class` 解析为不存在的全局类名 → `Mail::queued()` 恒 0，排查走了大弯（minimal 复现+命令 stats 输出才定位）。c) dry-run 曾误改 status（过期分支 update 未守卫 dryRun）——**--dry-run 必须 100% 只读**。自检 14 项全过；回归 time-discounts 28/28、currency 30/30、fixture ✓；pint 全量跑捎带 3 个历史文件 style 改动 → `git checkout --` 还原保持提交纯净。**P2 全部完成（P2-1/2/3 ✓）→ 剩 P7-5 前端（vendors-tab 币种选择 + 汇率/活动维护页 + 介绍页倒计时徽标 i18n）**。
 
 - 2026-09-12（十四）：**P2-2 已知活动预置**——迁移 000015 预置 9 条活动（TASKS 8 条 + cmcc 首订特价 7.9/39.9 元至 2026-12-31，Catalog cmcc() 注释背书）：kind 分布 discount×6 / price_change×1（阿里云个人版限时价 39/139/499 原价 60/180/600）/ model_retirement×2（腾讯 GLM-5/5.1 2026-10-09、xAI Imagine 2026-11-02）；每日循环型（智谱夜间畅用/阿里云夜间五折/限时价未公布截止）ends_at=null，有截止按北京时间 23:59:59 落 Unix 秒（\Carbon\Carbon::parse(..., 'Asia/Shanghai')）；discount=0.5 仅阿里云夜间五折与火山 Auto 系数两条（zhipu/google/cmcc 折扣非乘数口径留 null，说明写 description）；全部注 source_url。幂等：vendor+title firstOrCreate 不覆盖管理员行，remark「官方活动（预置 2026-09-12）（P2-2）」标记 down 可清。自检 9 项（9 条/kind 分布/ends_at 时区/全 ongoing/API 9 条+倒计时最紧=腾讯 GLM 下线）。**P2 进度：P2-1 ✓ → P2-2 ✓ → P2-3（提醒链路：每日 09:00 扫描 remind_days 内到期 → 站内公告+邮件+介绍页徽标）待做**。
 

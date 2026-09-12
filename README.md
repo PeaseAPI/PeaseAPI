@@ -1,11 +1,12 @@
 # PeaseAPI
 
-> 🚀 **100% PHP 重写的新一代多模型 AI API 网关** —— 基于 Laravel 11，将 OpenAI、Claude、Gemini、Midjourney、Suno 等 30+ 上游 AI 服务商统一为 OpenAI 兼容 API，内置完整的用户体系、令牌管理、订阅计费、Coding Plan 账号池与后台管理。
+> 🚀 **100% PHP 重写的新一代多模型 AI API 网关** —— 基于 Laravel 11，将 OpenAI、Claude、Gemini、Midjourney、Suno 等 30+ 上游 AI 服务商统一为 OpenAI 兼容 API，并聚合新闻/网页搜索为统一查询接口；内置完整的用户体系、令牌管理、订阅计费、**Coding Plan / Token Plan 双账号池**、**成本优先智能路由与跨源故障自愈**与后台管理。
 
 [![PHP](https://img.shields.io/badge/PHP-%3E%3D8.2-777BB4?logo=php&logoColor=white)](https://php.net/)
 [![Laravel](https://img.shields.io/badge/Laravel-11.x-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![100% PHP](https://img.shields.io/badge/100%25-PHP%20Rewritten-blue.svg)](#与原版-new-api-的对比)
+[![Gitee](https://img.shields.io/badge/Gitee-镜像同步-C71D23?logo=gitee)](https://gitee.com/oyu/PeaseAPI)
 
 ---
 
@@ -22,8 +23,11 @@
 - [伪静态配置](#️-伪静态配置必须)
 - [配置说明](#配置说明)
 - [使用指南](#使用指南)
-- [Coding Plan 账号池](#coding-plan-账号池)
+- [Coding Plan / Token Plan 账号池](#-coding-plan--token-plan-账号池独家功能)
+- [智能成本路由与故障自愈](#-智能成本路由与故障自愈独家功能)
+- [新闻 / 搜索聚合 API](#-新闻--搜索聚合-api独家功能)
 - [API 文档](#api-文档)
+- [质量保障：内置自检命令](#质量保障内置自检命令)
 - [项目结构](#项目结构)
 - [开发指南](#开发指南)
 - [常见问题](#常见问题)
@@ -81,6 +85,9 @@ PeaseAPI 在完整复刻原版功能的基础上，新增了以下能力：
 | **🆕 头像上传** | 用户可上传自定义头像，支持本地存储 | ⚠️ 原版依赖外部 |
 | **🆕 一键安装命令** | `php artisan pease:install` 完成全部初始化 | ❌ 原版无 |
 | **🆕 新闻 / 搜索聚合** | 聚合 Google CSE、NewsAPI、Tavily、Exa 四大搜索源为统一 API，支持渠道路由、配额计费与用量日志，独立 `/news` 路由不与 OpenAI 兼容 API 混用 | ❌ 原版无 |
+| **🆕 智能成本路由与跨源自愈** | 成本优先策略按人民币参考成本实时选最便宜渠道；账号池耗尽自动跨源 failover（路由决策落用量日志可审计）；解析上游 Retry-After/重置文案生成渠道级冷却，到点自动切回低成本源 | ❌ 原版无 |
+| **🆕 Coding Plan / Token Plan 双池** | 除订阅制 Coding Plan 外支持按量 Token Plan 供应商池；智谱 GLM（个人/团队，资源点计量）等 15+ 厂商官方价目内置；月使用率阈值软调度 | ❌ 原版无 |
+| **🆕 官方价目同步与时段折扣** | 厂商官方订阅价目定时抓取同步（快照留痕）+ 6 小时校对（源变更检测，只记录不自动改价）+ 时段折扣引擎（如智谱非高峰 5 折），计费自动套用 | ❌ 原版无 |
 
 ### 完整复刻的功能
 
@@ -146,18 +153,33 @@ PeaseAPI 在完整复刻原版功能的基础上，新增了以下能力：
 
 ### 💰 计费与支付
 - **灵活计费**：按 Token 计费（文本模型）、按次计费（图片/任务模型）、分组倍率
+- **多货币结算**：模型定价支持厂商官方币种 + 人民币参考价（`cny_reference`），汇率快照随流水留痕，跨币种成本可审计
 - **充值系统**：支持 Stripe（国际）、支付宝、微信支付三种支付渠道
 - **兑换码**：支持生成兑换码进行配额充值
 - **订阅计划**：周期性订阅，支持自动续费与配额重置（日/周/月）
 
-### 🤖 Coding Plan 账号池（独家功能）
-- **账号池化**：将 Claude Code、Cursor 等编程订阅账号统一池化管理
-- **滚动窗口配额**：支持 5 小时 / 周 / 月三档滚动窗口配额控制
-- **自动切换**：账号配额耗尽自动切换到下一个可用账号
+### 🤖 Coding Plan / Token Plan 账号池（独家功能）
+- **双池模型**：订阅制 **Coding Plan**（5h/周/月滚动窗口，按次/资源点计量）与按量 **Token Plan** 双类型供应商池，统一调度
+- **15+ 厂商官方目录**：智谱 GLM Coding Plan（个人版/团队版，资源点计量、非高峰 5 折）、联通元景、阿里 Qwen Code、DeepSeek、Moonshot Kimi 等官方档位与价目内置，开箱即配
+- **账号池化**：多账号统一池化管理，三档滚动窗口配额硬控制 + 月使用率阈值软调度（优先用得少的账号）
+- **自动切换**：账号配额耗尽自动切换到下一个可用账号；上游 429/配额超限立即打标耗尽并按恢复点冷却
+- **时段折扣**：官方非高峰窗口折扣（北京时间 `Asia/Shanghai` 口径）计费自动套用，折扣明细随流水留痕
 - **优先级调度**：支持按优先级排序账号使用顺序
 - **套餐绑定**：与订阅套餐绑定，按套餐分发对应供应商的账号额度
-- **使用流水**：完整记录每次使用，支持按账号/时间/成功状态查询
+- **使用流水**：完整记录每次使用（含成本折算、汇率快照与路由决策），支持按账号/时间/成功状态查询
 - **统计概览**：各供应商账号池实时概览与 7 天使用趋势
+
+### 🧭 智能成本路由与故障自愈（独家功能）
+- **成本优先路由（cost_first）**：按模型在各账号池的**人民币参考成本**实时升序选择渠道——同一模型跨供应商自动选最便宜的源
+- **跨源 failover**：首选源账号池耗尽（如联通池打满）时自动按路由策略切换次选源渠道，每个候选重映射模型并重选适配器，普通 API 渠道天然作为兜底归宿；**路由决策（reason、落选候选与成本明细）写入用量日志 `meta.route`**，全链路可审计
+- **冷却与自动切回**：上游 429/配额超限时解析 `Retry-After` 头与中英文重置文案（JSON `reset_time`、`Resets at`、`重置于 HH:MM` 等）得到精准恢复点，写入账号/渠道级 `cooldown_until`；无窗口信息按保守 5h 窗口——**恢复到点自动切回低成本源**，全程无需人工干预
+- **策略可配**：`cost_first`（成本序）与 `static`（固定优先级序，行为与原版一致）随时切换；static 策略下调度行为零改动，自愈由中继层 failover 兜底
+
+### 📰 新闻 / 搜索聚合 API（独家功能）
+- **四源统一**：Google CSE、NewsAPI、Tavily、Exa 聚合为统一 `POST /news/search` 接口——指定 provider 精确调用，或按分组可用性自动择优
+- **渠道路由**：搜索源以渠道形式接入，支持分组、优先级与响应时间统计
+- **计费审计**：与 OpenAI 兼容 API 共用令牌体系，按次计费、配额扣减、用量日志全链路留痕
+- **独立路由**：`/news` 前缀独立中间件栈（Stats/Cors/TokenAuth/限流），彻底避免与 OpenAI 格式请求混淆
 
 ### 📊 后台管理
 - **仪表盘**：实时统计请求数、Token 消耗、收入与用户增长
@@ -308,8 +330,10 @@ docker run -d \
 ### 最简方式：Web 安装向导
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/peaseapi/peaseapi.git
+# 1. 克隆项目（GitHub / Gitee 二选一）
+git clone https://github.com/PeaseAPI/PeaseAPI.git peaseapi
+# 或国内镜像（同步更快）
+git clone https://gitee.com/oyu/PeaseAPI.git peaseapi
 cd peaseapi
 
 # 2. 安装依赖
@@ -522,12 +546,16 @@ curl https://api.example.com/v1/chat/completions \
 | 端点 | 说明 |
 |------|------|
 | `POST /v1/chat/completions` | 对话补全（文本模型） |
+| `POST /v1/responses` | OpenAI Responses API |
 | `POST /v1/embeddings` | 文本嵌入 |
 | `POST /v1/images/generations` | 图像生成 |
 | `POST /v1/audio/speech` | 文字转语音 |
 | `POST /v1/audio/transcriptions` | 语音转文字 |
+| `POST /v1/rerank` | 重排序（Cohere 兼容） |
+| `POST /v1/moderations` | 内容审核 |
 | `GET /v1/models` | 模型列表 |
 | `POST /v1/messages` | Claude 原生格式 |
+| `POST /v1beta/models/{path}` | Gemini 原生格式通配转发 |
 | `POST /mj/submit/imagine` | Midjourney 任务 |
 | `POST /suno/submit/music` | Suno 音乐任务 |
 | `POST /news/search` | 新闻 / 网页搜索聚合（Google CSE / NewsAPI / Tavily / Exa） |
@@ -616,6 +644,23 @@ composer dev
 ```bash
 ./vendor/bin/pint
 ```
+
+---
+
+## 质量保障：内置自检命令
+
+项目内置 **200+ 项断言**的纯数据自检套件（事务内造数、结束回滚零残留，**可在生产环境安全执行**）：
+
+| 命令 | 覆盖内容 |
+|------|---------|
+| `php artisan coding-plan:test-cooldown-recovery` | 冷却自愈 31 项：`Retry-After`/中英文重置文案解析、账号/渠道双级冷却、到点自动切回（8 轮幂等） |
+| `php artisan coding-plan:test-cost-failover` | 跨源 failover 24 项：账号池耗尽切换、模型重映射、路由决策落日志 |
+| `php artisan coding-plan:test-cost-routing` | 成本路由 24 项：人民币参考成本排序、跨供应商选优 |
+| `php artisan coding-plan:test-time-discounts` | 时段折扣 28 项：非高峰窗口计费自动套用 |
+| `php artisan coding-plan:test-currency` | 多货币结算 30 项：官方币种定价、汇率快照、`cny_reference` 折算 |
+| `php tests/coding-plan-parser-fixture.php` | 官方价目解析器 fixture（真实页面结构样本） |
+| `php tests/relay-adapters-verify.php` | 渠道适配器契约断言（请求构造/响应解析全量校验） |
+| `php artisan coding-plan:verify-ratios` | 官方价目校对：6 小时快照比对、源变更检测（stale 标记，只记录不自动改价） |
 
 ---
 
@@ -712,6 +757,10 @@ php artisan key:generate
 ## 开源协议
 
 PeaseAPI 基于 [MIT License](LICENSE) 开源。
+
+**仓库镜像**（双端同步发布，任选其一）：
+- GitHub：[PeaseAPI/PeaseAPI](https://github.com/PeaseAPI/PeaseAPI)
+- Gitee：[oyu/PeaseAPI](https://gitee.com/oyu/PeaseAPI)
 
 ---
 

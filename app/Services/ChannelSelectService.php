@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Ability;
 use App\Models\Channel;
 use App\Models\User;
+use Illuminate\Support\Collection;
 
 /**
  * 渠道选择算法 - 负载均衡、优先级
@@ -119,9 +120,21 @@ class ChannelSelectService
      *
      * abilities 表结构为 {group, model, channel_id, enabled, priority, weight}，
      * 同组无可用能力时回退 default 组再选一次。
+     *
+     * 路由策略（P9-1 ModelRouteStrategy）：
+     *  - static（默认）：priority 降序 + 随机（原静态调度，现网行为不变）
+     *  - cost_first：候选按「每 1k tokens 平台成本」升序（CostRouteService），
+     *    成本不可算的渠道垫底按 priority 兜底
      */
     public function pickChannel(string $model, string $group = 'default'): ?Channel
     {
+        if (app(CostRouteService::class)->strategy() === CostRouteService::STRATEGY_COST_FIRST) {
+            $sorted = app(CostRouteService::class)
+                ->sortChannelsByCost($this->candidateChannels($model, $group), $model);
+
+            return $sorted[0]['channel'] ?? null;
+        }
+
         $channelIds = Ability::where('model', $model)
             ->where('group', $group)
             ->where('enabled', true)
@@ -145,6 +158,38 @@ class ChannelSelectService
             ->orderBy('priority', 'desc')
             ->orderByRaw('RAND()')
             ->first();
+    }
+
+    /**
+     * 获取模型候选渠道（abilities 匹配 + default 组回退，status=1）
+     *
+     * 供 cost_first 成本排序（P9-1）与跨源 failover（P9-2）复用；不做 SQL 侧排序，
+     * 排序语义由调用方决定（static=SQL 内 priority+RAND；cost_first=PHP 侧成本排序）。
+     *
+     * @return Collection<int, Channel>
+     */
+    public function candidateChannels(string $model, string $group = 'default'): Collection
+    {
+        $channelIds = Ability::where('model', $model)
+            ->where('group', $group)
+            ->where('enabled', true)
+            ->pluck('channel_id');
+
+        if ($channelIds->isEmpty() && $group !== 'default') {
+            $channelIds = Ability::where('model', $model)
+                ->where('group', 'default')
+                ->where('enabled', true)
+                ->pluck('channel_id');
+        }
+
+        if ($channelIds->isEmpty()) {
+            return collect();
+        }
+
+        return Channel::whereIn('id', $channelIds)
+            ->where('status', 1)
+            ->get()
+            ->values();
     }
 
     /**

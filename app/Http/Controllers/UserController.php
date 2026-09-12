@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\CurrencyExchangeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -45,6 +46,10 @@ class UserController extends Controller
                 'group' => $user->group,
                 'quota' => $user->quota,
                 'used_quota' => $user->used_quota,
+                // P7-4：结算货币偏好与余额换算（settlement=null 表示未设偏好/即基准币种，
+                // 前端按平台默认展示；否则 {currency, amount, usd_amount, fx 快照} 可直接双列展示）
+                'settlement_currency' => $user->settlement_currency,
+                'settlement' => CurrencyExchangeService::convertQuota((int) $user->quota, $user->settlement_currency),
                 'request_count' => $user->request_count,
                 'aff_code' => $user->aff_code,
                 'inviter_id' => $user->inviter_id,
@@ -71,7 +76,22 @@ class UserController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
-        $data = $request->only(['display_name', 'avatar']);
+        $data = $request->only(['display_name', 'avatar', 'settlement_currency']);
+
+        // P7-4：结算货币偏好校验——空值=清除偏好（跟随平台基准）；非空须为可折算币种
+        if (array_key_exists('settlement_currency', $data)) {
+            $currency = is_string($data['settlement_currency']) ? strtoupper(trim($data['settlement_currency'])) : '';
+            if ($currency === '') {
+                $data['settlement_currency'] = null;
+            } elseif (! CurrencyExchangeService::isSupported($currency)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Unsupported settlement currency: {$currency}",
+                ], 422);
+            } else {
+                $data['settlement_currency'] = $currency;
+            }
+        }
 
         if ($request->has('password') && $request->filled('password')) {
             $data['password'] = Hash::make($request->password);

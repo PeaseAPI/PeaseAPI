@@ -44,6 +44,7 @@ class User extends Authenticatable
         'setting',
         'remark',
         'stripe_customer',
+        'settlement_currency',
         'created_at',
         'last_login_at',
     ];
@@ -65,6 +66,16 @@ class User extends Authenticatable
         'created_at' => 'integer',
         'last_login_at' => 'integer',
     ];
+
+    /**
+     * 生效结算币种（P7-4）：用户偏好为大写币种码，未设置回落平台基准 CNY。
+     */
+    public function settlementCurrency(): string
+    {
+        $preferred = $this->settlement_currency;
+
+        return is_string($preferred) && $preferred !== '' ? strtoupper($preferred) : 'CNY';
+    }
 
     public function tokens()
     {

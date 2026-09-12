@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Models\CodingPlanAccount;
 use App\Models\CodingPlanVendor;
 use App\Models\CurrencyRate;
+use App\Models\User;
 use App\Services\CodingPlanPoolService;
 use App\Services\CurrencyExchangeService;
 use App\Services\OptionService;
@@ -97,6 +98,24 @@ class TestCodingPlanCurrency extends Command
         $this->runFxIntegration($check, 'USD', 'USD', true);
         $this->runFxIntegration($check, 'CNY', '元', false);
 
+        $this->info('【F】P7-4 结算货币（convertQuota / User::settlementCurrency）');
+        $check('convertQuota 无偏好 → null（按平台默认展示）', CurrencyExchangeService::convertQuota(500000, null) === null);
+        $check('convertQuota 基准币种 → null（无折算）', CurrencyExchangeService::convertQuota(500000, 'CNY') === null);
+        $check('convertQuota 不可折算 → null', CurrencyExchangeService::convertQuota(500000, 'XYZ') === null);
+        if ($expectedUsd !== null) {
+            $qpu = (float) (OptionService::get('QuotaPerUnit', 500000) ?: 500000);
+            $conv = CurrencyExchangeService::convertQuota((int) $qpu, 'usd');
+            $check('convertQuota usd 小写归一 + USD 偏好恒等（1 美元单位 → 1.0 USD）',
+                is_array($conv) && $conv['currency'] === 'USD' && $conv['usd_amount'] === 1.0
+                && ($conv['amount'] ?? null) === $conv['usd_amount'] && is_array($conv['fx']) && $conv['fx']['to'] === 'USD');
+            $check('convertQuota USD 快照记录所用汇率（rates.USD = Option 兜底值）',
+                ($conv['fx']['rates']['USD'] ?? null) === $expectedUsd);
+            $conv2 = CurrencyExchangeService::convertQuota((int) (2 * $qpu), 'USD');
+            $check('convertQuota 数值线性（2×quota → 2×amount）',
+                is_array($conv2) && abs(($conv2['amount'] ?? 0) - 2.0) < 1e-9);
+        }
+        $this->runSettlementPreference($check);
+
         $this->newLine();
         $this->info("✅ 多货币自检全部通过（{$pass} 项断言）");
 
@@ -155,6 +174,35 @@ class TestCodingPlanCurrency extends Command
         } finally {
             DB::rollBack();
             CurrencyExchangeService::flushMemo();
+        }
+    }
+
+    /**
+     * 结算偏好集成（P7-4）：事务内造临时用户行 → User::settlementCurrency() 回落语义 +
+     * 偏好变化驱动 convertQuota 切换币种，回滚零残留。
+     */
+    private function runSettlementPreference(\Closure $check): void
+    {
+        DB::beginTransaction();
+        try {
+            $user = User::create([
+                'username' => '__selftest_cur__'.time(),
+                'password' => 'selftest',
+                'email' => '__selftest_cur__'.time().'@invalid.local',
+                'aff_code' => 'ST'.time(),
+                'quota' => 1000000,
+                'created_at' => time(),
+            ]);
+            $check('未设偏好 → settlementCurrency() 回落 CNY', $user->settlementCurrency() === 'CNY');
+
+            $user->settlement_currency = 'usd';
+            $check('偏好小写存储 → settlementCurrency() 归一 USD', $user->settlementCurrency() === 'USD');
+
+            $conv = CurrencyExchangeService::convertQuota((int) $user->quota, $user->settlementCurrency());
+            $check('偏好 USD + quota=1e6 → convertQuota 出 USD 金额与 fx 快照',
+                is_array($conv) && $conv['currency'] === 'USD' && is_array($conv['fx']) && $conv['fx']['to'] === 'USD');
+        } finally {
+            DB::rollBack();
         }
     }
 }

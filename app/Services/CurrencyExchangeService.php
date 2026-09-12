@@ -57,6 +57,41 @@ class CurrencyExchangeService
         return self::rate($code) !== null;
     }
 
+    /**
+     * quota → 结算币种金额换算（P7-4 余额/账单展示口径）。
+     *
+     * 平台 quota 与货币的既有口径：QuotaPerUnit quota = 1 美元单位（SubscriptionService::quotaPerUnit 同源）。
+     * 流程：quota → USD 金额（÷QuotaPerUnit）→ convert() 折用户币种；随附 fx 快照
+     * （结算口径=交易时刻汇率快照，展示层拿到当时所用汇率，事后可对账）。
+     *
+     * currency=null（用户未设偏好）→ 返回 null，调用方按平台默认展示；
+     * 币种不可折算 → 返回 null（调用方拒绝或提示）。
+     *
+     * 结构：{currency, quota, quota_per_unit, usd_amount, amount, fx:{base,from,to,rates,taken_at}}
+     */
+    public static function convertQuota(int $quota, ?string $currency): ?array
+    {
+        $currency = $currency !== null ? strtoupper(trim($currency)) : '';
+        if ($currency === '' || $currency === self::BASE_CURRENCY) {
+            return null; // 无偏好或即基准：无折算发生
+        }
+
+        $usdAmount = $quota / (float) (OptionService::get('QuotaPerUnit', 500000) ?: 500000);
+        $amount = self::convert($usdAmount, 'USD', $currency);
+        if ($amount === null) {
+            return null;
+        }
+
+        return [
+            'currency' => $currency,
+            'quota' => $quota,
+            'quota_per_unit' => (float) (OptionService::get('QuotaPerUnit', 500000) ?: 500000),
+            'usd_amount' => round($usdAmount, 6),
+            'amount' => round($amount, 6),
+            'fx' => self::snapshotFor('USD', $currency),
+        ];
+    }
+
     /** 管理端写入后清 memo（避免同请求内读到旧值） */
     public static function flushMemo(): void
     {

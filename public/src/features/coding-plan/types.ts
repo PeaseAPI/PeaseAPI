@@ -104,6 +104,8 @@ export interface CodingPlanVendor {
   plan_kind?: number
   unit_name?: string | null
   unit_exchange_rate: number | string
+  /** 官方计价币种（ISO 4217，如 CNY/USD；档位可单独覆盖） */
+  currency?: string | null
   docs_url?: string | null
   /** 结构化定价源 URL（JSON 清单，供 coding-plan:verify-ratios 比对） */
   pricing_source_url?: string | null
@@ -314,4 +316,67 @@ export interface CodingPlanCheckItem {
 export interface CodingPlanChecks {
   pending_total: number
   items: CodingPlanCheckItem[]
+}
+
+// ============================================================================
+// 汇率维护（P7-2/P7-5：1 单位币种 = rate 人民币，基准 CNY 恒 1）
+// ============================================================================
+
+export interface CurrencyRate {
+  code: string
+  rate: number | string
+  /** manual=手工维护 api=接口同步 */
+  source: string
+  remark?: string | null
+  updated_at: number
+  /** 当前生效汇率（表值或 USD Option 回落） */
+  effective_rate?: number
+  /** hints 条目：未被表管理的币种提示（CNY 基准 / USD Option 兜底） */
+  managed?: boolean
+  fallback_option?: string
+}
+
+/** GET /coding_plan/rates 响应体 */
+export interface CodingPlanRates {
+  rates: CurrencyRate[]
+  hints: CurrencyRate[]
+}
+
+// ============================================================================
+// 厂商活动维护（P2-1/P2-3/P7-5：限时价 / 时段折扣 / 模型退市）
+// ============================================================================
+
+export const PROMOTION_KINDS: { value: string; label: string }[] = [
+  { value: 'discount', label: '折扣' },
+  { value: 'free', label: '免费' },
+  { value: 'price_change', label: '价格调整' },
+  { value: 'model_retirement', label: '模型退市' },
+]
+
+export const PROMOTION_STATES: { value: string; label: string }[] = [
+  { value: 'scheduled', label: '未开始' },
+  { value: 'ongoing', label: '进行中' },
+  { value: 'expired', label: '已结束' },
+]
+
+export interface CodingPlanPromotion {
+  id: number
+  vendor: string
+  kind: string
+  title: string
+  description?: string | null
+  /** 折扣乘数 (0,1)：0.8 = 8 折；null = 非乘数口径 */
+  discount?: number | string | null
+  starts_at: number
+  /** Unix 秒；null = 官方未公布截止（长期有效） */
+  ends_at?: number | null
+  source_url?: string | null
+  status: number
+  /** 剩余多少天开始提醒 */
+  remind_days: number
+  sort: number
+  remark?: string | null
+  /** 前台推导状态 scheduled/ongoing/expired */
+  state?: string
+  remaining_seconds?: number | null
 }

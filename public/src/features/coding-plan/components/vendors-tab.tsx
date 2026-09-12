@@ -61,6 +61,7 @@ type VendorForm = {
   code: string
   name: string
   plan_kind: string
+  currency: string
   docs_url: string
   pricing_source_url: string
   unit_name: string
@@ -74,6 +75,7 @@ const EMPTY: VendorForm = {
   code: '',
   name: '',
   plan_kind: String(PLAN_KIND_CODING),
+  currency: 'CNY',
   docs_url: '',
   pricing_source_url: '',
   unit_name: '',
@@ -101,6 +103,7 @@ export function VendorsTab() {
         code: form.code,
         name: form.name,
         plan_kind: Number(form.plan_kind),
+        currency: form.currency,
         docs_url: form.docs_url,
         pricing_source_url: form.pricing_source_url,
         unit_name: form.unit_name,
@@ -166,6 +169,7 @@ export function VendorsTab() {
               <TableHead>标识</TableHead>
               <TableHead>名称</TableHead>
               <TableHead>类型</TableHead>
+              <TableHead>币种</TableHead>
               <TableHead>默认单位</TableHead>
               <TableHead>默认汇率</TableHead>
               <TableHead>账号池</TableHead>
@@ -176,14 +180,14 @@ export function VendorsTab() {
           <TableBody>
             {vendorsQuery.isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className='py-8 text-center'>
+                <TableCell colSpan={9} className='py-8 text-center'>
                   加载中…
                 </TableCell>
               </TableRow>
             ) : vendors.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className='text-muted-foreground py-8 text-center'
                 >
                   暂无供应商；迁移已预置主流厂商目录（默认停用），可直接「编辑」启用
@@ -200,6 +204,9 @@ export function VendorsTab() {
                         ? '按量'
                         : '订阅制'}
                     </Badge>
+                  </TableCell>
+                  <TableCell className='font-mono text-xs'>
+                    {v.currency || 'CNY'}
                   </TableCell>
                   <TableCell>{v.unit_name || '-'}</TableCell>
                   <TableCell>×{Number(v.unit_exchange_rate)}</TableCell>
@@ -224,6 +231,7 @@ export function VendorsTab() {
                             code: v.code,
                             name: v.name,
                             plan_kind: String(v.plan_kind ?? PLAN_KIND_CODING),
+                            currency: v.currency ?? 'CNY',
                             docs_url: v.docs_url ?? '',
                             pricing_source_url: v.pricing_source_url ?? '',
                             unit_name: v.unit_name ?? '',
@@ -338,7 +346,22 @@ export function VendorsTab() {
                 </span>
               </div>
             </div>
-            <div className='grid grid-cols-3 gap-3'>
+            <div className='grid grid-cols-4 gap-3'>
+              <div className='grid gap-1.5'>
+                <Label>币种</Label>
+                <Select value={form.currency} onValueChange={(v) => set('currency', v ?? 'CNY')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['CNY', 'USD', 'HKD', 'EUR', 'JPY', 'GBP', 'SGD'].map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className='grid gap-1.5'>
                 <Label>默认单位</Label>
                 <Input

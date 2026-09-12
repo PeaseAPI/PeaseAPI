@@ -26,6 +26,8 @@ import type {
   CodingPlanCatalogTemplate,
   CodingPlanChecks,
   CodingPlanModelRatio,
+  CodingPlanPromotion,
+  CodingPlanRates,
   CodingPlanStats,
   CodingPlanUsageLog,
   CodingPlanVendor,
@@ -272,5 +274,59 @@ export async function ignoreCheckChange(
     key,
     undo,
   })
+  return res.data
+}
+
+// ============================================================================
+// Rates（币种汇率维护，P7-2/P7-5）
+// ============================================================================
+
+export async function getRates(): Promise<ApiResponse<CodingPlanRates>> {
+  const res = await api.get(`${BASE}/rates`)
+  return res.data
+}
+
+export type RatePayload = {
+  code: string
+  rate: number
+  source?: string
+  remark?: string
+}
+
+export async function storeRate(data: RatePayload): Promise<ApiResponse> {
+  const res = await api.post(`${BASE}/rates`, data)
+  return res.data
+}
+
+export async function destroyRate(code: string): Promise<ApiResponse> {
+  const res = await api.delete(`${BASE}/rates/${code}`)
+  return res.data
+}
+
+// ============================================================================
+// Promotions（厂商活动维护，P2-1/P2-3/P7-5）
+// ============================================================================
+
+export async function getPromotions(params?: {
+  vendor?: string
+  all?: boolean
+}): Promise<ApiResponse<{ promotions: CodingPlanPromotion[]; now: number }>> {
+  const res = await api.get(`${BASE}/promotions`, {
+    params: params?.all ? { vendor: params.vendor, all: 1 } : { vendor: params?.vendor },
+  })
+  return res.data
+}
+
+export type PromotionPayload = Record<string, unknown>
+
+export async function storePromotion(
+  data: PromotionPayload
+): Promise<ApiResponse<CodingPlanPromotion>> {
+  const res = await api.post(`${BASE}/promotions`, data)
+  return res.data
+}
+
+export async function destroyPromotion(id: number): Promise<ApiResponse> {
+  const res = await api.delete(`${BASE}/promotions/${id}`)
   return res.data
 }

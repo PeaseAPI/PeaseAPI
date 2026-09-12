@@ -604,6 +604,28 @@ class CodingPlanOfficialSourceService
     }
 
     /**
+     * 最近快照中的官方模型目录（P8-1 上架清单数据源）。
+     *
+     * @return array{0: array<string, string>, 1: int|null} [小写模型名 → 原样名, fetched_at]
+     */
+    public function latestCatalog(string $vendor): array
+    {
+        $snapshot = $this->loadLatestSnapshot($vendor);
+        if (! is_array($snapshot)) {
+            return [[], null];
+        }
+
+        $models = [];
+        foreach ((array) ($snapshot['catalog'] ?? []) as $model) {
+            if (is_string($model) && $model !== '') {
+                $models[mb_strtolower($model)] = $model;
+            }
+        }
+
+        return [$models, $snapshot['fetched_at'] ?? null];
+    }
+
+    /**
      * 应用管理端忽略清单（VerifyCodingPlanRatios::IGNORE_KEYS_OPTION，键 = vendor|kind|model|match_type）
      * 并固化变更键。返回 [标记后的 changes, 待确认数, pendingKeys]。
      *

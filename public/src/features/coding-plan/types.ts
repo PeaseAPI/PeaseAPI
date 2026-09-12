@@ -380,3 +380,61 @@ export interface CodingPlanPromotion {
   state?: string
   remaining_seconds?: number | null
 }
+
+// ============================================================================
+// 厂商模型上架清单（P8-1/P8-2/P8-3：比率行 × 官方目录快照 × 校对目录变更）
+// ============================================================================
+
+/** 与官方目录快照的关系（diffCatalogModels 同口径：仅 exact 行参与比对） */
+export type OfficialModelState =
+  | 'in_catalog'
+  | 'missing'
+  | 'new'
+  | 'unknown'
+
+/** 最近一次校对流水的 model_catalog 条目（高亮/应用/忽略依据） */
+export interface CodingPlanCatalogChange {
+  model: string
+  match_type: string
+  change: 'new' | 'missing'
+  /** 应用/忽略用：model_catalog|model|match_type */
+  key?: string
+  ignored?: boolean
+}
+
+export interface CodingPlanVendorModelRow {
+  /** 库内比率行 id；官方新增虚拟行为 null */
+  id: number | null
+  vendor: string
+  model: string
+  match_type: string
+  cost_mode: string | null
+  unit_cost: number | null
+  input_rate: number | null
+  cached_rate: number | null
+  output_rate: number | null
+  time_discounts: unknown
+  /** null = 官方新增虚拟行（未落地） */
+  status: number | null
+  sort: number | null
+  remark: string | null
+  stale: boolean
+  official: OfficialModelState
+  catalog_change: CodingPlanCatalogChange | null
+  change_ignored: boolean
+}
+
+/** GET /coding_plan/vendors/{code}/models 响应体 */
+export interface CodingPlanVendorModels {
+  vendor: CodingPlanVendor
+  models: CodingPlanVendorModelRow[]
+  summary: {
+    total: number
+    enabled: number
+    disabled: number
+    official_new: number
+    official_missing: number
+    catalog_total: number | null
+    catalog_fetched_at: number | null
+  }
+}

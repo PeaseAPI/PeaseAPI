@@ -434,6 +434,10 @@ Route::middleware([UserAuth::class, AdminAuth::class])->group(function () {
     Route::post('/coding_plan/ratios', [CodingPlanController::class, 'storeRatio']);
     Route::put('/coding_plan/ratios/{id}', [CodingPlanController::class, 'updateRatio']);
     Route::delete('/coding_plan/ratios/{id}', [CodingPlanController::class, 'destroyRatio']);
+    // P8 上架流：厂商模型清单（聚合官方目录快照）+ 批量启停 + 目录变更一键应用
+    Route::get('/coding_plan/vendors/{code}/models', [CodingPlanController::class, 'vendorModels']);
+    Route::post('/coding_plan/vendors/{code}/models/batch_status', [CodingPlanController::class, 'batchUpdateModelStatus']);
+    Route::post('/coding_plan/catalog_changes/apply', [CodingPlanController::class, 'applyCatalogChanges']);
     // 官方模板目录（预置档位/折算标准一键落地）与定时校对的待确认变更（官方同步页）
     Route::get('/coding_plan/catalog', [CodingPlanController::class, 'catalog']);
     Route::post('/coding_plan/catalog/{code}/apply', [CodingPlanController::class, 'applyCatalog']);

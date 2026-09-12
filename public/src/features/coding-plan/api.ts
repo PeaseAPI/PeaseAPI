@@ -31,6 +31,7 @@ import type {
   CodingPlanStats,
   CodingPlanUsageLog,
   CodingPlanVendor,
+  CodingPlanVendorModels,
   CodingPlanVendorTier,
   PaginatedResponse,
 } from './types'
@@ -328,5 +329,37 @@ export async function storePromotion(
 
 export async function destroyPromotion(id: number): Promise<ApiResponse> {
   const res = await api.delete(`${BASE}/promotions/${id}`)
+  return res.data
+}
+
+// ============================================================================
+// 厂商模型上架清单（P8 上架流：清单聚合 / 批量启停 / 目录变更应用）
+// ============================================================================
+
+export async function getVendorModels(
+  code: string
+): Promise<ApiResponse<CodingPlanVendorModels>> {
+  const res = await api.get(`${BASE}/vendors/${code}/models`)
+  return res.data
+}
+
+export async function batchUpdateModelStatus(
+  code: string,
+  ids: number[],
+  status: 0 | 1
+): Promise<ApiResponse<{ updated: number }>> {
+  const res = await api.post(`${BASE}/vendors/${code}/models/batch_status`, {
+    ids,
+    status,
+  })
+  return res.data
+}
+
+export async function applyCatalogChanges(data: {
+  vendor: string
+  action: 'new' | 'missing'
+  models: string[]
+}): Promise<ApiResponse<{ applied: number; skipped: number }>> {
+  const res = await api.post(`${BASE}/catalog_changes/apply`, data)
   return res.data
 }

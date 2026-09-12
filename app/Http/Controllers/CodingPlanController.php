@@ -16,6 +16,7 @@ use App\Models\CurrencyRate;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Services\CodingPlanCatalog;
+use App\Services\CodingPlanOfficialSourceService;
 use App\Services\CodingPlanPoolService;
 use App\Services\CodingPlanRatioService;
 use App\Services\CurrencyExchangeService;
@@ -39,6 +40,7 @@ class CodingPlanController extends Controller
     public function __construct(
         private readonly CodingPlanPoolService $poolService,
         private readonly CodingPlanRatioService $ratioService,
+        private readonly CodingPlanOfficialSourceService $officialSources,
     ) {}
 
     /**
@@ -544,6 +546,261 @@ class CodingPlanController extends Controller
         $this->ratioService->flushCache($vendor);
 
         return $this->success(null, '比率已删除');
+    }
+
+    /**
+     * 厂商模型上架清单（P8-1：库内比率行 × 官方目录快照 × 校对目录变更）
+     * GET /coding_plan/vendors/{code}/models
+     *
+     * 每行 official 状态（与最新官方目录快照实时比对，diffCatalogModels 同口径：
+     * 仅 match_type=exact 行参与存在性比对、模型名小写归一）：
+     *  - in_catalog：官方目录在列（已提供/已停用看 status）
+     *  - missing：官方目录未列（下架嫌疑，可结合 promotions/model_retirement 处置）
+     *  - new：官方目录新增、库内无对应行（虚拟行 id=null，P8-3 应用后落地为停用态行）
+     *  - unknown：无目录快照，或 prefix 行（目录不含匹配模式，不做前缀推断）
+     * catalog_change 取最近一次校对流水（coding_plan_ratio_checks）的 model_catalog
+     * 条目（P8-3 高亮/应用/忽略依据；ignored=true 表示管理员已忽略）。
+     */
+    public function vendorModels(string $code): JsonResponse
+    {
+        $vendor = CodingPlanVendor::query()->where('code', $code)->first();
+        if (! $vendor) {
+            return $this->error('供应商不存在', 404);
+        }
+
+        $ratios = CodingPlanModelRatio::query()
+            ->where('vendor', $code)
+            ->orderBy('match_type')
+            ->orderBy('model')
+            ->orderBy('id')
+            ->get();
+
+        [$catalogModels, $catalogFetchedAt] = $this->officialSources->latestCatalog($code);
+        $hasCatalog = $catalogModels !== [];
+
+        // 最近一次校对流水的目录变更（model 小写归一 → 条目，含 ignored 标记与 key）
+        $catalogChanges = [];
+        $latestCheck = CodingPlanRatioCheck::query()
+            ->where('vendor', $code)
+            ->orderByDesc('id')
+            ->first();
+        if ($latestCheck !== null) {
+            $changes = json_decode((string) $latestCheck->changes, true) ?: [];
+            foreach ((array) ($changes['model_catalog'] ?? []) as $item) {
+                if (is_array($item) && isset($item['model'])) {
+                    $catalogChanges[mb_strtolower((string) $item['model'])] = $item;
+                }
+            }
+        }
+
+        // stale 口径与 ratios() 一致（超过核对窗口未人工复核）
+        $staleBefore = time() - max(1, (int) OptionService::get('CodingPlanRatioStaleDays', 7)) * 86400;
+
+        $rows = [];
+        $coveredExact = [];
+        foreach ($ratios as $ratio) {
+            $official = 'unknown';
+            if ($hasCatalog && $ratio->match_type === CodingPlanModelRatio::MATCH_EXACT) {
+                $key = mb_strtolower($ratio->model);
+                $official = isset($catalogModels[$key]) ? 'in_catalog' : 'missing';
+                $coveredExact[$key] = true;
+            }
+            $row = $ratio->toArray();
+            $row['stale'] = $ratio->updated_at > 0 && $ratio->updated_at < $staleBefore;
+            $row['official'] = $official;
+            $change = $catalogChanges[mb_strtolower($ratio->model)] ?? null;
+            $row['catalog_change'] = $change;
+            $row['change_ignored'] = (bool) ($change['ignored'] ?? false);
+            $rows[] = $row;
+        }
+
+        // 官方新增：目录在列但库内无对应 exact 行 → 虚拟行（id=null，待应用/忽略）
+        if ($hasCatalog) {
+            foreach ($catalogModels as $key => $original) {
+                if (isset($coveredExact[$key])) {
+                    continue;
+                }
+                $change = $catalogChanges[$key] ?? null;
+                $rows[] = [
+                    'id' => null,
+                    'vendor' => $code,
+                    'model' => $original,
+                    'match_type' => CodingPlanModelRatio::MATCH_EXACT,
+                    'cost_mode' => null,
+                    'unit_cost' => null,
+                    'input_rate' => null,
+                    'cached_rate' => null,
+                    'output_rate' => null,
+                    'time_discounts' => null,
+                    'status' => null,
+                    'sort' => null,
+                    'remark' => null,
+                    'stale' => false,
+                    'official' => 'new',
+                    'catalog_change' => $change,
+                    'change_ignored' => (bool) ($change['ignored'] ?? false),
+                ];
+            }
+        }
+
+        $summary = [
+            'total' => count($rows),
+            'enabled' => count(array_filter($rows, fn (array $r): bool => ($r['status'] ?? null) === 1)),
+            'disabled' => count(array_filter($rows, fn (array $r): bool => ($r['status'] ?? null) === 0)),
+            'official_new' => count(array_filter($rows, fn (array $r): bool => $r['official'] === 'new')),
+            'official_missing' => count(array_filter($rows, fn (array $r): bool => $r['official'] === 'missing')),
+            'catalog_total' => $hasCatalog ? count($catalogModels) : null,
+            'catalog_fetched_at' => $catalogFetchedAt,
+        ];
+
+        return $this->success([
+            'vendor' => $vendor->toArray(),
+            'models' => $rows,
+            'summary' => $summary,
+        ]);
+    }
+
+    /**
+     * 批量启用/停用模型比率行（P8-2 上架流：清单勾选 → 批量上下架）
+     * POST /coding_plan/vendors/{code}/models/batch_status
+     *
+     * body: { ids: number[], status: 0|1 }
+     * 联动：失效比率聚合缓存（offers/ratios）+ channel_cache（与 SyncChannelCache
+     * 同口径 forget，渠道列表缓存重建后模型可见性即时生效）。
+     */
+    public function batchUpdateModelStatus(Request $request, string $code): JsonResponse
+    {
+        if (! CodingPlanVendor::query()->where('code', $code)->exists()) {
+            return $this->error('供应商不存在', 404);
+        }
+
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:500'],
+            'ids.*' => ['integer'],
+            'status' => ['required', 'integer', 'in:0,1'],
+        ]);
+
+        $updated = CodingPlanModelRatio::query()
+            ->where('vendor', $code)
+            ->whereIn('id', $data['ids'])
+            ->update(['status' => (int) $data['status'], 'updated_at' => time()]);
+
+        $this->ratioService->flushCache($code);
+        Cache::forget('channel_cache');
+
+        $label = (int) $data['status'] === 1 ? '启用' : '停用';
+
+        return $this->success(['updated' => $updated], "已{$label} {$updated} 个模型");
+    }
+
+    /**
+     * 应用官方目录变更（P8-3：model_catalog new/missing 一键应用）
+     * POST /coding_plan/catalog_changes/apply
+     *
+     * body: { vendor: string, action: "new"|"missing", models: string[] }
+     *  - new：为官方新增模型落地停用态 exact 行（per_request unit_cost=1，remark
+     *    标注待配置定价；status=0 不会自动计费），模型名优先取快照原样大小写；
+     *  - missing：停用对应 exact 行（可逆，管理员可再启用），并把 model_catalog
+     *    忽略键写入 IGNORE_KEYS_OPTION（停用行仍会出现在后续同步 diff 中，防止重复提醒）。
+     * 铁律同 verify-ratios：不自动改价、不自动启用 —— 上架动作始终由管理员显式执行。
+     */
+    public function applyCatalogChanges(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'vendor' => ['required', 'string', 'max:64'],
+            'action' => ['required', 'string', 'in:new,missing'],
+            'models' => ['required', 'array', 'min:1', 'max:500'],
+            'models.*' => ['string', 'max:128'],
+        ]);
+
+        $code = $data['vendor'];
+        if (! CodingPlanVendor::query()->where('code', $code)->exists()) {
+            return $this->error('供应商不存在', 404);
+        }
+
+        $models = array_values(array_unique($data['models']));
+        $now = time();
+        $applied = 0;
+        $skipped = 0;
+
+        if ($data['action'] === 'new') {
+            // 快照原样名保真：校对流水的目录条目为小写归一名，落库须用官方原样
+            [$catalogModels] = $this->officialSources->latestCatalog($code);
+            foreach ($models as $model) {
+                $original = $catalogModels[mb_strtolower($model)] ?? $model;
+                $exists = CodingPlanModelRatio::query()
+                    ->where('vendor', $code)
+                    ->where('match_type', CodingPlanModelRatio::MATCH_EXACT)
+                    ->whereRaw('lower(model) = ?', [mb_strtolower($original)])
+                    ->exists();
+                if ($exists) {
+                    $skipped++;
+
+                    continue;
+                }
+                CodingPlanModelRatio::create([
+                    'vendor' => $code,
+                    'model' => $original,
+                    'match_type' => CodingPlanModelRatio::MATCH_EXACT,
+                    'cost_mode' => CodingPlanModelRatio::COST_PER_REQUEST,
+                    'unit_cost' => 1,
+                    'input_rate' => 0,
+                    'cached_rate' => 0,
+                    'output_rate' => 0,
+                    'time_discounts' => null,
+                    // 默认停用：定价待管理员配置，不会自动计费
+                    'status' => 0,
+                    'sort' => 0,
+                    'remark' => '官方目录新增（P8-3 一键应用，待配置定价）',
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+                $applied++;
+            }
+        } else {
+            $targets = CodingPlanModelRatio::query()
+                ->where('vendor', $code)
+                ->where('match_type', CodingPlanModelRatio::MATCH_EXACT)
+                ->get();
+            $wanted = array_flip(array_map('mb_strtolower', $models));
+
+            // 忽略键双态兼容（与 ignoreCheckChange 同构）；目录条目 model 为小写归一名
+            $ignoreRaw = OptionService::get(VerifyCodingPlanRatios::IGNORE_KEYS_OPTION, '[]');
+            $keys = is_array($ignoreRaw) ? $ignoreRaw : (json_decode((string) $ignoreRaw, true) ?: []);
+            if (! is_array($keys)) {
+                $keys = [];
+            }
+            $ignoredSet = array_flip($keys);
+
+            foreach ($targets as $ratio) {
+                if (! isset($wanted[mb_strtolower($ratio->model)])) {
+                    continue;
+                }
+                if ((int) $ratio->status !== 0) {
+                    $ratio->update(['status' => 0, 'updated_at' => $now]);
+                    $applied++;
+                } else {
+                    $skipped++;
+                }
+                $fullKey = $code.'|model_catalog|'.mb_strtolower($ratio->model).'|';
+                if (! isset($ignoredSet[$fullKey])) {
+                    $keys[] = $fullKey;
+                    $ignoredSet[$fullKey] = true;
+                }
+            }
+
+            OptionService::set(VerifyCodingPlanRatios::IGNORE_KEYS_OPTION, json_encode(array_values($keys), JSON_UNESCAPED_UNICODE));
+        }
+
+        $this->ratioService->flushCache($code);
+        Cache::forget('channel_cache');
+
+        $label = $data['action'] === 'new' ? '落地新增模型' : '停用下架模型';
+
+        return $this->success(
+            ['applied' => $applied, 'skipped' => $skipped],
+            "已{$label} {$applied} 个（跳过 {$skipped} 个）"
+        );
     }
 
     /**

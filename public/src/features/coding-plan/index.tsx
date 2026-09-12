@@ -21,6 +21,7 @@ import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import { AccountsTab } from './components/accounts-tab'
+import { ModelsTab } from './components/models-tab'
 import { PlansTab } from './components/plans-tab'
 import { PromotionsTab } from './components/promotions-tab'
 import { RatesTab } from './components/rates-tab'
@@ -38,6 +39,7 @@ const TABS = [
   { value: 'tiers', label: '套餐档位', node: <TiersTab /> },
   { value: 'rates', label: '汇率', node: <RatesTab /> },
   { value: 'promotions', label: '厂商活动', node: <PromotionsTab /> },
+  { value: 'models', label: '模型上架', node: <ModelsTab /> },
   { value: 'ratios', label: '折算比率', node: <RatiosTab /> },
   { value: 'sync', label: '官方同步', node: <SyncTab /> },
   { value: 'stats', label: '用量统计', node: <StatsTab /> },

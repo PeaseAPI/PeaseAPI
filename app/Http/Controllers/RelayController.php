@@ -499,9 +499,10 @@ class RelayController extends Controller
             header('Connection: keep-alive');
             header('X-Accel-Buffering: no');
 
+            // 跟踪上游是否已发送 [DONE]，避免重复结束标记
+            $doneSent = false;
+
             try {
-                // 通过回调统一输出，并跟踪上游是否已发送 [DONE]，避免重复结束标记
-                $doneSent = false;
                 // 敏感词响应内容检查（StopOn）：滚动窗口扫描原始输出；命中 → 下发错误事件并截断后续输出
                 $sensitive = app(SensitiveWordService::class);
                 $sensitiveWindow = '';
@@ -543,11 +544,6 @@ class RelayController extends Controller
 
                 // 记录日志
                 $this->logStreamRequest($request, $relayInfo);
-
-                if (! $doneSent) {
-                    echo "data: [DONE]\n\n";
-                    @flush();
-                }
             } catch (\Exception $e) {
                 if ($isAnthropicNative) {
                     // Anthropic 原生 SSE 错误事件
@@ -558,9 +554,10 @@ class RelayController extends Controller
                 }
             }
 
-            // OpenAI 协议以 [DONE] 结束，Anthropic 协议以 message_stop 事件结束（由上游发送）
-            if (! $isAnthropicNative) {
+            // OpenAI 协议以 [DONE] 结束（上游已发过则不重复）；Anthropic 协议以 message_stop 事件结束（由上游发送），不发 [DONE]
+            if (! $isAnthropicNative && ! $doneSent) {
                 echo "data: [DONE]\n\n";
+                @flush();
             }
         }, 200, [
             'Content-Type' => 'text/event-stream',

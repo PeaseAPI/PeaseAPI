@@ -17,7 +17,6 @@ use App\Relay\Constant\RelayMode;
 use App\Relay\Constant\RelayProtocol;
 use App\Services\BillingService;
 use App\Services\LogService;
-use Exception;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -98,7 +97,9 @@ class RelayHandler
             $this->logConsume();
 
             return $this->info->responseBody;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
+            // Throwable（含 curl_exec=false 赋给 string 属性抛出的 TypeError 等 Error）：
+            // 确保任何异常路径都退回预扣额度，杜绝 Error 冒泡跳过退款/计费
             Log::error('Relay 处理失败', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -160,7 +161,7 @@ class RelayHandler
             // 记录消费日志（成功，流式）
             $this->logConsume();
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Log::error('流式 Relay 处理失败', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

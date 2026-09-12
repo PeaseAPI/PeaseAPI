@@ -10,6 +10,7 @@ declare(strict_types=1);
 require __DIR__.'/../vendor/autoload.php';
 
 use App\Models\Channel;
+use App\Relay\Channel\AWS\AWSAdapter;
 use App\Relay\Channel\BaseAdapter;
 use App\Relay\Channel\Gemini\GeminiAdapter;
 use App\Relay\Channel\Task\TaskAdapter;
@@ -269,6 +270,98 @@ try {
     $threw = str_contains($e->getMessage(), '不支持流式');
 }
 check('TaskAdapter 继承抛出', $threw);
+
+echo "== QA-24 AWSAdapter Converse 转换与计费 ==\n";
+$ap = new class extends AWSAdapter
+{
+    public function probeBody(array $body): array
+    {
+        return $this->buildConverseBody($body);
+    }
+
+    public function probeUsage(RelayInfo $info, array $body): void
+    {
+        $this->extractUsage($info, $body);
+    }
+
+    public function probeStop(string $reason): string
+    {
+        return $this->mapStopReason($reason);
+    }
+};
+$ab = $ap->probeBody([
+    'messages' => [
+        ['role' => 'system', 'content' => 'Be brief'],
+        ['role' => 'user', 'content' => [['type' => 'text', 'text' => 'Hi'], ['type' => 'image_url', 'url' => 'x']]],
+        ['role' => 'assistant', 'content' => 'Prev'],
+    ],
+    'max_tokens' => 128,
+]);
+check('system → system 字段', ($ab['system'][0]['text'] ?? '') === 'Be brief');
+check('user content → [{text}] 聚合', ($ab['messages'][0]['content'][0]['text'] ?? '') === 'Hi' && ($ab['messages'][0]['role'] ?? '') === 'user');
+check('assistant 角色保留', ($ab['messages'][1]['role'] ?? '') === 'assistant');
+check('inferenceConfig.maxTokens', ($ab['inferenceConfig']['maxTokens'] ?? 0) === 128);
+
+$au = new RelayInfo;
+$ap->probeUsage($au, ['usage' => ['inputTokens' => 12, 'outputTokens' => 34, 'cacheReadInputTokens' => 5, 'cacheWriteInputTokens' => 2, 'totalTokens' => 46]]);
+check('usage: prompt=12', $au->promptTokens === 12);
+check('usage: completion=34', $au->completionTokens === 34);
+check('usage: cached=5（cacheRead）', $au->cachedTokens === 5);
+
+$ac = new RelayInfo;
+$ap->probeUsage($ac, ['usage' => ['inputTokens' => 3, 'outputTokens' => 1, 'cacheReadInputTokens' => 9]]);
+check('usage: cached 截断到 prompt', $ac->cachedTokens === 3);
+check('stopReason 映射', $ap->probeStop('max_tokens') === 'length' && $ap->probeStop('content_filtered') === 'content_filter' && $ap->probeStop('end_turn') === 'stop');
+
+$ar = new RelayInfo;
+$ar->upstreamModelName = 'anthropic.claude-sonnet-4-20250514-v1:0';
+$ar->responseBody = json_encode([
+    'output' => ['message' => ['content' => [['text' => 'A'], ['text' => 'B']]]],
+    'stopReason' => 'max_tokens',
+    'usage' => ['inputTokens' => 7, 'outputTokens' => 9],
+]);
+$ap->formatResponse($ar);
+$ao = json_decode($ar->responseBody, true);
+check('非流式: 文本聚合', ($ao['choices'][0]['message']['content'] ?? '') === 'AB');
+check('非流式: max_tokens → length', ($ao['choices'][0]['finish_reason'] ?? '') === 'length');
+check('非流式: usage 计费', $ar->promptTokens === 7 && $ar->completionTokens === 9);
+check('非流式: model 取 upstream', ($ao['model'] ?? '') === 'anthropic.claude-sonnet-4-20250514-v1:0');
+
+$ae = new RelayInfo;
+$ae->responseStatus = 403;
+$ae->responseBody = json_encode(['__type' => 'AccessDeniedException', 'message' => 'The security token included in the request is invalid.']);
+$ap->errorHandler($ae);
+$aeo = json_decode($ae->responseBody, true);
+check('错误转 OpenAI 格式', ($aeo['error']['message'] ?? '') === 'The security token included in the request is invalid.' && $ae->responseStatus === 403);
+
+$aurl = new RelayInfo;
+$aurl->upstreamModelName = 'anthropic.claude-3-5-haiku-20241022-v1:0';
+$aurl->channelBaseUrl = 'https://bedrock-gw.example.com';
+$aurl->requestBody = ['model' => 'anthropic.claude-3-5-haiku-20241022-v1:0', 'messages' => [['role' => 'user', 'content' => 'Hi']]];
+(new AWSAdapter)->formatRequest($aurl);
+check('URL: /model/{id}/converse', $aurl->upstreamUrl === 'https://bedrock-gw.example.com/model/anthropic.claude-3-5-haiku-20241022-v1%3A0/converse');
+check('body: 无 modelId 顶层字段', ! isset(json_decode((string) $aurl->upstreamBody, true)['modelId']));
+$dflt = new ReflectionMethod(RelayInfo::class, 'getDefaultBaseUrl');
+$dflt->setAccessible(true);
+check('默认 base: bedrock-runtime.us-east-1', $dflt->invoke(new RelayInfo, 22) === 'https://bedrock-runtime.us-east-1.amazonaws.com');
+
+$athrew = false;
+try {
+    (new AWSAdapter)->streamHandler(new RelayInfo);
+} catch (RuntimeException $e) {
+    $athrew = str_contains($e->getMessage(), '不支持流式');
+}
+check('流式显式报错（converse-stream 未实现）', $athrew);
+
+$aempty = new RelayInfo;
+$aempty->upstreamUrl = '';
+$athrew = false;
+try {
+    (new AWSAdapter)->doRequest($aempty);
+} catch (RuntimeException $e) {
+    $athrew = str_contains($e->getMessage(), 'URL 为空');
+}
+check('上游 URL 为空 → 显式抛错（非 200 空响应）', $athrew);
 
 echo "\n".($fail === 0 ? 'ALL PASS' : "FAILED: {$fail}")."\n";
 exit($fail === 0 ? 0 : 1);

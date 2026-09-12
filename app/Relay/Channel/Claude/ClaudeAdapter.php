@@ -57,7 +57,7 @@ class ClaudeAdapter extends BaseAdapter
             'id' => $body['id'] ?? 'chatcmpl-'.uniqid(),
             'object' => 'chat.completion',
             'created' => $body['created_at'] ?? time(),
-            'model' => $body['model'] ?? $info->model,
+            'model' => $body['model'] ?? $info->modelName,
             'choices' => [],
         ];
 

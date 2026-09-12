@@ -36,11 +36,15 @@ class Log extends Model
     public $timestamps = false;
 
     /**
-     * 兜底默认值：生产库（严格模式）logs.token_name 为 NOT NULL 且无默认值，
-     * 充值/兑换类日志（QuotaService::addQuota）不带 token_name，缺省即 1364 插入失败。
+     * 兜底默认值：生产库（严格模式）logs 的 token_name/model_name/group/ip 列
+     * 为 NOT NULL 且无默认值（历史建表时丢失，与迁移 000040 的 default('') 声明不一致），
+     * 充值/兑换类日志（QuotaService::addQuota 不带这些列）插入即 1364 失败。
      */
     protected $attributes = [
         'token_name' => '',
+        'model_name' => '',
+        'group' => '',
+        'ip' => '',
     ];
 
     protected $fillable = [

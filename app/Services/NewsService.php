@@ -118,7 +118,7 @@ class NewsService
 
             $this->postSettle(
                 $channel, $quota, $providerKey, $searchRequest, $result,
-                $userId, $tokenId, $requestId, $request->ip()
+                $token, $userId, $tokenId, $requestId, $request->ip()
             );
 
             return [
@@ -284,11 +284,13 @@ class NewsService
         string $providerKey,
         NewsSearchRequest $searchRequest,
         $result,
+        Token $token,
         int $userId,
         int $tokenId,
         string $requestId,
         string $ip,
     ): void {
+
         DB::table('channels')
             ->where('id', $channel->id)
             ->update(['used_quota' => DB::raw('used_quota + '.$quota)]);
@@ -297,15 +299,17 @@ class NewsService
             'user_id' => $userId,
             'token_id' => $tokenId,
             'channel_id' => $channel->id,
-            'ability_id' => 0,
+            'channel_name' => (string) $channel->name,
+            'token_name' => (string) ($token->name ?? ''),
             'type' => 2,
-            'model' => 'news:'.$providerKey,
+            'model_name' => 'news:'.$providerKey,
             'prompt_tokens' => 0,
             'completion_tokens' => 0,
             'quota' => $quota,
             'request_id' => $requestId,
             'ip' => $ip,
-            'detail' => json_encode([
+            // logs 表无 ability_id/model/detail 列；审计明细统一落 other（JSON）
+            'other' => json_encode([
                 'query' => $searchRequest->query,
                 'provider' => $providerKey,
                 'max_results' => $searchRequest->maxResults,

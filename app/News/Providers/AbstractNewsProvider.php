@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\News\Providers;
 
 use App\Models\Channel;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -78,6 +79,24 @@ abstract class AbstractNewsProvider implements NewsProviderInterface
     }
 
     /**
+     * 统一 HTTP 客户端（超时 + 可选代理）
+     *
+     * 代理口径对齐 P1-8（CodingPlanOfficialSourceService）：四源均为境外上游，
+     * 配置 PEASE_API_HTTP_PROXY 时走代理，默认空直连（生产不受影响）。
+     */
+    protected function httpClient(): PendingRequest
+    {
+        $http = Http::timeout($this->timeout);
+
+        $proxy = trim((string) env('PEASE_API_HTTP_PROXY', ''));
+        if ($proxy !== '') {
+            $http = $http->withOptions(['proxy' => $proxy]);
+        }
+
+        return $http;
+    }
+
+    /**
      * 发起 GET 请求
      *
      * @param  array<string, mixed>  $params
@@ -88,7 +107,7 @@ abstract class AbstractNewsProvider implements NewsProviderInterface
      */
     protected function httpGet(string $url, array $params = [], array $headers = []): array
     {
-        $response = Http::withHeaders($headers)->timeout($this->timeout)->get($url, $params);
+        $response = $this->httpClient()->withHeaders($headers)->get($url, $params);
 
         if (! $response->successful()) {
             throw new \RuntimeException(
@@ -111,7 +130,7 @@ abstract class AbstractNewsProvider implements NewsProviderInterface
      */
     protected function httpPost(string $url, array $body = [], array $headers = []): array
     {
-        $response = Http::withHeaders($headers)->timeout($this->timeout)->post($url, $body);
+        $response = $this->httpClient()->withHeaders($headers)->post($url, $body);
 
         if (! $response->successful()) {
             throw new \RuntimeException(

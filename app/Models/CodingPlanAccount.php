@@ -50,6 +50,7 @@ class CodingPlanAccount extends Model
         'quota_monthly',
         'used_monthly',
         'reset_monthly_at',
+        'cooldown_until',
         'monthly_usage_threshold',
         'priority',
         'status',
@@ -109,6 +110,11 @@ class CodingPlanAccount extends Model
             return false;
         }
         if ($this->isExpired()) {
+            return false;
+        }
+        // 账号级冷却中（上游 429/重置文案解析出的恢复点未到）不参与调度
+        // （正常情况下冷却到点会由 recoverExpiredCooldowns 先行恢复为 ENABLED，此处为防御）
+        if ((int) $this->cooldown_until > time()) {
             return false;
         }
         // 5h 配额（>0 表示启用该周期限制）

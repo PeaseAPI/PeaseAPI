@@ -80,9 +80,12 @@ class RelayHandler
                 // 记录 Coding Plan 使用（失败），若为配额超限则标记账号耗尽
                 if ($this->info->codingPlanAccount !== null) {
                     $isQuotaError = $this->info->isCodingPlanQuotaError();
+                    // P9-3：配额超限时解析上游 Retry-After/重置文案 → 账号/渠道冷却恢复点
+                    $cooldownUntil = $isQuotaError ? $this->info->resolveQuotaCooldown() : null;
                     $this->info->recordCodingPlanUsage(
                         false,
-                        $isQuotaError ? 'quota_exceeded' : 'upstream_error_'.$this->info->responseStatus
+                        $isQuotaError ? 'quota_exceeded' : 'upstream_error_'.$this->info->responseStatus,
+                        $cooldownUntil
                     );
                 }
 

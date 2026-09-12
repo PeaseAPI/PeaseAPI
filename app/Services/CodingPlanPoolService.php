@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Channel;
 use App\Models\CodingPlanAccount;
 use App\Models\CodingPlanUsageLog;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,9 @@ class CodingPlanPoolService
 
         // 先重置到期窗口，避免选到计数器未刷新的账号
         $this->resetExpiredWindows($vendor, $now);
+
+        // P9-3：恢复冷却到点的账号（上游 429 打标且带 cooldown_until 的，尤其无窗口信息的）
+        $this->recoverExpiredCooldowns($vendor, $now);
 
         $accounts = CodingPlanAccount::where('vendor', $vendor)
             ->where('status', '!=', CodingPlanAccount::STATUS_DISABLED)
@@ -163,6 +167,9 @@ class CodingPlanPoolService
                     'account_id' => $account->id,
                     'vendor' => $account->vendor,
                 ]);
+
+                // P9-3：正常耗尽也同步渠道级冷却（恢复点=窗口 reset_*_at，由 refreshChannelCooldown 推导）
+                $this->refreshChannelCooldown((int) ($meta['channel_id'] ?? $account->channel_id), $now);
             }
 
             // 上游配额超限类错误：立即标记耗尽，下次请求自动切换到同供应商其他账号
@@ -183,14 +190,35 @@ class CodingPlanPoolService
                     $exhaustedUpdate['reset_monthly_at'] = $now + 30 * 24 * 3600;
                 }
 
+                // P9-3：账号级冷却恢复点——优先上游解析值（Retry-After/重置文案，RelayHandler 传入），
+                // 其次已初始化/已有的窗口恢复点；均无（quota_* 全 0）时保守默认 5h 窗口，
+                // 修复无周期配额限制的账号被 429 打标耗尽后 reset_*_at 恒为 0 → 永不恢复的缺口
+                $cooldown = (int) ($meta['cooldown_until'] ?? 0);
+                if ($cooldown <= $now) {
+                    $windowPoints = array_filter([
+                        (int) ($exhaustedUpdate['reset_5h_at'] ?? $account->reset_5h_at),
+                        (int) ($exhaustedUpdate['reset_weekly_at'] ?? $account->reset_weekly_at),
+                        (int) ($exhaustedUpdate['reset_monthly_at'] ?? $account->reset_monthly_at),
+                    ], function ($t) use ($now) {
+                        return $t > $now;
+                    });
+                    $cooldown = $windowPoints ? min($windowPoints) : $now + 5 * 3600;
+                }
+                $exhaustedUpdate['cooldown_until'] = $cooldown;
+
                 CodingPlanAccount::where('id', $account->id)
                     ->where('status', '!=', CodingPlanAccount::STATUS_EXHAUSTED)
                     ->update($exhaustedUpdate);
                 $account->status = CodingPlanAccount::STATUS_EXHAUSTED;
+                $account->cooldown_until = $cooldown;
                 Log::warning('CodingPlan account exhausted by upstream quota error', [
                     'account_id' => $account->id,
                     'vendor' => $account->vendor,
+                    'cooldown_until' => $cooldown,
                 ]);
+
+                // P9-3：账号池全不可用时同步渠道级冷却（供调度与 failover 候选过滤）
+                $this->refreshChannelCooldown((int) ($meta['channel_id'] ?? $account->channel_id), $now);
             }
         });
     }
@@ -215,6 +243,7 @@ class CodingPlanPoolService
     {
         $now = $now ?? time();
         $reset = 0;
+        $affectedChannelIds = [];
 
         $baseQuery = CodingPlanAccount::query();
         if ($vendor !== null) {
@@ -241,8 +270,14 @@ class CodingPlanPoolService
                 'status' => $a->status === CodingPlanAccount::STATUS_EXHAUSTED
                     ? CodingPlanAccount::STATUS_ENABLED
                     : $a->status,
+                // P9-3：窗口重置 = 配额恢复，账号级冷却一并清除
+                'cooldown_until' => 0,
                 'updated_at' => $now,
             ]);
+            $a->cooldown_until = 0;
+            if ((int) $a->channel_id > 0) {
+                $affectedChannelIds[(int) $a->channel_id] = true;
+            }
             $reset++;
         }
 
@@ -263,8 +298,14 @@ class CodingPlanPoolService
                 'status' => $a->status === CodingPlanAccount::STATUS_EXHAUSTED
                     ? CodingPlanAccount::STATUS_ENABLED
                     : $a->status,
+                // P9-3：窗口重置 = 配额恢复，账号级冷却一并清除
+                'cooldown_until' => 0,
                 'updated_at' => $now,
             ]);
+            $a->cooldown_until = 0;
+            if ((int) $a->channel_id > 0) {
+                $affectedChannelIds[(int) $a->channel_id] = true;
+            }
             $reset++;
         }
 
@@ -285,12 +326,123 @@ class CodingPlanPoolService
                 'status' => $a->status === CodingPlanAccount::STATUS_EXHAUSTED
                     ? CodingPlanAccount::STATUS_ENABLED
                     : $a->status,
+                // P9-3：窗口重置 = 配额恢复，账号级冷却一并清除
+                'cooldown_until' => 0,
                 'updated_at' => $now,
             ]);
+            $a->cooldown_until = 0;
+            if ((int) $a->channel_id > 0) {
+                $affectedChannelIds[(int) $a->channel_id] = true;
+            }
             $reset++;
         }
 
+        // P9-3：受影响渠道的渠道级冷却随之刷新（池内恢复出可用账号 → 清冷却）
+        foreach (array_keys($affectedChannelIds) as $channelId) {
+            $this->refreshChannelCooldown($channelId, $now);
+        }
+
         return $reset;
+    }
+
+    /**
+     * P9-3：恢复冷却到点的账号。
+     *
+     * 上游 429 打标耗尽且带 cooldown_until 的账号——尤其 quota_* 全 0（未启用周期限制）
+     * 的账号没有窗口恢复点，resetExpiredWindows 永远不会处理它们，只能在此恢复。
+     * 由 pickAccount 前置调用（同供应商范围），也可全池调用。
+     *
+     * @return int 恢复的账号数
+     */
+    public function recoverExpiredCooldowns(?string $vendor = null, ?int $now = null): int
+    {
+        $now = $now ?? time();
+
+        $query = CodingPlanAccount::query()
+            ->where('cooldown_until', '>', 0)
+            ->where('cooldown_until', '<=', $now)
+            ->where('status', CodingPlanAccount::STATUS_EXHAUSTED);
+        if ($vendor !== null) {
+            $query->where('vendor', $vendor);
+        }
+        $accounts = $query->get();
+
+        foreach ($accounts as $a) {
+            CodingPlanAccount::where('id', $a->id)->update([
+                'status' => CodingPlanAccount::STATUS_ENABLED,
+                'cooldown_until' => 0,
+                'updated_at' => $now,
+            ]);
+            $a->status = CodingPlanAccount::STATUS_ENABLED;
+            $a->cooldown_until = 0;
+
+            if ((int) $a->channel_id > 0) {
+                $this->refreshChannelCooldown((int) $a->channel_id, $now);
+            }
+        }
+
+        return count($accounts);
+    }
+
+    /**
+     * P9-3：刷新渠道级冷却恢复点。
+     *
+     * 账号池内仍有可用账号 → 清渠道冷却（0）；
+     * 全部不可用 → 取最早恢复点（各账号 cooldown_until / 窗口 reset_*_at 的未来点最小值；
+     * 均无 → 保守默认 5h 窗口）。供 cost_first 调度（candidateChannels）与
+     * failover 候选过滤读取，恢复到点自动切回低成本源；static 策略 pickChannel 不读此字段
+     * （P9-1 承诺 SQL 原样零改动），由 relay 层 failover 兜底。
+     *
+     * @return int 渠道冷却恢复点（0=无冷却）
+     */
+    public function refreshChannelCooldown(int $channelId, int $now): int
+    {
+        if ($channelId <= 0) {
+            return 0;
+        }
+
+        $accounts = CodingPlanAccount::query()
+            ->where('channel_id', $channelId)
+            ->where('status', '!=', CodingPlanAccount::STATUS_DISABLED)
+            ->get();
+
+        if ($accounts->isEmpty()) {
+            // 非账号池渠道：不动 channels 字段
+            return 0;
+        }
+
+        $available = $accounts->filter(function (CodingPlanAccount $a) {
+            return $a->hasAvailableQuota();
+        });
+
+        if ($available->isNotEmpty()) {
+            if ((int) Channel::where('id', $channelId)->value('cooldown_until') !== 0) {
+                Channel::where('id', $channelId)->update(['cooldown_until' => 0]);
+            }
+
+            return 0;
+        }
+
+        $points = [];
+        foreach ($accounts as $a) {
+            if ((int) $a->cooldown_until > $now) {
+                $points[] = (int) $a->cooldown_until;
+
+                continue;
+            }
+            foreach ([(int) $a->reset_5h_at, (int) $a->reset_weekly_at, (int) $a->reset_monthly_at] as $t) {
+                if ($t > $now) {
+                    $points[] = $t;
+
+                    break;
+                }
+            }
+        }
+        $until = $points ? min($points) : $now + 5 * 3600;
+
+        Channel::where('id', $channelId)->update(['cooldown_until' => $until]);
+
+        return $until;
     }
 
     /**

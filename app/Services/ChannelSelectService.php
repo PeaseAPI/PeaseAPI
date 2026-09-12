@@ -186,8 +186,16 @@ class ChannelSelectService
             return collect();
         }
 
+        $now = time();
+
+        // P9-3：跳过冷却中的渠道（账号池全部不可用，cooldown_until=池内最早恢复点）。
+        // 恢复到点自动重新参与排序 —— cost_first 下即「恢复自动切回低成本源」；
+        // static 策略 pickChannel 不读此字段（P9-1 承诺 SQL 原样零改动），由 relay 层 failover 兜底
         return Channel::whereIn('id', $channelIds)
             ->where('status', 1)
+            ->where(function ($q) use ($now) {
+                $q->where('cooldown_until', 0)->orWhere('cooldown_until', '<=', $now);
+            })
             ->get()
             ->values();
     }

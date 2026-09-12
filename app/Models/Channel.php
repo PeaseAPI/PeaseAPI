@@ -18,7 +18,7 @@ class Channel extends Model
         'balance', 'balance_updated_time', 'models', 'group', 'used_quota',
         'model_mapping', 'status_code_mapping', 'priority', 'auto_ban', 'other_info',
         'tag', 'setting', 'param_override', 'header_override', 'remark',
-        'channel_info', 'settings',
+        'cooldown_until', 'channel_info', 'settings',
     ];
 
     protected $casts = [

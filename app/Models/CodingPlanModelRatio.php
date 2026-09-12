@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Carbon\CarbonInterface;
-use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * Coding Plan 模型折算比率表（积分制核心）
@@ -196,4 +196,3 @@ class CodingPlanModelRatio extends Model
         return min($hours * 60 + $minutes, 1440);
     }
 }
-

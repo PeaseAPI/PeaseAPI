@@ -468,7 +468,7 @@ class RelayInfo
      * @param  bool  $success  请求是否成功
      * @param  string|null  $error  错误信息（失败时填写）
      */
-    public function recordCodingPlanUsage(bool $success, ?string $error = null): void
+    public function recordCodingPlanUsage(bool $success, ?string $error = null, ?int $cooldownUntil = null): void
     {
         if ($this->codingPlanAccount === null) {
             return;
@@ -521,6 +521,8 @@ class RelayInfo
                 'total_tokens' => $this->promptTokens + $this->completionTokens,
                 'credits' => $cost['credits'],
                 'count' => $account->isCreditBilling() ? 0 : $cost['units'],
+                // P9-3：上游 Retry-After/重置文案解析出的冷却恢复点（null=未告知，由池服务派生）
+                'cooldown_until' => $cooldownUntil,
                 'meta' => $snapshot,
             ],
             $success,
@@ -565,6 +567,83 @@ class RelayInfo
             || str_contains($body, 'limit reached')
             || str_contains($body, 'insufficient_quota')
             || str_contains($body, 'billing');
+    }
+
+    /**
+     * P9-3：从上游配额超限响应中解析冷却恢复点（账号级 cooldown_until）。
+     *
+     * 解析顺序：
+     *  1) Retry-After 响应头（秒数或 HTTP 日期，大小写不敏感）
+     *  2) 响应体 JSON 字段 reset_time/resetTime/reset_at/resetAt/resets_at/resetsAt
+     *     （秒级时间戳，>1e12 视为毫秒自动 /1000；或日期字符串；顶层或 error 对象内）
+     *  3) 响应体文案（Resets at / try again at / 重置于 / 恢复于 / 重试 等 + 日期或 HH:mm）
+     *  4) 均未命中 → null（由 CodingPlanPoolService 派生窗口恢复点或保守默认 5h）
+     *
+     * @return int|null 恢复时间戳（秒级）；null=上游未告知
+     */
+    public function resolveQuotaCooldown(): ?int
+    {
+        $now = time();
+
+        // 1) Retry-After 头（秒数或 HTTP 日期）
+        foreach ($this->responseHeaders as $name => $value) {
+            if (strtolower((string) $name) === 'retry-after') {
+                $v = trim((string) $value);
+                if (ctype_digit($v) && (int) $v > 0) {
+                    return $now + (int) $v;
+                }
+                $ts = strtotime($v);
+                if ($ts !== false && $ts > $now) {
+                    return $ts;
+                }
+            }
+        }
+
+        // 2) 响应体 JSON 字段（顶层或 error 对象内）
+        $body = json_decode((string) $this->responseBody, true);
+        if (is_array($body)) {
+            $node = isset($body['error']) && is_array($body['error']) ? $body['error'] : $body;
+            foreach (['reset_time', 'resetTime', 'reset_at', 'resetAt', 'resets_at', 'resetsAt'] as $key) {
+                $v = $node[$key] ?? null;
+                if (is_numeric($v)) {
+                    $ts = (float) $v;
+                    if ($ts > 1e12) {
+                        $ts /= 1000; // 毫秒时间戳
+                    }
+                    if ($ts > $now) {
+                        return (int) $ts;
+                    }
+
+                    continue;
+                }
+                if (is_string($v) && $v !== '') {
+                    $ts = strtotime($v);
+                    if ($ts !== false && $ts > $now) {
+                        return $ts;
+                    }
+                }
+            }
+        }
+
+        // 3) 文案（中英常见格式；日期时间或仅 HH:mm）
+        if (preg_match(
+            '/(?:resets?|retry|try\s+again|重置|恢复|重试)[^0-9\r\n]{0,24}(\d{4}-\d{1,2}-\d{1,2}[\sT]\d{1,2}:\d{2}(?::\d{2})?|\d{1,2}:\d{2}(?::\d{2})?)/iu',
+            (string) $this->responseBody,
+            $m
+        )) {
+            $ts = strtotime($m[1]);
+            if ($ts !== false) {
+                // 仅时间（HH:mm）→ strtotime 落在今天；已过视为次日同时点（窗口重置语义）
+                if ($ts <= $now) {
+                    $ts = strtotime($m[1], $now + 86400);
+                }
+                if ($ts > $now) {
+                    return $ts;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

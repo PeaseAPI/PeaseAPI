@@ -15,6 +15,7 @@ use App\Services\CodingPlanParsers\MiniMaxParser;
 use App\Services\CodingPlanParsers\MoonshotParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
 use App\Services\CodingPlanParsers\ScnetParser;
+use App\Services\CodingPlanParsers\SiliconflowParser;
 use App\Services\CodingPlanParsers\TencentTokenHubParser;
 use App\Services\CodingPlanParsers\UnicomParser;
 use App\Services\CodingPlanParsers\VolcengineDocParser;
@@ -140,10 +141,11 @@ class CodingPlanOfficialSourceService
             'label' => 'SiliconFlow 硅基流动',
             'pricing_url' => 'https://siliconflow.cn/pricing',
             'format' => 'html',
-            'parser' => null,
+            'parser' => SiliconflowParser::class,
             'proxy' => false,
             'model_catalog_url' => null,
-            'notes' => '新厂商候选（¥/1M tokens，时段价文本需映射 time_discounts）',
+            'catalog_from_pricing' => true,
+            'notes' => 'SSR 直出（~225KB）：pricing-row-{kind} 行 + <a title="org/model">（52 款，含 text/image/audio/video 全模态；Pro/ 前缀=加速标记需剥）→ catalog；按量价 ¥/M tokens（CNY，双时段「9点～18点」价组）→ 折算比率归 P7-2/P7-3（时段价可映射 time_discounts）',
         ],
         'moonshot' => [
             'label' => 'Kimi / Moonshot',
@@ -181,7 +183,7 @@ class CodingPlanOfficialSourceService
             'parser' => null,
             'proxy' => false,
             'model_catalog_url' => null,
-            'notes' => 'React 壳（cloud-cms-service-web）→ API 模式已定位：/api/web/op-help-center/request-api/{record,service}-api/…（chunk 内可见 frontend-favorite 端点），getArticleAndProductRecommends 的文档端点未命中（/service-api/article 变体 curl 挂起=WAF drop）→ 待继续探测；预置数据（迁移 000008）暂不阻塞',
+            'notes' => 'React 壳（cloud-cms-service-web）→ API 网关已定位（/api/web/op-help-center/request-api/{record,service}-api/…，40 webpack chunks 全查）；文档读取 API 全部经 OIDC 认证（匿名 curl 302 → iam/oidc/authorize?client_id=opgateway）——端点存在、需登录态，匿名抓取不可行 → 预置数据（迁移 000008）覆盖 P1',
         ],
         'minimax' => [
             'label' => 'MiniMax',

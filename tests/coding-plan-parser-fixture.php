@@ -16,6 +16,7 @@ use App\Services\CodingPlanParsers\MiniMaxParser;
 use App\Services\CodingPlanParsers\MoonshotParser;
 use App\Services\CodingPlanParsers\OpenAiMarkdownParser;
 use App\Services\CodingPlanParsers\ScnetParser;
+use App\Services\CodingPlanParsers\SiliconflowParser;
 use App\Services\CodingPlanParsers\TencentTokenHubParser;
 use App\Services\CodingPlanParsers\UnicomParser;
 use App\Services\CodingPlanParsers\VolcengineDocParser;
@@ -410,6 +411,19 @@ $scnetParser = new ScnetParser;
 check('scnet「可用模型」表抽「模型ID」列（跳过档位/倍率表）', $scnetParser->parseCatalog($scnetPage) === ['glm-5.3', 'deepseek-v4-pro-0813', 'kimi-k3', 'minimax-m3']);
 check('scnet parsePricing 空（Credits 套餐 CNY→P2-1/P7）', $scnetParser->parsePricing($scnetPage) === []);
 check('scnet 无表格页面安全返回空', $scnetParser->parseCatalog('<main><p>empty</p></main>') === []);
+
+// ---- siliconflow（硅基流动 SSR 价目页：<a title="org/model">，Pro/ 前缀=加速标记）----
+$sfPage = '<div class="pricing-row-text-17885302869" class="grid"><a href="https://cloud.siliconflow.cn/models?target=tencent%2FHunyuan-A13B-Instruct" title="tencent/Hunyuan-A13B-Instruct">Hunyuan-A13B-Instruct</a>'
+    .'<span>费用发生时段: 9点～18点</span></div>'
+    .'<a title="zai-org/GLM-5.3">GLM-5.3</a>'
+    .'<a title="Pro/zai-org/GLM-5.1">GLM-5.1</a>'
+    .'<a title="deepseek-ai/DeepSeek-V4-Pro">DeepSeek-V4-Pro</a>'
+    .'<a href="/docs" title="使用文档">使用文档</a>'
+    .'<a title="plain">无斜杠非模型</a>';
+$sfParser = new SiliconflowParser;
+check('siliconflow 抽 org/model 全 id、剥 Pro/ 前缀、跳非模型链接', $sfParser->parseCatalog($sfPage) === ['tencent/hunyuan-a13b-instruct', 'zai-org/glm-5.3', 'zai-org/glm-5.1', 'deepseek-ai/deepseek-v4-pro']);
+check('siliconflow parsePricing 空（¥/M tokens→P7-2/P7-3）', $sfParser->parsePricing($sfPage) === []);
+check('siliconflow 空页安全返回空', $sfParser->parseCatalog('<html></html>') === []);
 
 echo $fail === 0 ? "\n✅ 解析器 fixture 全部通过\n" : "\n❌ {$fail} 项失败\n";
 exit($fail === 0 ? 0 : 1);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 
 /**
@@ -825,6 +826,11 @@ class CodingPlanCatalog
     private static function applyRatios(string $code, array $template, string $ratioRemark, int $now, bool $vendorCreated, array $tierStats): array
     {
         $ratioStats = ['inserted' => 0, 'updated' => 0, 'skipped' => 0];
+        // 兼容列滞后的全新回放库：time_discounts 列由迁移 000009 创建，而更早的预置迁移
+        // （000005~000008）即调用本方法 —— 该列不存在时必须整体省略该字段，否则 SQL 报 Unknown column
+        $hasTimeDiscounts = Schema::hasTable('coding_plan_model_ratios')
+            && Schema::hasColumn('coding_plan_model_ratios', 'time_discounts');
+
         foreach ($template['ratios'] as $ratio) {
             $existing = DB::table('coding_plan_model_ratios')
                 ->where('vendor', $code)
@@ -832,8 +838,12 @@ class CodingPlanCatalog
                 ->where('match_type', $ratio['match_type'])
                 ->first();
 
+            $timeDiscounts = $hasTimeDiscounts && array_key_exists('time_discounts', $ratio) && is_array($ratio['time_discounts'])
+                ? json_encode($ratio['time_discounts'], JSON_UNESCAPED_UNICODE)
+                : null;
+
             if ($existing === null) {
-                DB::table('coding_plan_model_ratios')->insert([
+                $payload = [
                     'vendor' => $code,
                     'model' => $ratio['model'],
                     'match_type' => $ratio['match_type'],
@@ -842,15 +852,16 @@ class CodingPlanCatalog
                     'input_rate' => $ratio['input_rate'],
                     'cached_rate' => $ratio['cached_rate'],
                     'output_rate' => $ratio['output_rate'],
-                    'time_discounts' => array_key_exists('time_discounts', $ratio) && is_array($ratio['time_discounts'])
-                        ? json_encode($ratio['time_discounts'], JSON_UNESCAPED_UNICODE)
-                        : null,
                     'status' => (int) $ratio['status'],
                     'sort' => (int) $ratio['sort'],
                     'remark' => $ratioRemark,
                     'created_at' => $now,
                     'updated_at' => $now,
-                ]);
+                ];
+                if ($hasTimeDiscounts) {
+                    $payload['time_discounts'] = $timeDiscounts;
+                }
+                DB::table('coding_plan_model_ratios')->insert($payload);
                 $ratioStats['inserted']++;
 
                 continue;
@@ -858,19 +869,20 @@ class CodingPlanCatalog
 
             // 仅同步仍是官方预置态的行；status 保留现值（官方标准被启用后不因 apply 被关闭）
             if (is_string($existing->remark) && str_starts_with($existing->remark, self::RATIO_REMARK_PREFIX)) {
-                DB::table('coding_plan_model_ratios')->where('id', $existing->id)->update([
+                $updates = [
                     'cost_mode' => $ratio['cost_mode'],
                     'unit_cost' => $ratio['unit_cost'],
                     'input_rate' => $ratio['input_rate'],
                     'cached_rate' => $ratio['cached_rate'],
                     'output_rate' => $ratio['output_rate'],
-                    'time_discounts' => array_key_exists('time_discounts', $ratio) && is_array($ratio['time_discounts'])
-                        ? json_encode($ratio['time_discounts'], JSON_UNESCAPED_UNICODE)
-                        : null,
                     'sort' => (int) $ratio['sort'],
                     'remark' => $ratioRemark,
                     'updated_at' => $now,
-                ]);
+                ];
+                if ($hasTimeDiscounts) {
+                    $updates['time_discounts'] = $timeDiscounts;
+                }
+                DB::table('coding_plan_model_ratios')->where('id', $existing->id)->update($updates);
                 $ratioStats['updated']++;
             } else {
                 $ratioStats['skipped']++;

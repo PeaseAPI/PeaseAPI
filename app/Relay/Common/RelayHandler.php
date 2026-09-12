@@ -154,15 +154,11 @@ class RelayHandler
                 return;
             }
 
-            file_put_contents(storage_path('logs/qa13_trace.log'), sprintf("[%s] step=handler-after-isError aborted=%d\n", now()->toDateTimeString(), connection_aborted()), FILE_APPEND);
-
             // 流式完成后记录 Coding Plan 使用（成功）
             $this->info->recordCodingPlanUsage(true);
 
             // 记录消费日志（成功，流式）
             $this->logConsume();
-
-            file_put_contents(storage_path('logs/qa13_trace.log'), sprintf("[%s] step=handler-after-logConsume aborted=%d\n", now()->toDateTimeString(), connection_aborted()), FILE_APPEND);
 
         } catch (Exception $e) {
             Log::error('流式 Relay 处理失败', [

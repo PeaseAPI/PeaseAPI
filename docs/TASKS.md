@@ -187,7 +187,7 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 | D7 | relay | `/v1/chat/completions` 真实调用（火山 ark，OpenAI 协议） | — | ✅ OpenAI↔Anthropic 协议转换真实调 ark，回复「正常」+ reasoning_content + usage 52/29 |
 | D8 | relay | `/v1/messages` Anthropic 协议（ark /api/coding） | — | ✅ 非流式回复「正常」usage 52/29；流式 SSE 事件序列完整（message_start→content_block→thinking/text delta→message_delta→message_stop→[DONE]） |
 | D9 | relay | 错误路径：无效 token 401 / 无效模型口径 | — | ✅ 无效 token 401 |
-| D10 | relay | 用量落库与扣费（quota 扣减 + meta.fx） | — | ⚠️ 扣费链路四处对齐（logs/token/channel/user used=157；流式 +85）；发现 QA-13 流式客户端中断泄漏预扣额度（已修待复检）；logs.other 为空数组属预期（meta.fx 仅 CodingPlan 用量日志使用） |
+| D10 | relay | 用量落库与扣费（quota 扣减 + meta.fx） | — | ⚠️ 扣费链路四处对齐（logs/token/channel/user used=157；流式 +85）；发现 QA-13 流式客户端中断泄漏预扣额度（已修复并服务器验证 ✅，见 QA-13/QA-14）；logs.other 为空数组属预期（meta.fx 仅 CodingPlan 用量日志使用） |
 
 **问题表**（修复完一条勾一条 `[x]`，状态：open / fixed / wontfix(注明) / 观察）：
 
@@ -198,14 +198,15 @@ coding_plan_ratio_checks（new / changed / missing / time_discounts / model_cata
 | QA-3 | 高(迁移) | `CodingPlanCatalog::applyRatios()` | 全新库按序回放迁移时 000005 崩溃：ratio 写入未守卫 `time_discounts` 列缺失（该列由 000012 补） | applyRatios 对 time_discounts 增加 Schema::hasColumn 守卫；空库全量回放验证通过 | ✅ fixed |
 | QA-4 | 低(工程) | tests/coding-plan-parser-fixture.php | 硬编码绝对路径 `/Users/snails/...`，其他环境/服务器无法运行 | 改为 `__DIR__.'/../vendor/autoload.php'` | ✅ fixed |
 | QA-5 | 高(数据) | CodingPlanVendorSeeder | seeder 未写 currency 字段，按量价币种无法推导（USD/CNY 混排） | 补 anthropic/openai/google=USD、alibaba=CNY；服务器重跑后 vendor 4 行 currency 正确 | ✅ fixed |
-| QA-6 | 中(设置) | Option UsdExchangeRate | 服务器 `UsdExchangeRate=1`（本地 7.3），USD 计价按量价折算 CNY 全错 | 用 snails 走管理端 `PUT /option/` 真实 API 改 7.3 | open |
+| QA-6 | 中(设置) | Option UsdExchangeRate | 服务器 `UsdExchangeRate=1`（本地 7.3），USD 计价按量价折算 CNY 全错 | 用 snails 走管理端 `PUT /option/` 真实 API 改 7.3，GET 确认生效 | ✅ fixed |
 | QA-7 | 低(自检) | TestCodingPlanCurrency | 断言失败时仍打印「全部通过」（29 通过 1 失败也报全绿），自检口径失真 | 对齐 time-discounts 的失败口径（非 0 退出 + 失败明细）；复测 30/30 | ✅ fixed |
 | QA-8 | 中(安全) | 服务器 .env | 生产站点 `APP_ENV=local / APP_DEBUG=true / APP_URL 空`——异常会把堆栈/环境暴露给公网，且生成的 URL（支付回调/邮件链接）可能错 | 属服务器环境配置，**不碰服务器设置**，交用户处置（建议 production/false/https://www.peaseapi.com） | open |
 | QA-9 | 中(运营) | 服务器 channels | 渠道表 0 行——relay 无任何上游，平台无法转发任何请求 | 属运营配置缺失非代码缺陷；本轮为 E2E 验证创建测试渠道 volc-ark-coding（volc ark coding，type=4） | 观察 |
 | QA-10 | 中(功能) | Relay/Volcengine | ①`VolcengineAdapter` 是死代码（selectAdapter 把 38/56 归入 openAITypes→OpenAIAdapter），且其默认 base `/api/v3` 与 OpenAIAdapter 固定拼的 `/v1/chat/completions` 相加仍打不通 ark（会变成 /api/v3/v1/...）；②还会给模型名强加 `ark-` 前缀（doubao-seed-evolving 等会请求失败）；③OpenAI 协议上游 base_url 无法适配带版本路径网关（ark coding /api/coding/v3 等固定拼 /v1/...） | 本轮不改：Anthropic 协议入口 `/v1/messages` 透传可用（base=/api/coding）；OpenAI 协议入口用 type=4 渠道走协议转换。遗留到下一轮重构 adapter 选择与路径拼接 | open |
 | QA-11 | 高(接口) | UserController::update | `PUT /api/user/` 500 ArgumentCountError：签名要求路由 {id}，但路由不提供（new-api 兼容约定 id 在 body）；laravel.log 已留痕 | update() 改 `int $id = 0` + body id 回退 + 校验对齐 Api\UserApiController（quota 替代无效的 balance 字段） | ✅ fixed |
 | QA-12 | 高(接口) | ChannelService::syncAbilities | 创建渠道不带 priority 时 abilities 插入 null → NOT NULL 约束 500（SQLSTATE 23000），渠道根本建不出来 | `'priority' => $channel->priority ?? 0` | ✅ fixed |
-| QA-13 | 高(计费) | RelayController::handleStream | 流式请求客户端提前断开（用户取消生成）时，PHP 默认 `ignore_user_abort=Off` 在输出检测到断连后直接终止脚本——handleStream 的 catch/退款/计费全部跳过，实测预扣 500 quota 永久泄漏（无日志、无退款、无结算），服务器复现 | StreamedResponse 闭包开头 `ignore_user_abort(true)`，断连后继续读完上游流并正常结算计费 | open |
+| QA-13 | 高(计费) | RelayController::handleStream / 各流式适配器 streamHandler | 流式请求客户端提前断开（用户取消生成）时预扣 500 quota 泄漏。两层根因：①`ignore_user_abort=Off` 下 PHP 在输出检测到断连后直接终止脚本，catch/退款/计费全部跳过；②仅加 `ignore_user_abort(true)` 后脚本生命被绑定到上游生成长度——思考模型静默期无 chunk 可写，php-fpm 下 `connection_aborted()` 仅在写失败时置位（探针证实），请求存活到被 `request_terminate_timeout=100` SIGKILL（shutdown 函数不执行），结算依旧跳过 | 三层修复（50e5b3f / 5c87eb6 / 65a5f7b）：闭包入口 `ignore_user_abort(true)`；5 个流式适配器改 curl_multi 轮询循环（BaseAdapter::pollStreamTransfer）——WRITEFUNCTION 检测断连即 `return 0` 中止上游读取、每秒在 SSE 行边界写 `: keepalive` 注释行探活（SSE 规范：冒号开头的行客户端必须忽略）；RelayHandler::handleStream 对 clientAborted 立即 logConsume（按已解析 usage 结算并冲销预扣），RelayHandler::handle 非流式入口同样 ignore_user_abort(true)。实测：断连后秒级结算落库（仅计输入 58，预扣 500 全额退款；logs/request_count/used_quota 对账吻合），完整流式（887/837tok）与非流式（161）计费不受影响 | ✅ fixed |
+| QA-14 | 高(运维) | php-fpm request_terminate_timeout=100 | 服务器 `/www/server/php/83/etc/php-fpm.conf` 硬性 SIGKILL 超过 100s 的请求（shutdown 函数不执行）——长思考模型完整流式（600 token 需数分钟）会在 100s 被杀：客户端看到连接重置、平台按已结算部分计费（若结算已跑完）或泄漏预扣（若未到结算点） | 属服务器配置不碰：建议该站点置 0 或 ≥300（与适配器 CURLOPT_TIMEOUT=300 对齐），交用户处置；QA-13 修复后中断请求均在数秒内结算，100s 上限仅影响完整长流 | open(交用户) |
 
 ---
 

@@ -18,6 +18,7 @@
    - 回归自检：`php artisan coding-plan:test-time-discounts`（28 项断言）+ `php tests/coding-plan-parser-fixture.php`（解析器 21 项断言）
    - 数据表迁移序号：000002 厂商预置 → 000003~000009 官方价目/时段折扣（详见 operations-guide.md §8）
 4. 任务完成定义：代码 + 迁移/预置数据 + 测试（能跑则跑 `php artisan` 验证）+ 文档（operations-guide.md 对应小节）+ 本文件勾选。
+5. **双仓库同步（2026-09-12 起）**：开源仓库两份——GitHub `origin`（`git@github.com:PeaseAPI/PeaseAPI.git`，`git push` 默认推送）+ Gitee `gitee`（`git@gitee.com:oyu/PeaseAPI.git`，SSH 公钥已配，页面 https://gitee.com/oyu/PeaseAPI）。**每次 commit 后必须双推**：`git push` + `git push gitee main`，确保两边 HEAD 一致；本地 main 跟踪 origin/main，Gitee 走显式 remote 推送。
 
 ---
 

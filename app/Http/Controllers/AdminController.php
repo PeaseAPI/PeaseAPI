@@ -382,13 +382,22 @@ class AdminController extends Controller
         };
 
         $tickets = $query
+            ->withCount('replies')
             ->orderByRaw('field(status, 1, 3, 2, 4), last_reply_at desc, id desc')
             ->limit(200)
             ->get();
 
+        $counts = [
+            'pending' => Ticket::query()->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_CUSTOMER_REPLY])->count(),
+            'replied' => Ticket::query()->where('status', Ticket::STATUS_REPLIED)->count(),
+            'closed' => Ticket::query()->where('status', Ticket::STATUS_CLOSED)->count(),
+            'all' => Ticket::query()->count(),
+        ];
+
         return response()->view('admin.tickets', [
             'tickets' => $tickets,
             'statusFilter' => $status,
+            'counts' => $counts,
             'categoryMap' => Ticket::CATEGORY_MAP,
             'priorityMap' => Ticket::PRIORITY_MAP,
             'statusMap' => Ticket::STATUS_MAP,

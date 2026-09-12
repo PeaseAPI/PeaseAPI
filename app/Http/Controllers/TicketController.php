@@ -20,6 +20,7 @@ class TicketController extends Controller
     public function index(): Response
     {
         $tickets = Ticket::query()
+            ->withCount('replies')
             ->where('user_id', Auth::id())
             ->orderByRaw('field(status, 1, 3, 2, 4), last_reply_at desc, id desc')
             ->limit(100)

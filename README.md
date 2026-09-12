@@ -668,7 +668,8 @@ composer dev
 | `php tests/relay-adapters-verify.php` | 渠道适配器契约断言（请求构造/响应解析全量校验） |
 | `php tests/source-health-verify.php` | 上游源健康检测 14 项：多语言重置文案、冷却状态、双级冷却与恢复 |
 | `php tests/ticket-verify.php` | 工单系统 27 项：完整状态机、关闭拦截、越权 404、双端页面渲染、事务零残留 |
-| `php tests/full-render-verify.php` | 全站页面渲染扫描 68 项：公开页/控制台/管理面板全量 render、web-api JSON 冒烟、设置读写闭环、事务零残留 |
+| `php tests/full-render-verify.php` | 全站页面渲染扫描 69 项：公开页/控制台/管理面板全量 render、web-api JSON 冒烟、设置读写闭环（含 Root 权限双口径）、事务零残留 |
+| `php tests/crud-flow-verify.php` | 写操作闭环 75 项：管理端建号、兑换码全链路、Token 生命周期、订阅购买/取消/余额扣费、用户管理、设置全量与内容新增、死路由清零、事务零残留 |
 | `php artisan coding-plan:verify-ratios` | 官方价目校对：6 小时快照比对、源变更检测（stale 标记，只记录不自动改价） |
 
 ---

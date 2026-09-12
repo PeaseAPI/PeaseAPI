@@ -194,6 +194,47 @@ class UserApiController extends Controller
         return response()->json(['message' => __('Password updated')]);
     }
 
+    // Admin only - Create user（管理端用户页「添加用户」表单）
+    public function store(Request $request)
+    {
+        /** @var User $admin */
+        $admin = Auth::user();
+        if ($admin->role < 100) {
+            return response()->json(['error' => __('Admin access required')], 403);
+        }
+
+        $validated = $request->validate([
+            'username' => 'required|string|min:3|max:32|regex:/^[a-zA-Z0-9_]+$/|unique:users,username',
+            'email' => 'nullable|email|unique:users,email',
+            'password' => 'required|string|min:8|max:64',
+            'role' => 'nullable|integer|min:1',
+            'quota' => 'nullable|integer|min:0',
+            'status' => 'nullable|integer|in:0,1',
+        ]);
+
+        $user = User::create([
+            'username' => $validated['username'],
+            'email' => $validated['email'] ?? '',
+            'password' => Hash::make($validated['password']),
+            'display_name' => $validated['username'],
+            'role' => (int) ($validated['role'] ?? 1),
+            'status' => (int) ($validated['status'] ?? 1),
+            'quota' => (int) ($validated['quota'] ?? 0),
+            'used_quota' => 0,
+            'request_count' => 0,
+            'group' => 'default',
+            'aff_code' => strtoupper(Str::random(8)),
+            'inviter_id' => 0,
+            'created_time' => time(),
+            'created_at' => time(), // users.created_at NOT NULL（无默认值）
+        ]);
+
+        return response()->json([
+            'message' => __('User created successfully'),
+            'user' => $user,
+        ], 201);
+    }
+
     // Admin only - User list
     public function index(Request $request)
     {

@@ -195,10 +195,15 @@ try {
     $optReq->headers->set('Accept', 'application/json');
     $optResp = $optCtrl->update($optReq);
     $optPayload = json_decode($optResp->getContent(), true);
-    check('OptionController@update 保存成功', (bool) ($optPayload['success'] ?? false));
+    check('普通用户改设置被拒（Root-Only 收紧）', (int) $optResp->getStatusCode() === 403 && ! ($optPayload['success'] ?? true));
+    Auth::login($admin);
+    $optResp2 = $optCtrl->update($optReq);
+    $optPayload2 = json_decode($optResp2->getContent(), true);
+    check('OptionController@update 保存成功（Root）', (bool) ($optPayload2['success'] ?? false));
     check('RegisterEnabled 回读 false', OptionService::get('RegisterEnabled') === false);
     OptionService::set('RegisterEnabled', true);
     check('RegisterEnabled 复位 true', OptionService::get('RegisterEnabled') === true);
+    Auth::login($user);
 
     $profileResp = app(UserApiController::class)->updateProfile(Request::create('/web-api/profile', 'PUT', [
         'display_name' => 'QA 昵称_'.$suffix,
@@ -249,7 +254,7 @@ try {
     $jsonGet('web-api/admin channels', fn () => app(ChannelApiController::class)->index(Request::create('/web-api/channels')));
     $jsonGet('web-api/admin abilities', fn () => app(AbilityController::class)->index(Request::create('/web-api/abilities')));
     $jsonGet('web-api/admin redemptions', fn () => app(RedemptionController::class)->index(Request::create('/web-api/redemptions')));
-    $jsonGet('web-api/admin options', fn () => app(OptionController::class)->index());
+    $jsonGet('web-api/admin options', fn () => app(OptionController::class)->index(Request::create('/web-api/options')));
     $jsonGet('web-api/admin logs', fn () => app(LogController::class)->index(Request::create('/web-api/logs')));
 
     echo "[F] 渲染产物质量抽检\n";

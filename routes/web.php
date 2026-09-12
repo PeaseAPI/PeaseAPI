@@ -123,9 +123,9 @@ Route::middleware('auth')->group(function () {
 
         // Subscription
         Route::get('/subscription/plans', [SubscriptionController::class, 'plans']);
-        Route::post('/subscription/subscribe', [SubscriptionController::class, 'subscribe']);
+        Route::post('/subscription/subscribe/{plan?}', [SubscriptionController::class, 'subscribe'])->name('subscription.subscribe');
         Route::get('/subscription/my', [SubscriptionController::class, 'mySubscription']);
-        Route::post('/subscription/{id}/cancel', [SubscriptionController::class, 'cancel']);
+        Route::post('/subscription/{id}/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
 
         // News API keys (user's own search provider keys)
         Route::put('/news-keys', [UserApiController::class, 'updateNewsKeys']);

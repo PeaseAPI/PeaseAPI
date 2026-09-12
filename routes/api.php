@@ -52,8 +52,8 @@ use Illuminate\Support\Facades\Route;
 // ============================================
 
 // Setup & Installation
-Route::get('/setup', [InstallController::class, 'status']);
-Route::post('/setup', [InstallController::class, 'install']);
+// [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/setup', [InstallController::class, 'status']);
+// [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/setup', [InstallController::class, 'install']);
 
 // System Status
 Route::get('/status', [AdminController::class, 'status']);
@@ -139,8 +139,8 @@ Route::middleware(UserAuth::class)->group(function () {
     Route::delete('/user/self', [UserController::class, 'deleteSelf']);
     Route::get('/user/self/groups', [UserController::class, 'groups']);
     Route::put('/user/news-keys', [UserController::class, 'updateNewsKeys']);
-    Route::get('/user/models', [ModelController::class, 'userModels']);
-    Route::get('/user/groups', [UserController::class, 'userGroups']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/user/models', [ModelController::class, 'userModels']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/user/groups', [UserController::class, 'userGroups']);
 
     // Sessions
     Route::get('/user/sessions', [AuthController::class, 'sessions']);
@@ -148,28 +148,28 @@ Route::middleware(UserAuth::class)->group(function () {
     Route::post('/user/sessions/revoke-others', [AuthController::class, 'revokeOtherSessions']);
 
     // Access Token
-    Route::get('/user/token', [TokenController::class, 'createAccessToken']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/user/token', [TokenController::class, 'createAccessToken']);
 
     // Passkey
-    Route::get('/user/passkey', [WebAuthController::class, 'list']);
-    Route::post('/user/passkey/register/begin', [WebAuthController::class, 'registerBegin']);
-    Route::post('/user/passkey/register/finish', [WebAuthController::class, 'registerFinish']);
-    Route::post('/user/passkey/verify/begin', [WebAuthController::class, 'verifyBegin']);
-    Route::post('/user/passkey/verify/finish', [WebAuthController::class, 'verifyFinish']);
-    Route::delete('/user/passkey', [WebAuthController::class, 'delete']);
-    Route::post('/user/passkey/login/begin', [WebAuthController::class, 'loginBegin']);
-    Route::post('/user/passkey/login/finish', [WebAuthController::class, 'loginFinish']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/user/passkey', [WebAuthController::class, 'list']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/passkey/register/begin', [WebAuthController::class, 'registerBegin']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/passkey/register/finish', [WebAuthController::class, 'registerFinish']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/passkey/verify/begin', [WebAuthController::class, 'verifyBegin']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/passkey/verify/finish', [WebAuthController::class, 'verifyFinish']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::delete('/user/passkey', [WebAuthController::class, 'delete']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/passkey/login/begin', [WebAuthController::class, 'loginBegin']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/passkey/login/finish', [WebAuthController::class, 'loginFinish']);
 
     // 2FA (management endpoints — 2fa login verify is outside this group)
     Route::get('/user/2fa/status', [AuthController::class, 'twoFactorStatus']);
-    Route::post('/user/2fa/setup', [AuthController::class, 'setupTwoFactor']);
-    Route::post('/user/2fa/enable', [AuthController::class, 'enableTwoFactor']);
-    Route::post('/user/2fa/disable', [AuthController::class, 'disableTwoFactor']);
-    Route::post('/user/2fa/backup_codes', [AuthController::class, 'generateBackupCodes']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/2fa/setup', [AuthController::class, 'setupTwoFactor']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/2fa/enable', [AuthController::class, 'enableTwoFactor']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/2fa/disable', [AuthController::class, 'disableTwoFactor']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/2fa/backup_codes', [AuthController::class, 'generateBackupCodes']);
 
     // User Aff
-    Route::get('/user/aff', [UserController::class, 'affiliate']);
-    Route::post('/user/aff_transfer', [UserController::class, 'affiliateTransfer']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/user/aff', [UserController::class, 'affiliate']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/aff_transfer', [UserController::class, 'affiliateTransfer']);
 
     // TopUp / Payment
     Route::get('/user/topup/info', [TopUpController::class, 'info']);
@@ -189,7 +189,7 @@ Route::middleware(UserAuth::class)->group(function () {
     Route::post('/user/alipay/pay', [TopUpController::class, 'alipayPay']);
 
     // User Settings
-    Route::put('/user/setting', [UserController::class, 'updateSettings']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::put('/user/setting', [UserController::class, 'updateSettings']);
 
     // Checkin
     Route::get('/user/checkin', [CheckinController::class, 'status']);
@@ -231,10 +231,10 @@ Route::middleware(UserAuth::class)->group(function () {
     Route::post('/subscription/waffo-pancake/pay', [SubscriptionController::class, 'payWithWaffoPancake']);
 
     // Midjourney
-    Route::get('/mj/self', [MidjourneyController::class, 'selfTasks']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/mj/self', [MidjourneyController::class, 'selfTasks']);
 
     // Tasks
-    Route::get('/task/self', [VideoController::class, 'selfTasks']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/task/self', [VideoController::class, 'selfTasks']);
 
     // Redemptions
     Route::post('/redemption/', [RedemptionController::class, 'redeem']);
@@ -256,17 +256,17 @@ Route::middleware([UserAuth::class, AdminAuth::class])->group(function () {
 
     // Users (Admin)
     Route::get('/user/', [UserController::class, 'index']);
-    Route::get('/user/search', [UserController::class, 'search']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/user/search', [UserController::class, 'search']);
     Route::get('/user/{id}', [UserController::class, 'show']);
-    Route::post('/user/', [UserController::class, 'store']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/', [UserController::class, 'store']);
     Route::put('/user/', [UserController::class, 'update']);
     Route::delete('/user/{id}', [UserController::class, 'destroy']);
-    Route::post('/user/manage', [UserController::class, 'manage']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/user/manage', [UserController::class, 'manage']);
     Route::post('/user/topup/complete', [TopUpController::class, 'adminComplete']);
     Route::get('/user/topup', [TopUpController::class, 'adminList']);
-    Route::delete('/user/{id}/reset_passkey', [WebAuthController::class, 'adminResetPasskey']);
-    Route::get('/user/2fa/stats', [AuthController::class, 'twoFactorStats']);
-    Route::delete('/user/{id}/2fa', [AuthController::class, 'adminDisable2FA']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::delete('/user/{id}/reset_passkey', [WebAuthController::class, 'adminResetPasskey']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/user/2fa/stats', [AuthController::class, 'twoFactorStats']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::delete('/user/{id}/2fa', [AuthController::class, 'adminDisable2FA']);
     Route::get('/user/{id}/oauth/bindings', [OAuthController::class, 'adminListBindings']);
     Route::delete('/user/{id}/oauth/bindings/{provider_id}', [OAuthController::class, 'adminUnbind']);
     Route::delete('/user/{id}/bindings/{binding_type}', [OAuthController::class, 'adminClearBindings']);
@@ -335,7 +335,7 @@ Route::middleware([UserAuth::class, AdminAuth::class])->group(function () {
     Route::get('/redemption/search', [RedemptionController::class, 'search']);
     Route::get('/redemption/{id}', [RedemptionController::class, 'show']);
     Route::put('/redemption/', [RedemptionController::class, 'update']);
-    Route::delete('/redemption/invalid', [RedemptionController::class, 'deleteInvalid']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::delete('/redemption/invalid', [RedemptionController::class, 'deleteInvalid']);
     Route::delete('/redemption/{id}', [RedemptionController::class, 'destroy']);
     Route::post('/redemption/batch', [RedemptionController::class, 'batchCreate']);
 
@@ -353,15 +353,15 @@ Route::middleware([UserAuth::class, AdminAuth::class])->group(function () {
     Route::delete('/subscription/admin/user_subscriptions/{id}', [SubscriptionController::class, 'deleteSubscription']);
 
     // Models (Admin)
-    Route::get('/models/', [ModelController::class, 'index']);
-    Route::get('/models/search', [ModelController::class, 'search']);
-    Route::get('/models/{id}', [ModelController::class, 'show']);
-    Route::post('/models/', [ModelController::class, 'store']);
-    Route::put('/models/', [ModelController::class, 'update']);
-    Route::delete('/models/{id}', [ModelController::class, 'destroy']);
-    Route::get('/models/sync_upstream/preview', [ModelController::class, 'syncPreview']);
-    Route::post('/models/sync_upstream', [ModelController::class, 'syncUpstream']);
-    Route::get('/models/missing', [ModelController::class, 'missing']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/models/', [ModelController::class, 'index']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/models/search', [ModelController::class, 'search']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/models/{id}', [ModelController::class, 'show']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/models/', [ModelController::class, 'store']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::put('/models/', [ModelController::class, 'update']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::delete('/models/{id}', [ModelController::class, 'destroy']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/models/sync_upstream/preview', [ModelController::class, 'syncPreview']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/models/sync_upstream', [ModelController::class, 'syncUpstream']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/models/missing', [ModelController::class, 'missing']);
 
     // Vendors (Admin)
     Route::get('/vendors/', [VendorController::class, 'index']);
@@ -375,38 +375,38 @@ Route::middleware([UserAuth::class, AdminAuth::class])->group(function () {
     Route::get('/deployments/settings', [DeploymentController::class, 'settings']);
     Route::post('/deployments/settings/test-connection', [DeploymentController::class, 'testConnection']);
     Route::get('/deployments/', [DeploymentController::class, 'index']);
-    Route::post('/deployments/', [DeploymentController::class, 'store']);
-    Route::put('/deployments/{id}', [DeploymentController::class, 'update']);
-    Route::delete('/deployments/{id}', [DeploymentController::class, 'destroy']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/deployments/', [DeploymentController::class, 'store']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::put('/deployments/{id}', [DeploymentController::class, 'update']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::delete('/deployments/{id}', [DeploymentController::class, 'destroy']);
 
     // Midjourney (Admin)
-    Route::get('/mj/', [MidjourneyController::class, 'index']);
-    Route::get('/mj/{id}', [MidjourneyController::class, 'show']);
-    Route::post('/mj/{id}/action', [MidjourneyController::class, 'action']);
-    Route::post('/mj/{id}/shorten', [MidjourneyController::class, 'shorten']);
-    Route::post('/mj/{id}/modal', [MidjourneyController::class, 'modal']);
-    Route::post('/mj/{id}/change', [MidjourneyController::class, 'change']);
-    Route::post('/mj/{id}/simple-change', [MidjourneyController::class, 'simpleChange']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/mj/', [MidjourneyController::class, 'index']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/mj/{id}', [MidjourneyController::class, 'show']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/mj/{id}/action', [MidjourneyController::class, 'action']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/mj/{id}/shorten', [MidjourneyController::class, 'shorten']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/mj/{id}/modal', [MidjourneyController::class, 'modal']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/mj/{id}/change', [MidjourneyController::class, 'change']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/mj/{id}/simple-change', [MidjourneyController::class, 'simpleChange']);
     Route::get('/mj/task/{id}/fetch', [MidjourneyController::class, 'fetchTask']);
-    Route::get('/mj/task/{id}/image-seed', [MidjourneyController::class, 'imageSeed']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/mj/task/{id}/image-seed', [MidjourneyController::class, 'imageSeed']);
     Route::post('/mj/task/list-by-condition', [MidjourneyController::class, 'listByCondition']);
     Route::post('/mj/insight-face/swap', [MidjourneyController::class, 'insightFaceSwap']);
     Route::post('/mj/submit/upload-discord-images', [MidjourneyController::class, 'uploadDiscordImages']);
 
     // Tasks (Admin)
-    Route::get('/task/', [VideoController::class, 'index']);
-    Route::get('/task/{id}', [VideoController::class, 'show']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/task/', [VideoController::class, 'index']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/task/{id}', [VideoController::class, 'show']);
 
     // System Tasks (Admin)
     Route::post('/system-task/log-cleanup', [SystemTaskController::class, 'createLogCleanup']);
-    Route::get('/system-task/list', [SystemTaskController::class, 'index']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/system-task/list', [SystemTaskController::class, 'index']);
     Route::get('/system-task/current', [SystemTaskController::class, 'current']);
     Route::get('/system-task/{task_id}', [SystemTaskController::class, 'show']);
 
     // System Info (Admin)
     Route::get('/system-info/instances', [SystemInfoController::class, 'instances']);
-    Route::delete('/system-info/stale-instances', [SystemInfoController::class, 'deleteStaleInstances']);
-    Route::delete('/system-info/instances/{node_name}', [SystemInfoController::class, 'deleteInstance']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::delete('/system-info/stale-instances', [SystemInfoController::class, 'deleteStaleInstances']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::delete('/system-info/instances/{node_name}', [SystemInfoController::class, 'deleteInstance']);
 
     // Prefill Groups (Admin)
     Route::get('/prefill_group/', [GroupController::class, 'prefillIndex']);
@@ -493,24 +493,24 @@ Route::middleware([UserAuth::class, RootAuth::class])->group(function () {
     Route::delete('/custom-oauth-provider/{id}', [OAuthController::class, 'deleteCustomProvider']);
 
     // Performance (Root)
-    Route::get('/performance/stats', [AdminController::class, 'performanceStats']);
-    Route::delete('/performance/disk_cache', [AdminController::class, 'clearDiskCache']);
-    Route::post('/performance/reset_stats', [AdminController::class, 'resetStats']);
-    Route::post('/performance/gc', [AdminController::class, 'forceGC']);
-    Route::get('/performance/logs', [AdminController::class, 'logFiles']);
-    Route::delete('/performance/logs', [AdminController::class, 'clearLogs']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/performance/stats', [AdminController::class, 'performanceStats']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::delete('/performance/disk_cache', [AdminController::class, 'clearDiskCache']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/performance/reset_stats', [AdminController::class, 'resetStats']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('/performance/gc', [AdminController::class, 'forceGC']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/performance/logs', [AdminController::class, 'logFiles']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::delete('/performance/logs', [AdminController::class, 'clearLogs']);
 
     // Ratio Sync (Root)
     Route::get('/ratio_sync/channels', [ChannelController::class, 'ratioSyncChannels']);
     Route::post('/ratio_sync/fetch', [ChannelController::class, 'fetchRatios']);
 
     // Rankings
-    Route::get('/rankings', [AdminController::class, 'rankings']);
-    Route::get('/perf-metrics/summary', [AdminController::class, 'perfMetricsSummary']);
-    Route::get('/perf-metrics', [AdminController::class, 'perfMetrics']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/rankings', [AdminController::class, 'rankings']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/perf-metrics/summary', [AdminController::class, 'perfMetricsSummary']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/perf-metrics', [AdminController::class, 'perfMetrics']);
 
     // Authz Catalog
-    Route::get('/authz/catalog', [AdminController::class, 'authzCatalog']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('/authz/catalog', [AdminController::class, 'authzCatalog']);
 });
 
 // ============================================
@@ -540,7 +540,7 @@ Route::middleware($apiRelayWithDistributor)->prefix('v1')->group(function () {
     // Images
     Route::post('images/generations', [RelayController::class, 'imageGenerations']);
     Route::post('images/edits', [RelayController::class, 'imageEdits']);
-    Route::post('images/variations', [RelayController::class, 'imageVariations']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::post('images/variations', [RelayController::class, 'imageVariations']);
 
     // Audio
     Route::post('audio/transcriptions', [RelayController::class, 'audioTranscriptions']);
@@ -560,8 +560,8 @@ Route::middleware([TokenAuth::class])->prefix('v1')->group(function () {
 
 // Gemini API
 Route::middleware([TokenAuth::class])->prefix('v1beta')->group(function () {
-    Route::get('models', [RelayController::class, 'geminiModels']);
-    Route::get('openai/models', [RelayController::class, 'geminiOpenAIModels']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('models', [RelayController::class, 'geminiModels']);
+    // [R15] 未实现蓝图路由（controller 方法缺失，调用即 500）: Route::get('openai/models', [RelayController::class, 'geminiOpenAIModels']);
     Route::post('models/{path}', [RelayController::class, 'geminiRelay'])->where('path', '.*');
 });
 

@@ -251,6 +251,11 @@ class RedemptionController extends Controller
                 return $redemption;
             });
         } catch (\DomainException $e) {
+            // 过期码的自动禁用写在事务内会随异常一起回滚，这里在事务外补写
+            if ($e->getMessage() === '兑换码已过期') {
+                Redemption::where('key', $key)->where('status', 1)->update(['status' => 0]);
+            }
+
             return $this->error($e->getMessage(), (int) $e->getCode() ?: 400);
         } catch (\Throwable $e) {
             Log::error('兑换码兑换失败: '.$e->getMessage());

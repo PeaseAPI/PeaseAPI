@@ -9,7 +9,7 @@
 @auth
 @php
 $activeSubs = \App\Models\Subscription::where('user_id', auth()->id())
-    ->where('status', 'active')->orderByDesc('created_at')->get();
+    ->where('status', 1)->orderByDesc('created_at')->get();
 @endphp
 
 @if($activeSubs->count() > 0)
@@ -21,10 +21,15 @@ $activeSubs = \App\Models\Subscription::where('user_id', auth()->id())
                 <h5 class="card-title">{{ $sub->plan->name ?? __('Subscription') }}</h5>
                 <p class="badge bg-success">{{ __('Active') }}</p>
                 <ul class="list-unstyled mt-2">
-                    <li><strong>{{ __('Started') }}:</strong> {{ $sub->created_at->format('Y-m-d') }}</li>
+                    <li><strong>{{ __('Started') }}:</strong> {{ date('Y-m-d', (int) $sub->created_at) }}</li>
                     <li><strong>{{ __('Expires') }}:</strong> {{ $sub->period_end ? date('Y-m-d', $sub->period_end) : __('N/A') }}</li>
-                    <li><strong>{{ __('Remaining Quota') }}:</strong> {{ number_format($sub->remain_quota) }}</li>
+                    <li><strong>{{ __('Remaining Quota') }}:</strong> {{ number_format($sub->remainingQuota()) }}</li>
                 </ul>
+                <form method="POST" action="{{ route('subscription.cancel', $sub->id) }}"
+                      onsubmit="return confirm('@lang('Are you sure you want to cancel this subscription?')')">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-danger btn-sm">{{ __('Cancel Subscription') }}</button>
+                </form>
             </div>
         </div>
     </div>

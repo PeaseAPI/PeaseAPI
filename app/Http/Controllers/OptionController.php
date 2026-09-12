@@ -15,7 +15,6 @@ class OptionController extends Controller
     // ============================================
     // PUBLIC CONTENT ENDPOINTS (No Auth)
     // ============================================
-
     /**
      * GET /notice - 系统公告
      */
@@ -84,8 +83,12 @@ class OptionController extends Controller
     /**
      * GET /option/ - 获取全部系统配置（Root）
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        if ($err = $this->requireRoot($request)) {
+            return $err;
+        }
+
         $all = OptionService::loadAll();
         // Mask secret keys (including alias names of secret keys, e.g. GitHubClientSecret)
         foreach (array_keys($all) as $key) {
@@ -102,6 +105,10 @@ class OptionController extends Controller
      */
     public function update(Request $request): JsonResponse|RedirectResponse
     {
+        if ($err = $this->requireRoot($request)) {
+            return $err;
+        }
+
         // Support both JSON API (flat key=>value) and form POST (options[Key])
         $options = $request->input('options');
         if (! is_array($options) || empty($options)) {
@@ -167,6 +174,10 @@ class OptionController extends Controller
      */
     public function paymentCompliance(Request $request): JsonResponse
     {
+        if ($err = $this->requireRoot($request)) {
+            return $err;
+        }
+
         // 兼容两种载荷：acknowledged=true（文档 / new-api 风格）与 confirmed=true（管理前端 system-settings/api.ts）
         $acknowledged = $request->boolean('acknowledged') || $request->boolean('confirmed');
         if (! $acknowledged) {
@@ -299,8 +310,12 @@ class OptionController extends Controller
     /**
      * POST /option/rest_model_ratio - 重置模型倍率为默认值（Root）
      */
-    public function resetModelRatio(): JsonResponse
+    public function resetModelRatio(Request $request): JsonResponse
     {
+        if ($err = $this->requireRoot($request)) {
+            return $err;
+        }
+
         // Reset to empty maps; downstream services will rebuild defaults
         OptionService::set('ModelRatio', []);
         OptionService::set('CompletionRatio', []);
@@ -309,6 +324,21 @@ class OptionController extends Controller
         Cache::forget('pricing');
 
         return response()->json(['success' => true, 'message' => __('Model ratios reset to defaults')]);
+    }
+
+    /**
+     * Root 权限校验（路由层 AdminAuth 仅要求 role>=10，
+     * 而系统配置注释声明 Root-Only——这里收紧到 role>=100，对齐 Go 版 /api/option/）
+     */
+    private function requireRoot(Request $request): ?JsonResponse
+    {
+        // 与 AdminAuth 中间件一致用 auth()->user()：兼容 CLI 直调（Request 无 user resolver）场景
+        $user = auth()->user() ?? $request->user();
+        if (! $user || (int) $user->role < 100) {
+            return response()->json(['success' => false, 'message' => __('No permission to access')], 403);
+        }
+
+        return null;
     }
 
     /**

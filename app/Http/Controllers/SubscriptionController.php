@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\OptionService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -78,15 +79,93 @@ class SubscriptionController extends Controller
     {
         $user = $request->user();
         $planId = (int) $request->input('plan_id', 0);
+
+        $result = $this->doBalancePay($user, $planId);
+        if (! $result['ok']) {
+            return $this->error($result['message']);
+        }
+
+        return $this->success();
+    }
+
+    /**
+     * 页面订阅入口（dashboard/subscription 表单 POST，也兼容 AJAX JSON 调用）
+     * POST /web-api/subscription/subscribe/{plan?}
+     */
+    public function subscribe(Request $request): JsonResponse|RedirectResponse
+    {
+        $planId = (int) ($request->route('plan')
+            ?: $request->input('plan_id')
+            ?: $request->input('id')
+            ?: 0);
+
+        $result = $this->doBalancePay($request->user(), $planId);
+
+        if ($request->expectsJson()) {
+            return $result['ok']
+                ? $this->success(null, $result['message'])
+                : $this->error($result['message']);
+        }
+
+        if (! $result['ok']) {
+            return back()->with('error', $result['message']);
+        }
+
+        return back()->with('success', __('Subscribed successfully'));
+    }
+
+    /**
+     * 取消当前用户的订阅
+     * POST /web-api/subscription/{id}/cancel
+     */
+    public function cancel(Request $request, int $id): JsonResponse|RedirectResponse
+    {
+        $user = $request->user();
+        $subscription = Subscription::where('user_id', $user->id)
+            ->where('status', 1)
+            ->where('id', $id)
+            ->first();
+
+        if (! $subscription) {
+            $message = '订阅不存在或已失效';
+            if ($request->expectsJson()) {
+                return $this->error($message);
+            }
+
+            return back()->with('error', $message);
+        }
+
+        $subscription->status = 0;
+        $subscription->updated_at = time();
+        $subscription->save();
+
+        if ($request->expectsJson()) {
+            return $this->success(null, __('Unsubscribed successfully'));
+        }
+
+        return back()->with('success', __('Unsubscribed successfully'));
+    }
+
+    /**
+     * 余额支付订阅核心（subscribe 页面入口与 balance/pay API 共用）
+     *
+     * @return array{ok: bool, message: string}
+     */
+    private function doBalancePay(User $user, int $planId): array
+    {
+        if (! (bool) OptionService::get('SubscriptionEnabled', false)) {
+            return ['ok' => false, 'message' => '订阅功能未开启'];
+        }
+
         $plan = SubscriptionPlan::findActiveById($planId);
-        if (! $plan) {
-            return $this->error('订阅计划不存在');
+        if (! $plan instanceof SubscriptionPlan) {
+            return ['ok' => false, 'message' => '订阅计划不存在'];
         }
 
         // 与前端余额预估一致：QuotaPerUnit 统一换算 + 向上取整
         $quotaCost = SubscriptionService::quotaCost($plan);
         if ($quotaCost > 0 && $user->quota < $quotaCost) {
-            return $this->error('余额不足');
+            return ['ok' => false, 'message' => '余额不足'];
         }
 
         try {
@@ -104,10 +183,10 @@ class SubscriptionController extends Controller
                 SubscriptionService::activateSubscription($user, $plan, 'balance');
             });
         } catch (\RuntimeException $e) {
-            return $this->error($e->getMessage());
+            return ['ok' => false, 'message' => $e->getMessage()];
         }
 
-        return $this->success();
+        return ['ok' => true, 'message' => __('Subscribed successfully')];
     }
 
     /**

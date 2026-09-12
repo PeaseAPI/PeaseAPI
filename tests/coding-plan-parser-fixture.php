@@ -6,7 +6,7 @@ declare(strict_types=1);
  * P1-2 解析器 fixture 自测（非 PHPUnit，独立脚本，跑完即退出）
  * 数据取自 docs/upstream-snapshots/2026-09-12/pricing-data.md 的官方原始数值。
  */
-require '/Users/snails/Project/PeaseAPI/vendor/autoload.php';
+require __DIR__.'/../vendor/autoload.php';
 
 use App\Services\CodingPlanParsers\AnthropicParser;
 use App\Services\CodingPlanParsers\BaiduParser;

@@ -117,9 +117,14 @@ class TestCodingPlanCurrency extends Command
         $this->runSettlementPreference($check);
 
         $this->newLine();
+        if ($fail > 0) {
+            $this->error("自检未通过：{$fail} 项断言失败（通过 {$pass} 项）");
+
+            return self::FAILURE;
+        }
         $this->info("✅ 多货币自检全部通过（{$pass} 项断言）");
 
-        return $fail === 0 ? self::SUCCESS : self::FAILURE;
+        return self::SUCCESS;
     }
 
     /**

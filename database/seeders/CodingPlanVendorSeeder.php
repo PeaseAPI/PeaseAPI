@@ -29,6 +29,7 @@ class CodingPlanVendorSeeder extends Seeder
                 'docs_url' => 'https://api.anthropic.com',
                 'unit_name' => '次',
                 'unit_exchange_rate' => 1.0, // 1 次提交 = 1 积分
+                'currency' => 'USD', // P7-1：官方以 USD 计价（迁移 000010 只补已有行，seeder 须自带）
                 'sort' => 1,
                 'status' => 1,
                 'remark' => 'Claude Max 订阅账号池，按请求提交计费',
@@ -39,6 +40,7 @@ class CodingPlanVendorSeeder extends Seeder
                 'docs_url' => 'https://api.openai.com/v1',
                 'unit_name' => '次',
                 'unit_exchange_rate' => 1.0,
+                'currency' => 'USD', // P7-1：官方以 USD 计价
                 'sort' => 2,
                 'status' => 1,
                 'remark' => 'Codex 订阅账号池，按请求提交计费',
@@ -49,6 +51,7 @@ class CodingPlanVendorSeeder extends Seeder
                 'docs_url' => 'https://generativelanguage.googleapis.com',
                 'unit_name' => '次',
                 'unit_exchange_rate' => 1.0,
+                'currency' => 'USD', // P7-1：官方以 USD 计价（另有 HKD 区，见迁移 000010 注释）
                 'sort' => 3,
                 'status' => 1,
                 'remark' => 'Gemini 订阅账号池，按请求提交计费',
@@ -59,6 +62,7 @@ class CodingPlanVendorSeeder extends Seeder
                 'docs_url' => 'https://dashscope.aliyuncs.com/compatible-mode/v1',
                 'unit_name' => '点',
                 'unit_exchange_rate' => 1.0, // 1 点(千 token 折算后) = 1 积分，可按需调整
+                'currency' => 'CNY',
                 'sort' => 4,
                 'status' => 1,
                 'remark' => '通义灵码/Qwen API，按千 token 计费（见比率表）',

@@ -9,6 +9,7 @@ use App\Models\CodingPlanUsageLog;
 use App\Models\Log;
 use App\Models\Token;
 use App\Models\User;
+use App\Services\CodingPlanOfficialSourceService;
 use App\Services\OptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -337,7 +338,10 @@ class AdminController extends Controller
         }
         $routeStats['recent'] = array_slice($routeStats['recent'], 0, 20);
 
-        return view('admin.coding-plan', compact('poolOverview', 'coolingAccounts', 'coolingChannels', 'routeStats'));
+        // ④ 官方定价源同步健康（P1-9：同一源连续 ≥2 次抓取失败 → 红点告警）
+        $sourceHealth = app(CodingPlanOfficialSourceService::class)->sourceHealth();
+
+        return view('admin.coding-plan', compact('poolOverview', 'coolingAccounts', 'coolingChannels', 'routeStats', 'sourceHealth'));
     }
 
     public function uptimeStatus(): JsonResponse

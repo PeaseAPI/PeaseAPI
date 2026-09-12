@@ -659,6 +659,78 @@ class CodingPlanOfficialSourceService
     }
 
     /**
+     * 抓取失败状态升级判定（P1-9）：同一源连续 ≥2 次抓取失败 → SOURCE_FAILED_ALERT。
+     * 仅 SOURCE_FAILED 参与升级（OK/NONE 原样返回）；查同 vendor 最近一条流水，
+     * 前一条已是失败态（FAILED 或 ALERT）则本次升级为 ALERT，成功一次即自然复位。
+     */
+    public function resolveSourceStatus(string $vendor, int $status): int
+    {
+        if ($status !== CodingPlanRatioCheck::SOURCE_FAILED) {
+            return $status;
+        }
+
+        $prev = CodingPlanRatioCheck::query()
+            ->where('vendor', $vendor)
+            ->orderByDesc('checked_at')
+            ->orderByDesc('id')
+            ->value('source_status');
+
+        return in_array($prev, [CodingPlanRatioCheck::SOURCE_FAILED, CodingPlanRatioCheck::SOURCE_FAILED_ALERT], true)
+            ? CodingPlanRatioCheck::SOURCE_FAILED_ALERT
+            : CodingPlanRatioCheck::SOURCE_FAILED;
+    }
+
+    /**
+     * 各厂商定价源同步健康汇总（P1-9 管理端红点数据面）。
+     * 从校对流水按 vendor 取最近记录推导：连续失败次数（自最新往回数失败态，
+     * 首个 OK/NONE 截止）、最近成功时间；alerting = 最新流水为 SOURCE_FAILED_ALERT。
+     *
+     * @return array<string, array{last_status: int, consecutive_failures: int, last_success_at: int|null, last_checked_at: int, alerting: bool}>
+     */
+    public function sourceHealth(): array
+    {
+        $rows = CodingPlanRatioCheck::query()
+            ->orderByDesc('checked_at')
+            ->orderByDesc('id')
+            ->limit(500)
+            ->get(['vendor', 'checked_at', 'source_status']);
+
+        $health = [];
+        foreach ($rows->groupBy('vendor') as $vendor => $group) {
+            $latest = $group->first();
+            $consecutive = 0;
+            $lastSuccessAt = null;
+            foreach ($group as $row) {
+                $status = (int) $row->source_status;
+                if ($status === CodingPlanRatioCheck::SOURCE_FAILED
+                    || $status === CodingPlanRatioCheck::SOURCE_FAILED_ALERT) {
+                    if ($lastSuccessAt === null) {
+                        $consecutive++;
+                    }
+
+                    continue;
+                }
+
+                if ($status === CodingPlanRatioCheck::SOURCE_OK) {
+                    $lastSuccessAt = (int) $row->checked_at;
+                }
+
+                break; // 首个非失败态截止连续失败段
+            }
+
+            $health[$vendor] = [
+                'last_status' => (int) $latest->source_status,
+                'consecutive_failures' => $consecutive,
+                'last_success_at' => $lastSuccessAt,
+                'last_checked_at' => (int) $latest->checked_at,
+                'alerting' => (int) $latest->source_status === CodingPlanRatioCheck::SOURCE_FAILED_ALERT,
+            ];
+        }
+
+        return $health;
+    }
+
+    /**
      * 写入校对流水（结构/语义与 verify-ratios 一致；stale 检测归 verify，这里固定 0）。
      *
      * @param  array<string, list<array<string, mixed>>>|null  $changes

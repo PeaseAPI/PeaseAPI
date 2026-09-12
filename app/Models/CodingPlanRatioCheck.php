@@ -26,6 +26,9 @@ class CodingPlanRatioCheck extends Model
     /** 定价源拉取失败 */
     public const SOURCE_FAILED = 2;
 
+    /** 定价源连续 ≥2 次拉取失败（P1-9 告警升级标记；成功一次即自然复位为 SOURCE_OK） */
+    public const SOURCE_FAILED_ALERT = 3;
+
     protected $table = 'coding_plan_ratio_checks';
 
     public $timestamps = false;

@@ -3,6 +3,37 @@
 @section('content')
 <h4 class="mb-4">Coding Plan 池可观测</h4>
 
+{{-- ⓪ 官方源同步健康（P1-9：同一源连续 ≥2 次抓取失败 → 红点） --}}
+@php $alertingSources = collect($sourceHealth)->filter(fn (array $h): bool => (bool) $h['alerting']); @endphp
+<div class="card mb-4 {{ $alertingSources->isNotEmpty() ? 'border-danger' : '' }}">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <strong>官方源同步健康</strong>
+        @if ($alertingSources->isNotEmpty())
+            <span class="badge bg-danger">● {{ $alertingSources->count() }} 个源连续失败告警</span>
+        @else
+            <span class="badge bg-success">全部正常</span>
+        @endif
+    </div>
+    <div class="card-body p-0">
+        <table class="table mb-0">
+            <thead><tr><th>Vendor</th><th>最近状态</th><th>连续失败</th><th>最近成功</th><th>最后检查</th></tr></thead>
+            <tbody>
+            @forelse($sourceHealth as $vendor => $h)
+                <tr class="{{ $h['alerting'] ? 'table-danger' : '' }}">
+                    <td><span class="badge {{ $h['alerting'] ? 'bg-danger' : ($h['last_status'] === 1 ? 'bg-success' : 'bg-secondary') }}">{{ $vendor }}</span></td>
+                    <td>{{ [0 => '无源', 1 => '正常', 2 => '拉取失败', 3 => '连续失败 ⚠'][$h['last_status']] ?? '未知' }}</td>
+                    <td class="{{ $h['consecutive_failures'] >= 2 ? 'text-danger fw-bold' : '' }}">{{ $h['consecutive_failures'] }}</td>
+                    <td class="text-nowrap">{{ $h['last_success_at'] !== null ? date('m-d H:i', $h['last_success_at']) : '—' }}</td>
+                    <td class="text-nowrap text-muted">{{ date('m-d H:i', $h['last_checked_at']) }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="5" class="text-center text-muted py-3">暂无校对流水</td></tr>
+            @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
+
 {{-- ① 账号池概览（按供应商聚合） --}}
 <div class="card mb-4">
     <div class="card-header bg-white"><strong>账号池概览（按供应商）</strong></div>

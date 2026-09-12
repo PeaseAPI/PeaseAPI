@@ -80,8 +80,19 @@
                 <a href="{{ route('admin.abilities') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('admin.abilities') ? 'active' : '' }}">
                     <i class="fas fa-cubes w-5 mr-3"></i>能力管理
                 </a>
+                @php
+                    $cpSourceAlerts = 0;
+                    try {
+                        $cpSourceAlerts = Cache::remember('admin:cp_source_alert_badge', 300, static fn (): int => collect(app(\App\Services\CodingPlanOfficialSourceService::class)->sourceHealth())->filter(fn (array $h): bool => (bool) $h['alerting'])->count());
+                    } catch (\Throwable) {
+                        $cpSourceAlerts = 0; // 健康查询异常不阻塞后台渲染
+                    }
+                @endphp
                 <a href="{{ route('admin.coding-plan') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('admin.coding-plan') ? 'active' : '' }}">
                     <i class="fas fa-robot w-5 mr-3"></i>Coding Plan 池
+                    @if ($cpSourceAlerts > 0)
+                        <span class="ml-auto inline-flex items-center justify-center rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white" title="官方定价源连续拉取失败（P1-9）">{{ $cpSourceAlerts }}</span>
+                    @endif
                 </a>
                 <a href="{{ route('admin.logs') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('admin.logs') ? 'active' : '' }}">
                     <i class="fas fa-file-alt w-5 mr-3"></i>全局日志

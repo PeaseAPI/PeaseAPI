@@ -127,8 +127,10 @@ class SyncCodingPlanOfficial extends Command
         $body = $sources->fetchBody($source['url'], $source['proxy'], $source['kind'] === 'structured');
         if ($body === null) {
             // 抓取失败：沿用上次快照的决策不受影响，只记 source_failed 流水
-            $sources->recordCheck($code, CodingPlanRatioCheck::SOURCE_FAILED);
-            $this->line("[{$code}] {$label}: 抓取失败（{$source['url']}），已记 source_failed");
+            // （同一源连续 ≥2 次升级 SOURCE_FAILED_ALERT，P1-9 管理端红点）
+            $failedStatus = $sources->resolveSourceStatus($code, CodingPlanRatioCheck::SOURCE_FAILED);
+            $sources->recordCheck($code, $failedStatus);
+            $this->line("[{$code}] {$label}: 抓取失败（{$source['url']}），已记 ".($failedStatus === CodingPlanRatioCheck::SOURCE_FAILED_ALERT ? 'source_failed_alert（连续失败告警）' : 'source_failed'));
 
             return -1;
         }

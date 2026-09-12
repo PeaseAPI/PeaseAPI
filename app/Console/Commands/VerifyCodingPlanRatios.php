@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Models\CodingPlanModelRatio;
 use App\Models\CodingPlanRatioCheck;
 use App\Models\CodingPlanVendor;
+use App\Services\CodingPlanOfficialSourceService;
 use App\Services\OptionService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -99,6 +100,7 @@ class VerifyCodingPlanRatios extends Command
         $totalStale = 0;
         $totalChanges = 0;
         $sourceFailures = 0;
+        $sourceSvc = app(CodingPlanOfficialSourceService::class);
 
         foreach ($codes as $code) {
             /** @var CodingPlanVendor|null $vendor */
@@ -133,12 +135,15 @@ class VerifyCodingPlanRatios extends Command
                 }
             }
 
+            // 同一源连续 ≥2 次拉取失败 → 升级 SOURCE_FAILED_ALERT（P1-9 check 流水标记）
+            $recordStatus = $sourceSvc->resolveSourceStatus($code, $sourceStatus);
+
             CodingPlanRatioCheck::query()->create([
                 'vendor' => $code,
                 'checked_at' => $now,
                 'stale_count' => $staleCount,
                 'change_count' => $pendingCount,
-                'source_status' => $sourceStatus,
+                'source_status' => $recordStatus,
                 'changes' => $changes === [] ? null : json_encode($changes, JSON_UNESCAPED_UNICODE),
                 'pending_keys' => $pendingKeys === [] ? null : json_encode($pendingKeys, JSON_UNESCAPED_UNICODE),
                 'created_at' => $now,
@@ -146,14 +151,15 @@ class VerifyCodingPlanRatios extends Command
 
             $totalStale += $staleCount;
             $totalChanges += $pendingCount;
-            if ($sourceStatus === CodingPlanRatioCheck::SOURCE_FAILED) {
+            if (in_array($recordStatus, [CodingPlanRatioCheck::SOURCE_FAILED, CodingPlanRatioCheck::SOURCE_FAILED_ALERT], true)) {
                 $sourceFailures++;
             }
 
             $label = $vendor?->name ?? $code;
-            $sourceText = match ($sourceStatus) {
+            $sourceText = match ($recordStatus) {
                 CodingPlanRatioCheck::SOURCE_OK => '源比对 '.($pendingCount > 0 ? "发现 {$pendingCount} 处待确认变更" : '无变更'),
                 CodingPlanRatioCheck::SOURCE_FAILED => '源拉取失败',
+                CodingPlanRatioCheck::SOURCE_FAILED_ALERT => '源连续 ≥2 次拉取失败（告警）',
                 default => '未配置定价源',
             };
             $staleText = $staleCount > 0 ? "，{$staleCount} 条待复核" : '';

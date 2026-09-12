@@ -139,13 +139,14 @@ class ClaudeAdapter extends BaseAdapter
         ];
 
         $ch = curl_init($info->upstreamUrl);
+        $lineBuf = ''; // SSE 行缓冲（跨 WRITEFUNCTION 分块的半行），探活回调也需读取
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $info->upstreamBody,
             CURLOPT_HTTPHEADER => $this->buildHeaders($headers),
             CURLOPT_RETURNTRANSFER => false,
             CURLOPT_TIMEOUT => 120,
-            CURLOPT_WRITEFUNCTION => function ($ch, $data) use ($info, $callback) {
+            CURLOPT_WRITEFUNCTION => function ($ch, $data) use ($info, $callback, &$lineBuf) {
                 // 客户端中断：不再继续读上游（模型可能仍在长时间生成），立即结算已解析 usage，
                 // 避免脚本被 FPM request_terminate_timeout 硬杀导致计费/退款全部跳过
                 if (connection_aborted() !== 0) {
@@ -158,7 +159,6 @@ class ClaudeAdapter extends BaseAdapter
 
                 // 解析 Anthropic SSE usage 计费计数：message_start → 输入 token（含缓存命中），
                 // message_delta → 输出 token；缺失时转换路径流式计费恒为 0
-                static $lineBuf = '';
                 $lineBuf .= $data;
                 $lines = explode("\n", $lineBuf);
                 $lineBuf = (string) array_pop($lines); // 保留最后一段可能不完整的行
@@ -226,10 +226,38 @@ class ClaudeAdapter extends BaseAdapter
             },
         ]);
 
-        curl_exec($ch);
+        // curl_multi 轮询 + 每秒探活：上游静默期（思考模型）也能秒级感知客户端断连并中止读取
+        $mh = curl_multi_init();
+        curl_multi_add_handle($mh, $ch);
+
+        $completed = $this->pollStreamTransfer($mh, $ch, function () use ($info, $callback, &$lineBuf): bool {
+            // 仅在行边界注入，避免撕裂半行导致客户端事件解析失败
+            if ($lineBuf === '') {
+                if ($callback !== null) {
+                    $callback(": keepalive\n\n");
+                } else {
+                    echo ": keepalive\n\n";
+                    flush();
+                }
+            }
+
+            if (connection_aborted() !== 0) {
+                $info->clientAborted = true;
+
+                return false;
+            }
+
+            return true;
+        });
+
+        curl_multi_remove_handle($mh, $ch);
+        curl_multi_close($mh);
         curl_close($ch);
 
-        $callback("data: [DONE]\n\n");
+        // 客户端已断开时不再发送结束事件
+        if ($completed && ! $info->clientAborted) {
+            $callback("data: [DONE]\n\n");
+        }
     }
 
     public function errorHandler(RelayInfo $info): void

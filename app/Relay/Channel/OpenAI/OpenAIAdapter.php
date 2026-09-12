@@ -217,9 +217,35 @@ class OpenAIAdapter extends BaseAdapter
             CURLOPT_HEADER => false,
         ]);
 
-        curl_exec($ch);
+        // curl_multi 轮询 + 每秒探活：上游静默期（思考模型）也能秒级感知客户端断连并中止读取
+        $mh = curl_multi_init();
+        curl_multi_add_handle($mh, $ch);
+
+        $completed = $this->pollStreamTransfer($mh, $ch, function () use ($info, &$buffer): bool {
+            // 仅在行边界注入，避免撕裂半行导致客户端事件解析失败
+            if ($buffer === '') {
+                echo ": keepalive\n\n";
+                flush();
+            }
+
+            if (connection_aborted() !== 0) {
+                $info->clientAborted = true;
+
+                return false;
+            }
+
+            return true;
+        });
+
+        curl_multi_remove_handle($mh, $ch);
+        curl_multi_close($mh);
+
         $info->responseStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        if (! $completed) {
+            $info->responseStatus = $info->responseStatus ?: 200; // 已收到响应头，标记成功以便按已解析 usage 结算
+        }
     }
 
     /**

@@ -118,12 +118,13 @@ class AliAdapter extends BaseAdapter
         @ob_end_flush();
 
         $ch = curl_init();
+        $lineBoundary = true; // 初始视为行边界，允许探活注入
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($info->requestBody),
             CURLOPT_HTTPHEADER => $this->formatCurlHeaders($headers),
-            CURLOPT_WRITEFUNCTION => function ($curl, $data) use ($info) {
+            CURLOPT_WRITEFUNCTION => function ($curl, $data) use ($info, &$lineBoundary) {
                 // 客户端中断：不再继续读上游（模型可能仍在长时间生成），立即结算，
                 // 避免脚本被 FPM request_terminate_timeout 硬杀导致计费/退款全部跳过
                 if (connection_aborted() !== 0) {
@@ -132,6 +133,7 @@ class AliAdapter extends BaseAdapter
                     return 0; // 返回值 != 数据长度 → curl 以 CURLE_WRITE_ERROR 中止传输
                 }
 
+                $lineBoundary = $data !== '' && str_ends_with($data, "\n"); // 供探活在行边界注入
                 $info->recordFirstResponse();
                 echo $data;
                 flush();
@@ -142,9 +144,35 @@ class AliAdapter extends BaseAdapter
             CURLOPT_HEADER => false,
         ]);
 
-        curl_exec($ch);
+        // curl_multi 轮询 + 每秒探活：上游静默期（思考模型）也能秒级感知客户端断连并中止读取
+        $mh = curl_multi_init();
+        curl_multi_add_handle($mh, $ch);
+
+        $completed = $this->pollStreamTransfer($mh, $ch, function () use ($info, &$lineBoundary): bool {
+            // 仅在行边界注入，避免撕裂半行导致客户端事件解析失败
+            if ($lineBoundary) {
+                echo ": keepalive\n\n";
+                flush();
+            }
+
+            if (connection_aborted() !== 0) {
+                $info->clientAborted = true;
+
+                return false;
+            }
+
+            return true;
+        });
+
+        curl_multi_remove_handle($mh, $ch);
+        curl_multi_close($mh);
+
         $info->responseStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        if (! $completed) {
+            $info->responseStatus = $info->responseStatus ?: 200; // 已收到响应头，标记成功以便按已解析 usage 结算
+        }
     }
 
     /**

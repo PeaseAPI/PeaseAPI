@@ -108,6 +108,27 @@ footer{padding:48px 0;border-top:1px solid var(--border);background:rgba(15,23,4
                 <span class="doc-tag">成本路由</span>
                 <span class="doc-tag">健康告警</span>
             </div>
+            @elseif(str_starts_with($doc['slug'], 'guide-'))
+            <div class="doc-meta">
+                <span class="doc-tag">分步指南</span>
+                <span class="doc-tag">字段级</span>
+            </div>
+            @elseif($doc['slug'] === 'operations-guide')
+            <div class="doc-meta">
+                <span class="doc-tag">SOP</span>
+                <span class="doc-tag">故障排查</span>
+                <span class="doc-tag">API 速查</span>
+            </div>
+            @elseif($doc['slug'] === 'settings-reference')
+            <div class="doc-meta">
+                <span class="doc-tag">权威键位</span>
+                <span class="doc-tag">别名对照</span>
+            </div>
+            @elseif($doc['slug'] === 'development')
+            <div class="doc-meta">
+                <span class="doc-tag">测试体系</span>
+                <span class="doc-tag">迁移规范</span>
+            </div>
             @endif
         </a>
         @endforeach

@@ -77,6 +77,15 @@ footer{padding:32px 0;border-top:1px solid var(--border);background:rgba(15,23,4
 .footer-content{text-align:center;color:var(--text-muted);font-size:14px;line-height:1.8}
 .footer-content a{color:var(--primary-light)}
 @media (max-width:900px){.sidebar{display:none}.layout{padding:16px}.doc-content{padding:24px}}
+html{scroll-behavior:smooth}
+.markdown-body h2,.markdown-body h3{scroll-margin-top:96px}
+.toc-panel{position:fixed;right:24px;top:110px;width:250px;max-height:calc(100vh - 160px);overflow-y:auto;background:rgba(20,24,38,.92);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:12.5px;display:none;z-index:50;backdrop-filter:blur(8px);box-shadow:0 8px 32px rgba(0,0,0,.35)}
+.toc-panel h4{margin:0 0 8px;font-size:13px;color:#fff}
+.toc-panel a{display:block;color:var(--text-light);padding:3px 0;text-decoration:none;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toc-panel a:hover{color:var(--primary-light)}
+.toc-panel a.lvl3{padding-left:14px;opacity:.85}
+.toc-panel a.active{color:var(--primary-light);font-weight:600}
+@media(min-width:1500px){.toc-panel{display:block}}
 </style>
 </head>
 <body>
@@ -144,6 +153,51 @@ document.querySelectorAll('pre code').forEach(function(block) {
         block.parentElement.setAttribute('data-lang', lang[1]);
     }
 });
+
+// ===== TOC 目录侧栏：GitHub 风格 slug，与站内 md 内 (#锚点) 兼容 =====
+(function buildToc() {
+    function slugify(text) {
+        return text.toLowerCase().trim()
+            .replace(/[^\p{L}\p{N}\s_-]/gu, '')
+            .replace(/ /g, '-')
+            .replace(/^-+|-+$/g, '');
+    }
+    const headings = Array.prototype.slice.call(bodyDiv.querySelectorAll('h2, h3'));
+    if (headings.length < 4) return;
+    const used = {};
+    headings.forEach(function(h) {
+        let id = h.id || slugify(h.textContent) || 'section';
+        if (used[id]) { used[id]++; id = id + '-' + used[id]; } else { used[id] = 1; }
+        h.id = id;
+    });
+    const panel = document.createElement('nav');
+    panel.className = 'toc-panel';
+    panel.setAttribute('aria-label', '本页目录');
+    const title = document.createElement('h4');
+    title.textContent = '📑 本页目录';
+    panel.appendChild(title);
+    const links = [];
+    headings.forEach(function(h) {
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        if (h.tagName === 'H3') a.className = 'lvl3';
+        a.title = h.textContent;
+        panel.appendChild(a);
+        links.push(a);
+    });
+    document.body.appendChild(panel);
+    // 滚动高亮当前小节
+    window.addEventListener('scroll', function() {
+        let current = null;
+        headings.forEach(function(h) {
+            if (h.getBoundingClientRect().top < 140) current = h.id;
+        });
+        links.forEach(function(a) {
+            a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+        });
+    }, { passive: true });
+})();
 </script>
 </body>
 </html>

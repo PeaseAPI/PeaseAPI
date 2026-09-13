@@ -2,6 +2,7 @@
 
 use App\Console\Commands\CancelExpiredOrders;
 use App\Console\Commands\CleanLogs;
+use App\Console\Commands\CodingPlanRemindPromotions;
 use App\Console\Commands\FixAbilities;
 use App\Console\Commands\PollTasks;
 use App\Console\Commands\RefreshPricing;
@@ -154,6 +155,17 @@ if (Schema::hasTable('coding_plan_model_ratios')) {
         ->withoutOverlapping(10)
         ->onOneServer()
         ->everySixHours();
+}
+
+// Scan Coding Plan vendor promotions daily at 09:00 (P2-3): ending-soon
+// reminders (site notice + subscription emails, unique-guarded) and
+// auto-expiring past-deadline promotions (status → EXPIRED + audit trail).
+if (Schema::hasTable('coding_plan_promotions')) {
+    Schedule::command(CodingPlanRemindPromotions::class)
+        ->name('pease:coding-plan-remind-promotions')
+        ->withoutOverlapping(10)
+        ->onOneServer()
+        ->dailyAt('09:00');
 }
 
 // --- System maintenance tasks ---

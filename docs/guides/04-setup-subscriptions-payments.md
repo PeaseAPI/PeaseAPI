@@ -70,4 +70,4 @@
 运营建议：把工单入口写进站点页脚；「无可用渠道」「余额不足」类问题在 [01 篇常见报错](01-setup-channels-models-keys.md) 与 [03 篇常见问题](03-setup-customers-tokens.md) 已有排查表，可直接复制回复模板。
 
 ## 系列导航
-[00 安装到初始化](00-install-to-init.md) ｜ [01 渠道·模型·Key](01-setup-channels-models-keys.md) ｜ [02 Coding 池](02-setup-coding-pool.md) ｜ [03 客户·令牌·分组](03-setup-customers-tokens.md) ｜ **04 订阅·支付·工单（本篇）**
+[00 安装到初始化](00-install-to-init.md) ｜ [01 渠道·模型·Key](01-setup-channels-models-keys.md) ｜ [02 Coding 池](02-setup-coding-pool.md) ｜ [03 客户·令牌·分组](03-setup-customers-tokens.md) ｜ **04 订阅·支付·工单（本篇）** ｜ [05 日常运维 SOP](05-ops-daily-runbook.md)

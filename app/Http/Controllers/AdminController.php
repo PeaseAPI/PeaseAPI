@@ -454,6 +454,7 @@ class AdminController extends Controller
             'counts' => $counts,
             'orderUsers' => $orderUsers,
             'plans' => $plans,
+            'paidSum' => $orders->where('status', 1)->sum('amount'),
         ]);
     }
 

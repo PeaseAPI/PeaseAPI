@@ -653,6 +653,7 @@ composer dev
 | [docs/guides/02-setup-coding-pool.md](docs/guides/02-setup-coding-pool.md) | 分步：Coding 池从零到上线（供应商/账号/同步/倍率/促销/转换 API）|
 | [docs/guides/03-setup-customers-tokens.md](docs/guides/03-setup-customers-tokens.md) | 分步：客户·分组·令牌·额度·充值 |
 | [docs/guides/04-setup-subscriptions-payments.md](docs/guides/04-setup-subscriptions-payments.md) | 分步：订阅套餐·支付收款·工单客服 |
+| [docs/guides/05-ops-daily-runbook.md](docs/guides/05-ops-daily-runbook.md) | 分步：日常运维 SOP（巡检/对账/备份/升级） |
 | [docs/deployment.md](docs/deployment.md) | 部署文档（独立服务器/宝塔/Docker + 生产实况）|
 | [docs/operations-guide.md](docs/operations-guide.md) | 运维手册（SOP/定时任务/故障排查/API 速查/生产实况）|
 | [docs/settings-reference.md](docs/settings-reference.md) | 系统设置键位参考（含出站代理）|

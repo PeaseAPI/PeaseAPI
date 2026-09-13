@@ -3,7 +3,7 @@
 本指南详细说明 PeaseAPI 的各项功能使用方法，涵盖系统设置、渠道与模型 Key 配置、令牌管理、Coding Plan 账号池与转换 API、用户与分组、订阅与充值等。
 
 > **刚上手？按分步指南走一遍更快**（字段级步骤，与真实界面/表单一一对应）：
-> [00 安装到初始化](guides/00-install-to-init.md) → [01 添加渠道·模型·Key](guides/01-setup-channels-models-keys.md) → [02 Coding 池从零到上线](guides/02-setup-coding-pool.md) → [03 客户·令牌·分组](guides/03-setup-customers-tokens.md) → [04 订阅·支付·工单](guides/04-setup-subscriptions-payments.md)。本篇作为功能全景与细节参考。
+> [00 安装到初始化](guides/00-install-to-init.md) → [01 添加渠道·模型·Key](guides/01-setup-channels-models-keys.md) → [02 Coding 池从零到上线](guides/02-setup-coding-pool.md) → [03 客户·令牌·分组](guides/03-setup-customers-tokens.md) → [04 订阅·支付·工单](guides/04-setup-subscriptions-payments.md) → [05 日常运维 SOP](guides/05-ops-daily-runbook.md)。本篇作为功能全景与细节参考。
 
 ---
 

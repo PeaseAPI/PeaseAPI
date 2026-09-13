@@ -9,6 +9,7 @@ use App\Models\CodingPlanModelRatio;
 use App\Models\CodingPlanRatioCheck;
 use App\Services\CodingPlanParsers\AnthropicParser;
 use App\Services\CodingPlanParsers\BaiduParser;
+use App\Services\CodingPlanParsers\CmccParser;
 use App\Services\CodingPlanParsers\DeepSeekParser;
 use App\Services\CodingPlanParsers\GoogleParser;
 use App\Services\CodingPlanParsers\MiniMaxParser;
@@ -178,12 +179,14 @@ class CodingPlanOfficialSourceService
         ],
         'cmcc' => [
             'label' => '移动云',
-            'pricing_url' => null,
-            'format' => 'spa',
-            'parser' => null,
+            'pricing_url' => 'https://ecloud.10086.cn/op-help-center/request-api/service-api/article/info/91592',
+            'format' => 'json',
+            'parser' => CmccParser::class,
             'proxy' => false,
             'model_catalog_url' => null,
-            'notes' => 'React 壳（cloud-cms-service-web）→ API 网关已定位（/api/web/op-help-center/request-api/{record,service}-api/…，40 webpack chunks 全查）；文档读取 API 全部经 OIDC 认证（匿名 curl 302 → iam/oidc/authorize?client_id=opgateway）——端点存在、需登录态，匿名抓取不可行 → 预置数据（迁移 000008）覆盖 P1',
+            'catalog_from_pricing' => true,
+            'content_follow' => true,
+            'notes' => 'CMS API 两步抓取（2026-09-13 探测反转：P1-2 期只试了 /api/web/op-help-center/request-api/ OIDC 网关 302，页面同源 /op-help-center/request-api/service-api/… 匿名可读）——①outline/tree?outlineId=972 全站树 ②article/info/91592（data.content=EOS 对象存储文件名 32hex，随发布变化）③article/content/{文件名} 正文裸 HTML ~50KB；注册表 URL 固定 ②，content_follow 由 sync 层替换 /article/info/→/article/content/ 抓 ③；正文=Token按量计费-自营模型（元/百万 tokens CNY，夜间 00:00-08:00 优惠）+视频生成（元/秒/张）；catalog=规格名称列拆分（顿号/逗号并列）+视频表回落模型名称右列；按量价归 P3-4（豆率换算）、套餐档位归 P2-1',
         ],
         'minimax' => [
             'label' => 'MiniMax',
@@ -243,6 +246,7 @@ class CodingPlanOfficialSourceService
                 'proxy' => false,
                 'model_catalog_url' => null,
                 'catalog_from_pricing' => false,
+                'content_follow' => false,
                 'notes' => '管理端配置的结构化定价源',
             ];
         }
@@ -260,6 +264,7 @@ class CodingPlanOfficialSourceService
             'proxy' => (bool) ($builtIn['proxy'] ?? false),
             'model_catalog_url' => $builtIn['model_catalog_url'] ?? null,
             'catalog_from_pricing' => (bool) ($builtIn['catalog_from_pricing'] ?? false),
+            'content_follow' => (bool) ($builtIn['content_follow'] ?? false),
             'notes' => (string) ($builtIn['notes'] ?? ''),
         ];
     }
@@ -459,6 +464,28 @@ class CodingPlanOfficialSourceService
         }
 
         return [CodingPlanRatioCheck::SOURCE_OK, $source];
+    }
+
+    /**
+     * CMS 两步抓取（cmcc cloud-cms-service-web）：第一步响应为 article/info JSON，
+     * data.content = EOS 对象存储文件名（32 位 hex，随内容发布变化，不能静态注册）；
+     * 把 URL 的 /article/info/ 替换为 /article/content/ 后抓取正文裸 HTML。
+     * 任一步形态不符/失败返回 null（由调用方沿用抓取失败流水）。
+     */
+    public function followCmsContent(string $infoUrl, string $infoBody): ?string
+    {
+        $data = json_decode($infoBody, true);
+        $file = is_array($data) ? ($data['data']['content'] ?? null) : null;
+        if (! is_string($file) || preg_match('/^[0-9a-f]{32}$/', $file) !== 1) {
+            return null;
+        }
+
+        $contentUrl = preg_replace('#/article/info/[^/?]+$#', '/article/content/' . $file, $infoUrl);
+        if ($contentUrl === null || $contentUrl === $infoUrl) {
+            return null; // info 端点形态不符（防误配到非 CMS 源）
+        }
+
+        return $this->fetchBody($contentUrl);
     }
 
     /**

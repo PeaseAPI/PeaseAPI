@@ -126,6 +126,10 @@ class SyncCodingPlanOfficial extends Command
         }
 
         $body = $sources->fetchBody($source['url'], $source['proxy'], $source['kind'] === 'structured');
+        // CMS 两步抓取（cmcc）：info JSON → data.content（EOS 文件名，随发布变化）→ content 正文
+        if ($body !== null && ($source['content_follow'] ?? false)) {
+            $body = $sources->followCmsContent($source['url'], $body);
+        }
         if ($body === null) {
             // 抓取失败：沿用上次快照的决策不受影响，只记 source_failed 流水
             // （同一源连续 ≥2 次升级 SOURCE_FAILED_ALERT，P1-9 管理端红点）

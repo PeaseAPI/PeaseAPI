@@ -10,6 +10,7 @@ require __DIR__.'/../vendor/autoload.php';
 
 use App\Services\CodingPlanParsers\AnthropicParser;
 use App\Services\CodingPlanParsers\BaiduParser;
+use App\Services\CodingPlanParsers\CmccParser;
 use App\Services\CodingPlanParsers\DeepSeekParser;
 use App\Services\CodingPlanParsers\GoogleParser;
 use App\Services\CodingPlanParsers\MiniMaxParser;
@@ -394,6 +395,26 @@ check('unicom 内嵌文档树提取 + 两篇「支持模型」列合并', $unico
 check('unicom 注释行/中文说明不入目录', ! in_array('注', $unicomCatalog, true) && ! in_array('deepseek-v4-flash 仅供尝鲜体验', $unicomCatalog, true));
 check('unicom parsePricing 空（套餐档位 CNY 次数/credits→P2-1/P7）', $unicomParser->parsePricing($unicomPage) === []);
 check('unicom 无 totalList 的壳页安全返回空', $unicomParser->parseCatalog('<html>shell</html>') === []);
+
+// ---- cmcc（移动云 CMS API 两步抓取第二步：正文裸 HTML；id 列=规格名称/模型名称右列）----
+// 真结构缩减版（91592「Token按量计费-自营模型」）：文本表 id 同格逗号/顿号并列、
+// rowspan 续行格为 &nbsp;、视频表 id 在「资费场景」列（系列名占「模型名称」列）。
+$cmccBody = '<p>夜间资费（00:00‑08:00）仅限按量模式的模型调用，Token 资源包调用不参与夜间优惠。</p>'
+    .'<table><tr><th>模型名称</th><th>规格名称</th><th>输入/输出tokens</th><th>单价（元/百万tokens）</th></tr>'
+    .'<tr><td>DeepSeek系列</td><td>DeepSeek-R1,DeepSeek-R1-0528&nbsp;</td><td>输入tokens<br />输出tokens</td><td>4<br />16</td></tr>'
+    .'<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>'
+    .'<tr><td>DeepSeek-V3、DeepSeek-V3-0324、DeepSeek-V3.1、DeepSeek-V3.2</td><td>DeepSeek-V3&nbsp;</td><td>输入tokens 输出tokens</td><td>2 8</td></tr>'
+    .'<tr><td>Qwen系列</td><td>Qwen3.5-35B-A3B</td><td>输入tokens 输出tokens</td><td>0.8 2</td></tr></table>'
+    .'<table><tr><th>模型名称</th><th>资费场景</th><th>单价</th></tr>'
+    .'<tr><td>MiniMax系列</td><td>MiniMax-H3</td><td>视频输入（768P）</td><td>0.5元/秒</td></tr>'
+    .'<tr><td>&nbsp;</td><td>图片输入</td><td>&nbsp;</td><td>0.2元/张（前5张免费）</td></tr></table>'
+    .'<table><tr><th>量包名称</th><th>额度</th><th>原价(元)</th></tr><tr><td>体验包</td><td>100万tokens</td><td>9.9</td></tr></table>';
+$cmccParser = new CmccParser;
+$cmccCatalog = $cmccParser->parseCatalog($cmccBody);
+check('cmcc 规格名称列拆分（逗号/顿号）+ 视频表回落模型名称右列 + 量包表跳过', $cmccCatalog === ['deepseek-r1', 'deepseek-r1-0528', 'deepseek-v3', 'qwen3.5-35b-a3b', 'minimax-h3']);
+check('cmcc 系列名/中文格不入目录', ! in_array('deepseek系列', $cmccCatalog, true) && ! in_array('minimax系列', $cmccCatalog, true));
+check('cmcc parsePricing 空（元/百万 tokens CNY→P3-4）', $cmccParser->parsePricing($cmccBody) === []);
+check('cmcc SPA 壳/非正文安全返回空', $cmccParser->parseCatalog('<!doctype html><div id="app"></div>') === []);
 
 // ---- scnet（超算互联网 SCNet，VitePress SSR：「可用模型」表按表头「模型ID」定位列）----
 $scnetPage = '<main><p>Token Plan 是超算互联网（SCNet）的大模型包月订阅服务（Credits 计量）。</p>'

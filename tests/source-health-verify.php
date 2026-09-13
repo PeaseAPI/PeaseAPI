@@ -51,6 +51,11 @@ try {
     ]);
     Auth::login($admin);
 
+    // 隔离真实厂商流水（QA-25）：openai-token/google-token/siliconflow 等真实告警
+    // （TLS 403 连续失败）会让 ③⑥ 的 UI 断言（告警 badge / 全部正常 / 红点消失）
+    // 被环境数据污染——清掉自检 vendor 之外的 checks，事务回滚即恢复真实数据
+    DB::table('coding_plan_ratio_checks')->where('vendor', '!=', $tag)->delete();
+
     // ① 失败升级序列：首败 FAILED → 连续第 2 次升级 ALERT
     $s1 = $svc->resolveSourceStatus($tag, CodingPlanRatioCheck::SOURCE_FAILED);
     $svc->recordCheck($tag, $s1);

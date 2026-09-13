@@ -8,6 +8,7 @@ use App\Models\CodingPlanAccount;
 use App\Models\CodingPlanUsageLog;
 use App\Models\Log;
 use App\Models\SubscriptionOrder;
+use App\Models\SubscriptionPlan;
 use App\Models\Ticket;
 use App\Models\TicketReply;
 use App\Models\Token;
@@ -411,6 +412,8 @@ class AdminController extends Controller
     public function subscriptionOrders(Request $request)
     {
         $status = (string) $request->query('status', 'all');
+        $userId = $request->query('user_id');
+        $planId = $request->query('plan_id');
         $query = SubscriptionOrder::query()->with(['user', 'plan']);
 
         $query = match ($status) {
@@ -419,6 +422,13 @@ class AdminController extends Controller
             'cancelled' => $query->where('status', 2),
             default => $query,
         };
+
+        if (is_numeric($userId) && (int) $userId > 0) {
+            $query->where('user_id', (int) $userId);
+        }
+        if (is_numeric($planId) && (int) $planId > 0) {
+            $query->where('plan_id', (int) $planId);
+        }
 
         $orders = $query->orderByDesc('id')->limit(200)->get();
 
@@ -429,10 +439,21 @@ class AdminController extends Controller
             'all' => SubscriptionOrder::query()->count(),
         ];
 
+        // 筛选下拉数据：订单中出现过的用户（客服定位「已付款未到账」）+ 全部套餐
+        $orderUsers = User::query()
+            ->whereIn('id', SubscriptionOrder::query()->select('user_id'))
+            ->orderBy('id')
+            ->pluck('username', 'id');
+        $plans = SubscriptionPlan::query()->orderBy('id')->pluck('name', 'id');
+
         return response()->view('admin.subscription-orders', [
             'orders' => $orders,
             'statusFilter' => $status,
+            'userIdFilter' => $userId !== null ? (string) $userId : '',
+            'planIdFilter' => $planId !== null ? (string) $planId : '',
             'counts' => $counts,
+            'orderUsers' => $orderUsers,
+            'plans' => $plans,
         ]);
     }
 

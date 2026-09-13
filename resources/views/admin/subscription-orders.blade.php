@@ -32,6 +32,40 @@
         </a>
     @endforeach
 </div>
+<form method="GET" action="/admin/subscription-orders" class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 flex flex-wrap items-end gap-3">
+    <div>
+        <label class="block text-xs text-gray-400 mb-1">用户</label>
+        <select name="user_id" class="rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/30">
+            <option value="">全部用户</option>
+            @foreach($orderUsers as $uid => $uname)
+                <option value="{{ $uid }}" {{ $userIdFilter === (string) $uid ? 'selected' : '' }}>#{{ $uid }} {{ $uname }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div>
+        <label class="block text-xs text-gray-400 mb-1">套餐</label>
+        <select name="plan_id" class="rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/30">
+            <option value="">全部套餐</option>
+            @foreach($plans as $pid => $pname)
+                <option value="{{ $pid }}" {{ $planIdFilter === (string) $pid ? 'selected' : '' }}>{{ $pname }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div>
+        <label class="block text-xs text-gray-400 mb-1">状态</label>
+        <select name="status" class="rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/30">
+            @foreach(['all' => '全部', 'paid' => '已支付', 'pending' => '待支付', 'cancelled' => '已取消'] as $skey => $slabel)
+                <option value="{{ $skey }}" {{ $statusFilter === $skey ? 'selected' : '' }}>{{ $slabel }}</option>
+            @endforeach
+        </select>
+    </div>
+    <button type="submit" class="rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600 transition">
+        <i class="fas fa-filter mr-1"></i>筛选
+    </button>
+    @if($userIdFilter !== '' || $planIdFilter !== '' || $statusFilter !== 'all')
+        <a href="/admin/subscription-orders" class="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 transition">重置</a>
+    @endif
+</form>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50/80 text-gray-400 text-xs uppercase tracking-wider">

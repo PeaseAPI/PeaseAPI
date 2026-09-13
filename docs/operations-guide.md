@@ -108,7 +108,7 @@
 
 ### 3.2 订阅订单
 
-- 界面：管理后台 → 订阅订单（`/admin/subscription-orders`，侧栏入口）。按 `status` 筛选（全部/已支付/待支付/已取消，卡片计数），列含用户、套餐、流水号（附 provider/method）、金额、支付/取消时间与履约周期，最近 200 条、按 id 倒序。
+- 界面：管理后台 → 订阅订单（`/admin/subscription-orders`，侧栏入口）。按 `status` 筛选（全部/已支付/待支付/已取消，卡片计数），另支持**按用户（下拉=下过单的用户）与套餐精确筛选**，列含用户、套餐、流水号（附 provider/method）、金额、支付/取消时间与履约周期，最近 200 条、按 id 倒序。
 - 表：`subscription_orders`（`status`：0=pending / 1=paid / 2=cancelled，取消时间见 `cancelled_at`）。
 - 幂等模型：履约前先条件 UPDATE 抢占（`0/2→1`），双回调/重复投递为 no-op。
 

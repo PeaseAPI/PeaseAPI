@@ -480,7 +480,7 @@ class CodingPlanOfficialSourceService
             return null;
         }
 
-        $contentUrl = preg_replace('#/article/info/[^/?]+$#', '/article/content/' . $file, $infoUrl);
+        $contentUrl = preg_replace('#/article/info/[^/?]+$#', '/article/content/'.$file, $infoUrl);
         if ($contentUrl === null || $contentUrl === $infoUrl) {
             return null; // info 端点形态不符（防误配到非 CMS 源）
         }

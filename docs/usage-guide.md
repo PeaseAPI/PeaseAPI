@@ -429,6 +429,8 @@ php artisan coding_plan:reset-usage
 | POST | `/api/coding_plan/plans/{id}/detach` | 解绑套餐 |
 | GET | `/api/coding_plan/stats` | 全局统计概览 |
 | GET | `/api/coding_plan/offers` | **公开**抵扣介绍数据（无需登录，缓存 300s） |
+| GET | `/api/coding_plan/public_promotions` | **公开**官方活动（无需登录，仅启用且未过期，供介绍页倒计时徽标） |
+| GET/POST/DELETE | `/api/coding_plan/promotions` | 管理端厂商活动维护（POST 传 id 即更新，对齐 rates 风格） |
 | GET | `/coding-plan` | **公开**抵扣产品介绍页（Blade，展示各厂商折算规则与校对状态） |
 
 ### 抵扣介绍页与比率自动校对
@@ -458,6 +460,40 @@ php artisan coding_plan:reset-usage
   ]
 }
 ```
+
+### 官方源同步与活动管理
+
+**官方源同步（`coding-plan:sync-official`，每 6 小时自动执行，先于比率校对）**
+
+平台内置 15 家厂商的官方定价/目录源注册表（`app/Services/CodingPlanOfficialSourceService.php` + `app/Services/CodingPlanParsers/*`），定时任务抓取官方页面 → 归档快照（每源保留 10 份，`storage/app/private/coding-plan-snapshots/{vendor}/`）→ 与现库比对，**只记录不自动改价**（改错比率等于资损，变更须人工确认）：
+
+| diff 类型 | 含义 | 管理端处置 |
+|---|---|---|
+| new | 官方新增模型/档位/目录 | 「官方同步」页应用（按官方价写入）或忽略 |
+| changed | 价格/时段折扣变化 | 应用后对应比率行的核对时间刷新 |
+| missing | 官方已下架 | 建议应用（模型比率停用） |
+| source_failed | 抓取失败（连续 ≥2 次升级告警） | 检查代理/源可用性；成功一次自动复位 |
+
+- 管理后台「Coding Plan 积分管理 → 官方同步」页：待确认变更清单（逐条应用/忽略）、各厂商最后核对时间与源状态、页首「官方源同步健康」卡片（告警时红边框 + 侧边栏「Coding Plan 池」红点徽标）。
+- 手动执行：`php artisan coding-plan:sync-official`（全部）/ `--vendor=deepseek,openai`（**合并**而非过滤，与校对任务同口径）/ `--snapshot-only`（仅归档快照不做 diff）。
+- 境外源（openai / google / anthropic / xai）需在 `.env` 配置 `PEASE_API_HTTP_PROXY`（见 [键位参考](settings-reference.md) 出站代理一节）；国内源直连。
+- 管理员自管源：在「供应商」中为厂商配置 `pricing_source_url`（自有 JSON，格式见上一节）后，校对任务按该 JSON 口径 diff，始终直连不走代理。
+
+**厂商活动管理（促销 / 价格变动 / 模型退市）**
+
+管理后台「Coding Plan 积分管理 → 厂商活动」维护四类活动（`kind`）：`discount` 折扣、`free` 限免、`price_change` 限时价、`model_retirement` 模型退市（即介绍页的上下架公告位）。字段要点：
+
+- `starts_at` / `ends_at`：`ends_at` 可空 = 官方未公布截止（每日循环型活动如「夜间五折」留空，长期展示）；
+- `remind_days`：到期前提醒窗口（默认 7 天）；
+- 状态自动推导：`scheduled`（未开始，介绍页预告）/ `ongoing`（进行中）/ `expired`（过期自动置失效，仅管理员可见）。
+
+分发链路（`coding-plan:remind-promotions`，每日 09:00；`--dry-run` 全程零写入预览）：
+
+1. **站内公告**：临期活动向 Option「Notice」追加活动段落（全局一次，流水防重发）；
+2. **邮件提醒**：订阅对应厂商套餐的有效用户各一封队列邮件（`PromotionReminderMail`，走 `QUEUE_CONNECTION`）；
+3. **到期处理**：过 `ends_at` 自动置 `expired` 并写过期流水留痕；
+4. **防重发**：流水表 `coding_plan_promotion_reminders` 唯一约束（活动 + 类型 + 用户），删流水可强制重发；
+5. **公开展示**：`GET /api/coding_plan/public_promotions`（仅启用且未过期，含未开始的预告）→ 介绍页 `/coding-plan` 倒计时徽标（≤72 小时红 / ≤7 天黄 / 其余灰）。
 
 ### 预置厂商目录与产品类型
 

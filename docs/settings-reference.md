@@ -346,4 +346,6 @@ OptionService::set(key, value)
 - 仅 `app/Services/CodingPlanOfficialSourceService::fetchBody()` 消费（`Http::withOptions(['proxy' => ...])`）。
 - 判定某厂商是否需代理：`CodingPlanOfficialSourceService::builtInSource($code)['proxy']`；管理端自管源（`pricing_source_url`）始终直连。
 - 验证：`php artisan coding-plan:sync-official --vendor=openai`，快照落 `storage/app/private/coding-plan-snapshots/openai/`。
+- **其他消费方**：新闻/搜索聚合上游（`app/News/Providers/AbstractNewsProvider.php`，NewsAPI/Tavily/Exa/Google CSE 均为境外源）在同一口径下消费该 env——非空即走代理，默认空直连（生产不受影响）。
+- 与促销提醒的关系：`coding-plan:remind-promotions` 本身不抓外网，仅当提醒邮件经外部 SMTP 发送时遵循 Laravel mailer 自身的传输配置，与本代理无关。
 

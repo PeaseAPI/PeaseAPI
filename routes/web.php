@@ -35,6 +35,22 @@ Route::post('/install/migrate', [InstallController::class, 'runMigration'])->nam
 Route::get('/install/step3', [InstallController::class, 'step3'])->name('install.step3');
 
 // Public content pages
+// SEO: dynamic sitemap — absolute URLs from APP_URL, docs slugs single-sourced from DocsController registry
+Route::get('/sitemap.xml', function () {
+    $base = rtrim((string) config('app.url') ?: request()->schemeAndHttpHost(), '/');
+    $paths = ['/', '/register', '/login', '/about', '/docs'];
+    foreach (\App\Http\Controllers\DocsController::DOCS as $d) {
+        $paths[] = '/docs/'.$d['slug'];
+    }
+    $lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'];
+    foreach ($paths as $p) {
+        $lines[] = '  <url><loc>'.htmlspecialchars($base.$p, ENT_XML1).'</loc></url>';
+    }
+    $lines[] = '</urlset>';
+
+    return response(implode("\n", $lines), 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
+});
+
 Route::view('/about', 'about')->name('about');
 Route::view('/pricing', 'pricing')->name('pricing');
 Route::view('/coding-plan', 'coding-plan')->name('coding-plan');

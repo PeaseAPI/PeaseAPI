@@ -32,6 +32,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $systemName }} - AI API 中转网关</title>
+    <meta name="description" content="{{ $systemName }} — 面向开发者的 AI API 中转网关：OpenAI/Anthropic 兼容接口、Coding Plan 账号池、按量计费与订阅套餐，注册即送体验额度。">
+    <meta property="og:title" content="{{ $systemName }} - 强大的 AI API 中转网关">
+    <meta property="og:description" content="OpenAI/Anthropic 兼容接口、Coding Plan 账号池、按量计费与订阅套餐，注册即送体验额度。">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ $systemName }}">
+    <meta property="og:url" content="{{ request()->url() }}">
+    <meta property="og:image" content="{{ asset('logo.png') }}">
     <meta name="description" content="强大的 AI API 中转网关，提供 OpenAI、Claude、Gemini、Midjourney 等 40+ 主流模型的统一访问接口">
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}

@@ -13,7 +13,7 @@ class DocsController extends Controller
      * file 为 base_path('docs/') 下相对路径；GitHub 仓库内相对链接保持原样，
      * 站内渲染时由 rewriteInternalLinks() 自动改写为 /docs/{slug}。
      */
-    private const DOCS = [
+    public const DOCS = [
         ['slug' => 'deployment', 'title' => '部署指南', 'icon' => '🚀', 'description' => '独立服务器、宝塔面板、Docker 等多种部署方式完整文档', 'file' => 'deployment.md'],
         ['slug' => 'guide-install', 'title' => '分步：安装到初始化', 'icon' => '🧭', 'description' => '从克隆代码到管理员登录、调度挂载与生产加固清单，一步步走完首次部署', 'file' => 'guides/00-install-to-init.md'],
         ['slug' => 'guide-channels', 'title' => '分步：渠道·模型·Key', 'icon' => '🔌', 'description' => '添加渠道、配置模型与计费倍率、测试连通、健康监控的逐步操作', 'file' => 'guides/01-setup-channels-models-keys.md'],

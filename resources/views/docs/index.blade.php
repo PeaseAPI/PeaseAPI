@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>文档中心 - {{ $systemName }}</title>
 <meta name="description" content="PeaseAPI 文档中心 - 部署指南、使用手册、API 文档">
+<meta property="og:title" content="文档中心 - {{ $systemName }}">
+<meta property="og:description" content="PeaseAPI 文档中心 - 部署指南、使用手册、API 文档">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ $systemName }}">
+<meta property="og:url" content="{{ request()->url() }}">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--primary:#6366f1;--primary-light:#818cf8;--bg-darker:#020617;--bg-card:#1e293b;--text-light:#f1f5f9;--text-muted:#94a3b8;--border:rgba(148,163,184,0.15);--gradient:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#ec4899 100%);--gradient-soft:linear-gradient(135deg,rgba(99,102,241,0.15) 0%,rgba(139,92,246,0.15) 100%)}

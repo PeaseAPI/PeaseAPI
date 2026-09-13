@@ -4,7 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ $doc['title'] }} - {{ $systemName }} 文档</title>
-<meta name="description" content="{{ $doc['title'] }} - PeaseAPI 文档">
+<meta name="description" content="{{ $doc['description'] }}">
+<meta property="og:title" content="{{ $doc['title'] }} - {{ $systemName }} 文档">
+<meta property="og:description" content="{{ $doc['description'] }}">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="{{ $systemName }}">
+<meta property="og:url" content="{{ request()->url() }}">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--primary:#6366f1;--primary-light:#818cf8;--bg-darker:#020617;--bg-card:#1e293b;--text-light:#f1f5f9;--text-muted:#94a3b8;--border:rgba(148,163,184,0.15);--gradient:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#ec4899 100%);--gradient-soft:linear-gradient(135deg,rgba(99,102,241,0.15) 0%,rgba(139,92,246,0.15) 100%)}
@@ -67,6 +72,14 @@ nav .container{display:flex;align-items:center;justify-content:space-between;hei
 .markdown-body hr{border:none;border-top:1px solid var(--border);margin:32px 0}
 .markdown-body img{max-width:100%;border-radius:8px;margin:16px 0}
 .markdown-body strong{color:#fff;font-weight:600}
+.doc-cta{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:32px;padding:20px 24px;border:1px solid var(--border);border-radius:14px;background:var(--gradient-soft)}
+.doc-cta-text strong{display:block;font-size:16px;color:var(--text-light)}
+.doc-cta-text span{font-size:13px;color:var(--text-muted)}
+.doc-cta-actions{display:flex;gap:10px}
+.doc-cta-btn{padding:10px 22px;border-radius:10px;font-size:14px;font-weight:600;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text-light);text-decoration:none;transition:all .2s}
+.doc-cta-btn:hover{background:rgba(255,255,255,0.12)}
+.doc-cta-btn.primary{background:var(--gradient);border:none;color:#fff;box-shadow:0 4px 14px rgba(99,102,241,.4)}
+.doc-cta-btn.primary:hover{transform:translateY(-1px)}
 .doc-footer{display:flex;justify-content:space-between;align-items:center;margin-top:32px;padding-top:24px;border-top:1px solid var(--border)}
 .doc-footer a{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;font-size:14px;border-radius:10px;transition:all 0.2s}
 .doc-footer .prev{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text-light)}
@@ -120,6 +133,16 @@ html{scroll-behavior:smooth}
             <div class="markdown-body" id="markdown-body" style="display:none"></div>
         </div>
 
+        <div class="doc-cta">
+            <div class="doc-cta-text">
+                <strong>看完就想上手？</strong>
+                <span>注册即送体验额度，几分钟完成第一次 API 调用。</span>
+            </div>
+            <div class="doc-cta-actions">
+                <a href="/register" class="doc-cta-btn primary">免费注册</a>
+                <a href="/login" class="doc-cta-btn">登录控制台</a>
+            </div>
+        </div>
         <div class="doc-footer">
             @php
                 $currentIndex = array_search($slug, array_column($allDocs, 'slug'));

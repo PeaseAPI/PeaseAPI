@@ -85,6 +85,9 @@ html{scroll-behavior:smooth}
 .toc-panel a:hover{color:var(--primary-light)}
 .toc-panel a.lvl3{padding-left:14px;opacity:.85}
 .toc-panel a.active{color:var(--primary-light);font-weight:600}
+.toc-toggle{position:fixed;right:16px;bottom:20px;width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:18px;z-index:60;display:none;box-shadow:0 6px 20px rgba(0,0,0,.45);cursor:pointer;align-items:center;justify-content:center}
+@media(max-width:1499px){.toc-toggle{display:flex}}
+@media(max-width:1499px){.toc-panel.open{display:block;right:16px;top:auto;bottom:78px;width:min(280px,calc(100vw - 32px));max-height:56vh}}
 @media(min-width:1500px){.toc-panel{display:block}}
 </style>
 </head>
@@ -118,11 +121,16 @@ html{scroll-behavior:smooth}
         </div>
 
         <div class="doc-footer">
-            <a href="/docs" class="prev">← 返回文档列表</a>
             @php
                 $currentIndex = array_search($slug, array_column($allDocs, 'slug'));
+                $prevDoc = ($currentIndex !== false && $currentIndex > 0) ? $allDocs[$currentIndex - 1] : null;
                 $nextDoc = ($currentIndex !== false && isset($allDocs[$currentIndex + 1])) ? $allDocs[$currentIndex + 1] : null;
             @endphp
+            @if($prevDoc)
+            <a href="/docs/{{ $prevDoc['slug'] }}" class="prev">← {{ $prevDoc['title'] }}</a>
+            @else
+            <a href="/docs" class="prev">← 返回文档列表</a>
+            @endif
             @if($nextDoc)
             <a href="/docs/{{ $nextDoc['slug'] }}" class="next">{{ $nextDoc['title'] }} →</a>
             @endif
@@ -187,6 +195,22 @@ document.querySelectorAll('pre code').forEach(function(block) {
         links.push(a);
     });
     document.body.appendChild(panel);
+    // 移动端/窄屏：悬浮按钮开合目录；点击目录项后自动收起
+    const toggle = document.createElement('button');
+    toggle.className = 'toc-toggle';
+    toggle.type = 'button';
+    toggle.setAttribute('aria-label', '打开目录');
+    toggle.textContent = '📑';
+    toggle.addEventListener('click', function() {
+        const open = panel.classList.toggle('open');
+        toggle.setAttribute('aria-label', open ? '关闭目录' : '打开目录');
+    });
+    document.body.appendChild(toggle);
+    links.forEach(function(a) {
+        a.addEventListener('click', function() {
+            panel.classList.remove('open');
+        });
+    });
     // 滚动高亮当前小节
     window.addEventListener('scroll', function() {
         let current = null;

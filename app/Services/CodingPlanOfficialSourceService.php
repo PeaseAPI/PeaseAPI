@@ -72,23 +72,23 @@ class CodingPlanOfficialSourceService
             'model_catalog_url' => null,
             'notes' => 'SSR 表格（空闲/高峰双价）；V4 Pro 延续声明 2026-09-14 后计费不变',
         ],
-        'openai' => [
+        'openai-token' => [
             'label' => 'OpenAI',
             'pricing_url' => 'https://platform.openai.com/docs/pricing.md',
             'format' => 'markdown',
             'parser' => OpenAiMarkdownParser::class,
             'proxy' => true,
             'model_catalog_url' => 'https://platform.openai.com/docs/models.md',
-            'notes' => '.md 后缀直取 Markdown；GPT-5.6 Sol 促销至少至 2026-11-21；Batch 5 折',
+            'notes' => '.md 后缀直取 Markdown；GPT-5.6 Sol 促销至少至 2026-11-21；Batch 5 折。源绑 openai-token（P3-6 按量价目厂商，000020）——openai code 归 Codex 转发渠道（按请求计费无官方价目）',
         ],
-        'google' => [
+        'google-token' => [
             'label' => 'Google Gemini',
             'pricing_url' => 'https://ai.google.dev/gemini-api/docs/pricing',
             'format' => 'html',
             'parser' => GoogleParser::class,
             'proxy' => true,
             'model_catalog_url' => null,
-            'notes' => '中文机翻 SSR；模型名在锚点 id、表在层级子标题下（只取 standard）；基础价=恢复价（2027-01-01 起长期价），促销价归 P2 promotions',
+            'notes' => '中文机翻 SSR；模型名在锚点 id、表在层级子标题下（只取 standard）；基础价=恢复价（2027-01-01 起长期价），促销价归 P2 promotions。源绑 google-token（P3-6 按量价目厂商，000020）——google code 归 Gemini CLI 转发渠道（按请求计费无官方价目）',
         ],
         'anthropic' => [
             'label' => 'Anthropic',

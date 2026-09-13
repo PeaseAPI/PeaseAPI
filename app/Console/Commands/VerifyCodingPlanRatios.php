@@ -76,17 +76,17 @@ class VerifyCodingPlanRatios extends Command
         $staleDays = max(1, (int) OptionService::get('CodingPlanRatioStaleDays', 7));
         $staleBefore = $now - $staleDays * 86400;
 
-        // 校对范围 = 启用供应商 ∪ 比率表现存厂商（比率表的孤儿厂商同样被校对）；
+        // 校对范围 = 启用供应商 ∪ 比率表现存厂商（含停用价目厂商；比率表的孤儿厂商同样被校对）；
         // --vendor= 可缩小到指定厂商（手动核对单家时避免整轮跑）
         $codes = CodingPlanVendor::query()->where('status', 1)->orderBy('sort')->orderBy('id')
             ->pluck('code')
-            ->merge(CodingPlanModelRatio::query()->where('status', 1)->distinct()->pluck('vendor'))
+            ->merge(CodingPlanModelRatio::query()->distinct()->pluck('vendor'))
             ->unique()
             ->values();
         $only = array_filter(array_map('trim', explode(',', (string) $this->option('vendor'))));
         if ($only !== []) {
-            // 点名校对：强制纳入（即使该厂商未启用且无启用比率，也生成校对流水）
-            $codes = $codes->merge(collect($only))->unique()->values();
+            // 点名校对：缩小到指定厂商；停用厂商强制纳入（即使无启用比率，也生成校对流水）
+            $codes = $codes->intersect($only)->merge(collect($only))->unique()->values();
         }
 
         $vendors = CodingPlanVendor::query()->whereIn('code', $codes)->get()->keyBy('code');

@@ -30,6 +30,8 @@ class CodingPlanPromotion extends Model
 
     public const STATUS_ENABLED = 1;
 
+    public const STATUS_EXPIRED = 2;
+
     public const STATUS_DISABLED = 0;
 
     public $timestamps = false;

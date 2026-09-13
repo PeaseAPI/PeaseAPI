@@ -36,7 +36,7 @@ use Illuminate\Support\Facades\Schema;
 class SyncCodingPlanOfficial extends Command
 {
     protected $signature = 'coding-plan:sync-official
-        {--vendor= : 仅同步指定厂商（逗号分隔 code，缺省全部）}
+        {--vendor= : 点名同步指定厂商（逗号分隔 code，强制纳入即使停用；缺省=全范围）}
         {--snapshot-only : 仅抓取并保存快照，不做 diff / 不写校对流水}';
 
     protected $description = 'Fetch official coding plan pricing/catalog pages, archive snapshots, and diff ratios & model catalog (changes recorded, never auto-applied)';
@@ -57,15 +57,16 @@ class SyncCodingPlanOfficial extends Command
             return self::SUCCESS;
         }
 
-        // 同步范围 = 启用供应商 ∪ 比率表现存厂商（与 verify-ratios 同口径）
+        // 同步范围 = 启用供应商 ∪ 比率表现存厂商（含停用价目厂商，与 verify-ratios 同口径）
         $codes = CodingPlanVendor::query()->where('status', 1)->orderBy('sort')->orderBy('id')
             ->pluck('code')
-            ->merge(CodingPlanModelRatio::query()->where('status', 1)->distinct()->pluck('vendor'))
+            ->merge(CodingPlanModelRatio::query()->distinct()->pluck('vendor'))
             ->unique()
             ->values();
         $only = array_filter(array_map('trim', explode(',', (string) $this->option('vendor'))));
         if ($only !== []) {
-            $codes = $codes->merge(collect($only))->unique()->values();
+            // 点名同步：缩小到指定厂商（缺省全范围）；停用厂商强制纳入（手动补抓价目）
+            $codes = $codes->intersect($only)->merge(collect($only))->unique()->values();
         }
 
         $synced = 0;

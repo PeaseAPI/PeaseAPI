@@ -1,6 +1,6 @@
 # PeaseAPI
 
-> 🚀 **100% PHP 重写的新一代多模型 AI API 网关** —— 基于 Laravel 11，将 OpenAI、Claude、Gemini、Midjourney、Suno 等 30+ 上游 AI 服务商统一为 OpenAI 兼容 API，并聚合新闻/网页搜索为统一查询接口；内置完整的用户体系、令牌管理、订阅计费、**Coding Plan / Token Plan 双账号池**、**成本优先智能路由与跨源故障自愈**与后台管理。
+> 🚀 **100% PHP 重写的新一代多模型 AI API 网关** —— 基于 Laravel 12，将 OpenAI、Claude、Gemini、Midjourney、Suno 等 30+ 上游 AI 服务商统一为 OpenAI 兼容 API，并聚合新闻/网页搜索为统一查询接口；内置完整的用户体系、令牌管理、订阅计费、**Coding Plan / Token Plan 双账号池**、**成本优先智能路由与跨源故障自愈**与后台管理。
 
 [![PHP](https://img.shields.io/badge/PHP-%3E%3D8.2-777BB4?logo=php&logoColor=white)](https://php.net/)
 [![Laravel](https://img.shields.io/badge/Laravel-11.x-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
@@ -39,11 +39,11 @@
 
 PeaseAPI 是一个开箱即用的 **AI API 网关平台**，帮助您快速搭建自己的 AI API 分发与计费系统。
 
-> ⚠️ **重要声明：** 本项目是开源项目 [New-API](https://github.com/Calcium-Ion/new-api)（Go 语言版）的 **100% PHP 完整重写版**。我们没有对原项目做简单的语言包装或接口转发，而是基于 Laravel 11 框架从零重写了**全部后端逻辑**——包括路由、控制器、服务层、数据模型、中继引擎、计费体系、订阅系统等，共计 **30+ 控制器、20+ 服务、30+ 数据表、40+ 渠道适配器**。所有业务代码均为原生 PHP/Laravel 实现，无任何 Go 二进制依赖。
+> ⚠️ **重要声明：** 本项目是开源项目 [New-API](https://github.com/Calcium-Ion/new-api)（Go 语言版）的 **100% PHP 完整重写版**。我们没有对原项目做简单的语言包装或接口转发，而是基于 Laravel 12 框架从零重写了**全部后端逻辑**——包括路由、控制器、服务层、数据模型、中继引擎、计费体系、订阅系统等，共计 **30+ 控制器、20+ 服务、30+ 数据表、40+ 渠道适配器**。所有业务代码均为原生 PHP/Laravel 实现，无任何 Go 二进制依赖。
 
 ### 为什么用 PHP 重写？
 
-原版 New-API 采用 Go + Gin + GORM + React SPA 技术栈，虽然性能优异，但在**二次开发门槛、部署复杂度、服务器生态适配**上存在一定痛点。PeaseAPI 选择 Laravel 11 重写，带来以下核心价值：
+原版 New-API 采用 Go + Gin + GORM + React SPA 技术栈，虽然性能优异，但在**二次开发门槛、部署复杂度、服务器生态适配**上存在一定痛点。PeaseAPI 选择 Laravel 12 重写，带来以下核心价值：
 
 | 维度 | 原版 New-API (Go) | PeaseAPI (PHP/Laravel) |
 |------|-------------------|------------------------|
@@ -116,7 +116,7 @@ PeaseAPI 在完整复刻原版功能的基础上，新增了以下能力：
 | 层级 | 原版 New-API | PeaseAPI |
 |------|-------------|----------|
 | 后端语言 | Go 1.22+ | PHP 8.2+ |
-| Web 框架 | Gin | Laravel 11 |
+| Web 框架 | Gin | Laravel 12 |
 | ORM | GORM v2 | Eloquent |
 | 数据库 | MySQL/PostgreSQL/SQLite | MySQL 8.0+ / SQLite |
 | 缓存 | Redis | Redis（推荐）/ Database |
@@ -213,7 +213,7 @@ PeaseAPI 在完整复刻原版功能的基础上，新增了以下能力：
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────┐
-│                   Laravel 11 路由层                      │
+│                   Laravel 12 路由层                      │
 │   /v1/* (Relay)  /api/* (API)  /web-api/* (Web API)     │
 └──────────────────────┬──────────────────────────────────┘
                        │
@@ -643,12 +643,26 @@ php artisan pease:install
 composer dev
 ```
 
+### 文档体系
+
+| 文档 | 内容 |
+|---|---|
+| [docs/usage-guide.md](docs/usage-guide.md) | 使用指南（管理端全功能操作）|
+| [docs/deployment.md](docs/deployment.md) | 部署文档（独立服务器/宝塔/Docker + 生产实况）|
+| [docs/operations-guide.md](docs/operations-guide.md) | 运维手册（SOP/定时任务/故障排查/API 速查/生产实况）|
+| [docs/settings-reference.md](docs/settings-reference.md) | 系统设置键位参考（含出站代理）|
+| [docs/development.md](docs/development.md) | 开发文档（测试体系/解析器开发/迁移规范/陷阱备忘）|
+| [docs/features.md](docs/features.md) | 功能解读（独家特性深读）|
+| [CHANGELOG.md](CHANGELOG.md) | 更新日志（里程碑）|
+| [docs/TASKS.md](docs/TASKS.md) | 任务账本（55 轮工作全记录）|
+
 ### 代码规范
 
-项目使用 Laravel Pint 进行代码格式化：
+项目使用 Laravel Pint（默认 laravel preset）进行代码格式化：
 
 ```bash
-./vendor/bin/pint
+./vendor/bin/pint        # 格式化
+./vendor/bin/pint --test # 仅检查（提交前基线：PASS）
 ```
 
 ---

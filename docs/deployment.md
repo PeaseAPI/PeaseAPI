@@ -25,7 +25,7 @@
 
 | 组件 | 最低版本 | 说明 |
 |------|---------|------|
-| PHP | 8.2 | 需安装 CLI + FPM |
+| PHP | 8.3 | 需安装 CLI + FPM |
 | MySQL | 8.0 | 或 MariaDB 10.6+ |
 | Redis | 6.0 | 推荐 7.0+ |
 | Nginx | 1.18 | 或 Apache 2.4+ |
@@ -42,8 +42,8 @@
 ### 必需的 PHP 扩展
 
 ```
-php8.2-fpm php8.2-mysql php8.2-redis php8.2-gmp php8.2-mbstring
-php8.2-xml php8.2-curl php8.2-zip php8.2-fileinfo php8.2-openssl php8.2-bcmath
+php8.3-fpm php8.3-mysql php8.3-redis php8.3-gmp php8.3-mbstring
+php8.3-xml php8.3-curl php8.3-zip php8.3-fileinfo php8.3-openssl php8.3-bcmath
 ```
 
 ---
@@ -60,15 +60,15 @@ php8.2-xml php8.2-curl php8.2-zip php8.2-fileinfo php8.2-openssl php8.2-bcmath
 # 更新系统
 sudo apt update && sudo apt upgrade -y
 
-# 添加 PHP 8.2 仓库（Ubuntu 22.04）
+# 添加 PHP 8.3 仓库（Ubuntu 22.04）
 sudo apt install -y software-properties-common
 sudo add-apt-repository ppa:ondrej/php -y
 sudo apt update
 
-# 安装 PHP 8.2 及扩展
-sudo apt install -y php8.2-fpm php8.2-cli php8.2-mysql php8.2-redis \
-  php8.2-gmp php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip \
-  php8.2-fileinfo php8.2-bcmath php8.2-intl
+# 安装 PHP 8.3 及扩展
+sudo apt install -y php8.3-fpm php8.3-cli php8.3-mysql php8.3-redis \
+  php8.3-gmp php8.3-mbstring php8.3-xml php8.3-curl php8.3-zip \
+  php8.3-fileinfo php8.3-bcmath php8.3-intl
 
 # 安装 Nginx、MySQL、Redis
 sudo apt install -y nginx mysql-server redis-server
@@ -83,7 +83,7 @@ sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm
 sudo dnf module reset php -y
 sudo dnf module enable php:remi-8.2 -y
 
-# 安装 PHP 8.2 及扩展
+# 安装 PHP 8.3 及扩展
 sudo dnf install -y php-fpm php-cli php-mysqlnd php-pecl-redis5 \
   php-gmp php-mbstring php-xml php-curl php-zip php-fileinfo \
   php-bcmath php-intl php-opcache
@@ -157,8 +157,8 @@ opcache.revalidate_freq = 2
 
 ```bash
 # 重启 PHP-FPM
-sudo systemctl restart php8.2-fpm
-sudo systemctl enable php8.2-fpm
+sudo systemctl restart php8.3-fpm
+sudo systemctl enable php8.3-fpm
 ```
 
 ### 第五步：获取项目代码
@@ -280,7 +280,7 @@ yum install -y wget && wget -O install.sh https://download.bt.cn/install/install
 
 #### 安装 PHP 扩展
 
-进入 **软件商店 -> PHP 8.2 -> 设置 -> 安装扩展**，确保以下扩展已安装：
+进入 **软件商店 -> PHP 8.3 -> 设置 -> 安装扩展**，确保以下扩展已安装：
 
 - `fileinfo`（必装）
 - `redis`（必装）
@@ -293,7 +293,7 @@ yum install -y wget && wget -O install.sh https://download.bt.cn/install/install
 
 #### 解禁禁用函数
 
-进入 **PHP 8.2 -> 设置 -> 禁用函数**，确保以下函数**未被禁用**（PeaseAPI 已尽量减少依赖，但建议确保）：
+进入 **PHP 8.3 -> 设置 -> 禁用函数**，确保以下函数**未被禁用**（PeaseAPI 已尽量减少依赖，但建议确保）：
 
 - `proc_open`（Supervisor/队列可能需要）
 - `putenv`（Composer 可能需要）
@@ -315,7 +315,7 @@ yum install -y wget && wget -O install.sh https://download.bt.cn/install/install
 1. 进入 **网站 -> 添加站点**
 2. 域名：填写你的域名（如 `api.example.com`）
 3. 根目录：`/www/wwwroot/peaseapi`
-4. PHP 版本：**PHP 8.2**
+4. PHP 版本：**PHP 8.3**
 5. 数据库：不创建（已在第三步创建）
 
 ### 第五步：上传项目代码
@@ -661,7 +661,7 @@ docker run -d \
 项目根目录创建 `Dockerfile`：
 
 ```dockerfile
-FROM php:8.2-fpm-alpine
+FROM php:8.3-fpm-alpine
 
 # 安装系统依赖
 RUN apk add --no-cache \
@@ -743,7 +743,7 @@ server {
 
     # PHP-FPM
     location ~ \.php$ {
-        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
@@ -814,21 +814,28 @@ stopwaitsecs=3600
 
 ### 定时任务
 
-Laravel Schedule 需要通过 Cron 每分钟执行：
+Laravel Schedule 需要通过 Cron 每分钟执行（**生产 crontab 必须有此行**——曾因缺失导致全部调度从未自动运行，八号真 bug）：
 
 ```bash
-* * * * * cd /var/www/peaseapi && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /var/www/peaseapi && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
 ```
 
-定时任务包括：
+调度注册在 `routes/console.php`，全部 `->onOneServer()`（基于 redis 分布锁，多实例部署安全；单实例日志出现 `Skipping [xxx] because the command already ran on another server` 属锁正常工作）：
 
-| 任务 | 执行周期 | 说明 |
-|------|---------|------|
-| 订阅配额重置 | 每分钟检查 | 到期订阅配额重置 |
-| Coding Plan 5h 窗口重置 | 每分钟检查 | 5 小时滚动窗口重置 |
-| Coding Plan 周/月重置 | 每分钟检查 | 周/月窗口重置 |
-| 日志清理 | 每日凌晨 | 清理过期日志 |
-| 统计聚合 | 每小时 | 聚合用量数据 |
+| 调度名 | 频率 | 说明 |
+|------|------|------|
+| pease:instance-heartbeat | 每分钟 | 心跳写 `system_instances.last_heartbeat`（需先有本机种子行，node_name 与 config('app.name') 一致）|
+| pease:reset-subscriptions / pease:reset-coding-plan | 周期检查 | 订阅配额与 Coding Plan 滚动窗口重置 |
+| pease:sync-channel-cache / pease:poll-tasks | 周期 | 渠道缓存同步、MJ/Suno/视频任务轮询 |
+| pease:cancel-expired-orders | 周期 | 过期订单取消 |
+| pease:auth-cleanup | 每小时 | 过期会话清理 |
+| pease:clean-logs | 每日 | 过期日志清理 |
+| pease:coding-plan-sync-official | 每 6 小时 | 15 家官方源抓取→快照→解析→校对流水 |
+| pease:coding-plan-verify-ratios | 每 6 小时 | 24 家在售系数在线比对告警 |
+| pease:coding-plan-remind-promotions | 每日 9 点 | 促销到期提醒 |
+| pease:perf-metrics | 周期 | 性能指标采样 |
+
+> 多实例部署时锁基于 CACHE_STORE（redis）；心跳依赖 `system_instances` 表有本机行（node_name/ip/capabilities），空表时 update 落 0 行=监控盲点。
 
 ---
 
@@ -882,8 +889,11 @@ opcache.validate_timestamps=0  ; 生产环境设为 0，更新代码后需 reloa
 更新代码后重启 PHP-FPM：
 
 ```bash
-sudo systemctl reload php8.2-fpm
+sudo systemctl reload php8.3-fpm
 ```
+
+> ⚠️ **宝塔面板专用警告**：宝塔的 php.ini 里若有 ionCube Loader（`zend_extension = .../ioncube_loader_lin_8.3.so`），它**必须是文件中第一个 zend_extension**——opcache 的 zend_extension 行必须放在 ionCube 之后，否则 fpm 直接 fatal（502）且 `php-fpm -t` 仍可能显示 successful。开启后用 web 探针验证：`<?php echo function_exists('opcache_get_status') ? 'ok' : 'off';`。
+> 另：宝塔 PHP 为静态编译常用扩展，php.ini 中再动态加载同一扩展（如 mbstring.so）会报 `Module "mbstring" is already loaded`——注释对应行即可（CLI 与 fpm 的 php.ini 是两份：`php-cli.ini` / `php.ini`，都要检查）。
 
 ### Laravel 缓存优化
 
@@ -977,7 +987,7 @@ php artisan view:cache
 
 # 6. 重启队列
 sudo supervisorctl restart peaseapi-worker:*
-sudo systemctl reload php8.2-fpm
+sudo systemctl reload php8.3-fpm
 ```
 
 ---

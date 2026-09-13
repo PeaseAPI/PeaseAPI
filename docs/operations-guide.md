@@ -16,6 +16,9 @@
 - [6. 故障排查矩阵](#6-故障排查矩阵)
 - [7. API 速查](#7-api-速查)
 - [8. 已知边界与后续计划](#8-已知边界与后续计划)
+- [7. API 速查](#7-api-速查)
+- [8. 已知边界与后续计划](#8-已知边界与后续计划)
+- [9. 生产环境实况（2026-09-13 部署复检）](#9-生产环境实况2026-09-13-部署复检五十一五十五轮)
 
 ---
 
@@ -250,3 +253,24 @@ php artisan db:seed --class=CodingPlanVendorSeeder --force
 
 > 维护约定：每次功能落地后同步更新 [键位参考](settings-reference.md) 与本手册对应小节。
 
+## 9. 生产环境实况（2026-09-13 部署复检，五十一~五十五轮）
+
+生产：8.210.89.190（宝塔 nginx + fpm 8.3.33 + 阿里云 RDS），站点 `/mnt/wwwroot/www.peaseapi.com`，域名 `www.peaseapi.com`（SSL + HSTS + http 强转 https）。
+
+### 9.1 官方源连通矩阵（15 家实测）
+- **直连全通 13 家**：deepseek / minimax / moonshot / xai / zhipu(4 pending) / tencent(16) / baidu(30) / siliconflow(34) / volcengine(38) / cmcc(33) / scnet(17) / unicom(10) / **google-token(3 pending, 0 failure——服务器直连可通，与本地相反)**；
+- **需代理 2 家**：anthropic / openai-token（区域封锁 TLS 403）——服务器补配代理（`.env PEASE_API_HTTP_PROXY`）后即可解锁；
+- pending 数与本地巡检完全一致 = 上游同状态交叉验证；**大量 pending ≠ bug**，对照 new/missing 明细判别「上游目录扩充大日」。
+
+### 9.2 调度与监控
+- crontab：`* * * * * cd /mnt/wwwroot/www.peaseapi.com && /usr/bin/php artisan schedule:run >> /dev/null 2>&1`（曾缺失=八号真 bug，已修复并以心跳实证）；
+- `system_instances` 需有本机种子行（node_name=PeaseAPI），否则心跳 update 落 0 行（监控盲点）；
+- redis：`redis-cli ping` PONG；QUEUE/CACHE=redis；onOneServer 锁正常（Skipping 输出属正常）。
+
+### 9.3 性能与验证
+- config/route/view 三缓存已落盘；**opcache 已开启**（宝塔 ionCube 必须为第一个 zend_extension——opcache 行放其后，见 deployment.md §性能优化警告）；
+- **本机验证必须** `curl --resolve www.peaseapi.com:443:127.0.0.1 https://...`——`curl http://127.0.0.1/` 的 200 是 nginx default server 欢迎页（假阳性）；
+- laravel.log 历史 ERROR（488 条）全部定性为旧代码时代（b175cb2 缺 token_abilities 表等），新代码零持续错误；failed_jobs=4 亦为旧代码时代。
+
+### 9.4 遗留决策（运维）
+redis 无 requirepass（建议设置并同步 .env）；open_basedir 未启用（多站同机建议加固）；laravel.log 无 logrotate；证书 2026-11-25 到期（确认宝塔自动续期）；**06:11 存在非本账本操作方的生产操作**（package:discover 瞬态竞争）——需确认是否有他人/CI 并行操作，避免部署踩踏。

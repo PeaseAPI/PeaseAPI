@@ -18,6 +18,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>用户协议 · {{ $systemName }}</title>
+    <meta name="description" content="{{ $systemName }} 用户协议：使用本平台服务的条款与约定。">
+    <meta property="og:title" content="用户协议 · {{ $systemName }}">
+    <meta property="og:description" content="{{ $systemName }} 用户协议：使用本平台服务的条款与约定。">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ $systemName }}">
+    <meta property="og:url" content="{{ request()->url() }}">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{

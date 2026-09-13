@@ -34,6 +34,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>价格 - {{ $systemName }}</title>
+    <meta name="description" content="{{ $systemName }} 套餐价格与按量计费说明：订阅套餐、充值方式与免费体验额度，注册即送体验额度。">
+    <meta property="og:title" content="价格 - {{ $systemName }}">
+    <meta property="og:description" content="{{ $systemName }} 套餐价格与按量计费说明：订阅套餐、充值方式与免费体验额度，注册即送体验额度。">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ $systemName }}">
+    <meta property="og:url" content="{{ request()->url() }}">
+    <meta property="og:image" content="{{ asset('logo.png') }}">
 <meta name="description" content="{{ $systemName }} 定价方案 - 灵活的订阅套餐与按量计费">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}

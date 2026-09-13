@@ -26,6 +26,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>排行榜 - {{ $systemName }}</title>
+    <meta name="description" content="{{ $systemName }} 使用排行榜：看看谁在领跑 AI 消费。">
+    <meta property="og:title" content="排行榜 - {{ $systemName }}">
+    <meta property="og:description" content="{{ $systemName }} 使用排行榜：看看谁在领跑 AI 消费。">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ $systemName }}">
+    <meta property="og:url" content="{{ request()->url() }}">
+    <meta property="og:image" content="{{ asset('logo.png') }}">
 <meta name="description" content="{{ $systemName }} 用户用量排行榜">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}

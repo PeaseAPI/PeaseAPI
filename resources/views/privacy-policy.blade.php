@@ -18,6 +18,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>隐私政策 · {{ $systemName }}</title>
+    <meta name="description" content="{{ $systemName }} 隐私政策：我们如何收集、使用与保护你的数据。">
+    <meta property="og:title" content="隐私政策 · {{ $systemName }}">
+    <meta property="og:description" content="{{ $systemName }} 隐私政策：我们如何收集、使用与保护你的数据。">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ $systemName }}">
+    <meta property="og:url" content="{{ request()->url() }}">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{

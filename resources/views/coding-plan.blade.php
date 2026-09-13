@@ -86,6 +86,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coding Plan 抵扣介绍 - {{ $systemName }}</title>
+    <meta name="description" content="Coding Plan 抵扣介绍：Claude Code / Codex 订阅额度接入 API 网关的抵扣规则与计费方式。">
+    <meta property="og:title" content="Coding Plan 抵扣介绍 - {{ $systemName }}">
+    <meta property="og:description" content="Coding Plan 抵扣介绍：Claude Code / Codex 订阅额度接入 API 网关的抵扣规则与计费方式。">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ $systemName }}">
+    <meta property="og:url" content="{{ request()->url() }}">
+    <meta property="og:image" content="{{ asset('logo.png') }}">
 <meta name="description" content="{{ $systemName }} Coding Plan 积分折算规则与抵扣比率 - 每 6 小时自动校对">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}

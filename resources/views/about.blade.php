@@ -19,6 +19,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>关于 - {{ $systemName }}</title>
+    <meta name="description" content="{{ $systemName }} 产品介绍：团队背景、服务理念与联系方式——面向开发者的 AI API 中转网关。">
+    <meta property="og:title" content="关于 - {{ $systemName }}">
+    <meta property="og:description" content="{{ $systemName }} 产品介绍：团队背景、服务理念与联系方式——面向开发者的 AI API 中转网关。">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ $systemName }}">
+    <meta property="og:url" content="{{ request()->url() }}">
+    <meta property="og:image" content="{{ asset('logo.png') }}">
 <meta name="description" content="了解 {{ $systemName }} - 统一的 AI API 网关，支持 40+ 主流模型供应商">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}

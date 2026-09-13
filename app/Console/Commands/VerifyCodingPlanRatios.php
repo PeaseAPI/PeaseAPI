@@ -205,53 +205,11 @@ class VerifyCodingPlanRatios extends Command
         }
 
         $payload = $response->json();
-        // 接受 {"models":[...]} 包裹或直接数组两种形态
-        $entries = is_array($payload)
-            ? (array_key_exists('models', $payload) && is_array($payload['models']) ? $payload['models'] : $payload)
-            : null;
-        if (! is_array($entries)) {
-            return [CodingPlanRatioCheck::SOURCE_FAILED, []];
-        }
-
-        // 规范化源条目：key = model|match_type
-        $source = [];
-        foreach ($entries as $entry) {
-            if (! is_array($entry)) {
-                continue;
-            }
-            $model = $entry['model'] ?? null;
-            if (! is_string($model) || $model === '') {
-                continue;
-            }
-            $matchType = in_array($entry['match_type'] ?? null, [CodingPlanModelRatio::MATCH_EXACT, CodingPlanModelRatio::MATCH_PREFIX], true)
-                ? $entry['match_type']
-                : CodingPlanModelRatio::MATCH_EXACT;
-            // 分段折算条目：unit_cost 可省略，以 input_rate/cached_rate/output_rate 为准
-            $isSplit = ($entry['cost_mode'] ?? null) === CodingPlanModelRatio::COST_PER_TOKEN_PARTS;
-            $hasSplitRates = isset($entry['input_rate'], $entry['cached_rate'], $entry['output_rate'])
-                && is_numeric($entry['input_rate'])
-                && is_numeric($entry['cached_rate'])
-                && is_numeric($entry['output_rate']);
-            if ($isSplit) {
-                if (! $hasSplitRates) {
-                    continue;
-                }
-            } elseif (! isset($entry['unit_cost']) || ! is_numeric($entry['unit_cost'])) {
-                continue;
-            }
-            $source[$model.'|'.$matchType] = [
-                'model' => $model,
-                'match_type' => $matchType,
-                'cost_mode' => $isSplit ? CodingPlanModelRatio::COST_PER_TOKEN_PARTS : null,
-                'unit_cost' => $isSplit ? null : (float) $entry['unit_cost'],
-                'input_rate' => $hasSplitRates ? (float) $entry['input_rate'] : null,
-                'cached_rate' => $hasSplitRates ? (float) $entry['cached_rate'] : null,
-                'output_rate' => $hasSplitRates ? (float) $entry['output_rate'] : null,
-                // 分时段折扣窗口（可选）：源提供时参与 diff（规范化失败视为未提供）
-                'time_discounts' => CodingPlanModelRatio::normalizeTimeDiscounts($entry['time_discounts'] ?? null),
-            ];
-        }
-
+        // 规范化源条目（key = model|match_type）：复用 P1-5 抽取实现（P1-5b 去重，
+        // 接受 {"models":[...]} 包裹或直接数组两种形态）；diff 循环保留本命令实现——
+        // 语义差异：verify 的 $ratios 由调用方过滤为启用行（new 对库内停用行照报，
+        // 提示管理员可启用/新建），与 sync 管线的「停用行存在即吸收 new」口径不同
+        $source = app(CodingPlanOfficialSourceService::class)->normalizeStructuredEntries($payload);
         if ($source === []) {
             // 拉到了但解析不出任何条目，视为源异常
             return [CodingPlanRatioCheck::SOURCE_FAILED, []];

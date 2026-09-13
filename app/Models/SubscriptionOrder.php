@@ -13,4 +13,14 @@ class SubscriptionOrder extends Model
     protected $fillable = ['user_id', 'plan_id', 'trade_no', 'amount', 'currency', 'status', 'payment_method', 'payment_provider', 'period_start', 'period_end', 'created_at', 'paid_at', 'cancelled_at'];
 
     protected $casts = ['user_id' => 'integer', 'plan_id' => 'integer', 'amount' => 'float', 'period_start' => 'integer', 'period_end' => 'integer', 'created_at' => 'integer', 'paid_at' => 'integer', 'cancelled_at' => 'integer'];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function plan()
+    {
+        return $this->belongsTo(SubscriptionPlan::class, 'plan_id');
+    }
 }

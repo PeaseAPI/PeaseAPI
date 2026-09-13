@@ -97,6 +97,9 @@
                         <span class="ml-auto inline-flex items-center justify-center rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white" title="官方定价源连续拉取失败（P1-9）">{{ $cpSourceAlerts }}</span>
                     @endif
                 </a>
+                <a href="{{ route('admin.subscription-orders') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('admin.subscription-orders') ? 'active' : '' }}">
+                    <i class="fas fa-receipt w-5 mr-3"></i>订阅订单
+                </a>
                 <a href="{{ route('admin.logs') }}" class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 {{ request()->routeIs('admin.logs') ? 'active' : '' }}">
                     <i class="fas fa-file-alt w-5 mr-3"></i>全局日志
                 </a>

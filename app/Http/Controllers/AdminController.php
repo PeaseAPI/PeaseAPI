@@ -7,6 +7,7 @@ use App\Models\Channel;
 use App\Models\CodingPlanAccount;
 use App\Models\CodingPlanUsageLog;
 use App\Models\Log;
+use App\Models\SubscriptionOrder;
 use App\Models\Ticket;
 use App\Models\TicketReply;
 use App\Models\Token;
@@ -401,6 +402,37 @@ class AdminController extends Controller
             'categoryMap' => Ticket::CATEGORY_MAP,
             'priorityMap' => Ticket::PRIORITY_MAP,
             'statusMap' => Ticket::STATUS_MAP,
+        ]);
+    }
+
+    /**
+     * 订阅订单查询（status=paid/pending/cancelled/all 筛选，最近优先）
+     */
+    public function subscriptionOrders(Request $request)
+    {
+        $status = (string) $request->query('status', 'all');
+        $query = SubscriptionOrder::query()->with(['user', 'plan']);
+
+        $query = match ($status) {
+            'paid' => $query->where('status', 1),
+            'pending' => $query->where('status', 0),
+            'cancelled' => $query->where('status', 2),
+            default => $query,
+        };
+
+        $orders = $query->orderByDesc('id')->limit(200)->get();
+
+        $counts = [
+            'paid' => SubscriptionOrder::query()->where('status', 1)->count(),
+            'pending' => SubscriptionOrder::query()->where('status', 0)->count(),
+            'cancelled' => SubscriptionOrder::query()->where('status', 2)->count(),
+            'all' => SubscriptionOrder::query()->count(),
+        ];
+
+        return response()->view('admin.subscription-orders', [
+            'orders' => $orders,
+            'statusFilter' => $status,
+            'counts' => $counts,
         ]);
     }
 

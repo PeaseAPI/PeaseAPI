@@ -177,6 +177,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/tickets/{id}', [AdminController::class, 'ticketView'])->name('admin.tickets.view');
         Route::post('/tickets/{id}/reply', [AdminController::class, 'ticketReply'])->name('admin.tickets.reply');
         Route::post('/tickets/{id}/status', [AdminController::class, 'ticketStatus'])->name('admin.tickets.status');
+        Route::get('/subscription-orders', [AdminController::class, 'subscriptionOrders'])->name('admin.subscription-orders');
         Route::get('/system-info', [SystemInfoController::class, 'index'])->name('admin.system-info');
         Route::post('/system-instances/cleanup', [SystemInfoController::class, 'cleanup'])->name('admin.system-instances.cleanup');
         Route::delete('/system-instances/{node_name}', [SystemInfoController::class, 'destroy'])->name('admin.system-instances.delete');

@@ -80,7 +80,7 @@ class CodingPlanOfficialSourceService
             'parser' => OpenAiMarkdownParser::class,
             'proxy' => true,
             'model_catalog_url' => 'https://platform.openai.com/docs/models.md',
-            'notes' => '.md 后缀直取 Markdown；GPT-5.6 Sol 促销至少至 2026-11-21；Batch 5 折。源绑 openai-token（P3-6 按量价目厂商，000020）——openai code 归 Codex 转发渠道（按请求计费无官方价目）',
+            'notes' => '.md 后缀直取 Markdown；GPT-5.6 Sol 促销至少至 2026-11-21；Batch 5 折。目录页 2026-09-13 官方改版为列表结构（- [Name](/api/docs/models/<id>.md)，新旗舰 GPT-6 Astra 上榜），parseCatalog 双模式（链接路径主提取 + 反引号兜底，四十八）。源绑 openai-token（P3-6 按量价目厂商，000020）——openai code 归 Codex 转发渠道（按请求计费无官方价目）',
         ],
         'google-token' => [
             'label' => 'Google Gemini',

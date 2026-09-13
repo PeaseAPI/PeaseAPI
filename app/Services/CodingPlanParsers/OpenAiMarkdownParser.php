@@ -43,14 +43,28 @@ class OpenAiMarkdownParser extends AbstractCodingPlanParser
 
     public function parseCatalog(string $body): array
     {
-        // 目录页（docs/models.md）：反引号中的模型 id，按已知前缀过滤
-        if (! preg_match_all('/`([A-Za-z0-9][A-Za-z0-9._-]{2,96})`/', $body, $matches)) {
-            return [];
-        }
+        // 目录页（docs/models.md）：
+        //  - 新结构（2026-09-13 官方改版）：列表项链接 /api/docs/models/<id>.md（Featured +
+        //    Browse full catalog 两段，链接路径即模型 id，天然排除 pricing/deprecations 等页）；
+        //  - 反引号兜底：旧表格结构 + 正文标注 id 特例（如 GPT-Rosalind 的
+        //    「Model ID: `gpt-rosalind-research`」，其链接指向 pricing 锚点）。
+        // 前缀过滤沿用旧口径，目录与库内行集合口径稳定可比。
+        $prefix = '/^(gpt|o\d|chatgpt|omni|dall-e|dall·e|whisper|tts|embed|codex|sora|davinci|babbage)/i';
         $models = [];
-        foreach ($matches[1] as $id) {
-            if (preg_match('/^(gpt|o\d|chatgpt|omni|dall-e|dall·e|whisper|tts|embed|codex|sora|davinci|babbage)/i', $id)) {
-                $models[mb_strtolower($id)] = true;
+
+        if (preg_match_all('#/api/docs/models/([A-Za-z0-9][A-Za-z0-9._-]{1,96})\.md#', $body, $matches)) {
+            foreach ($matches[1] as $id) {
+                if (preg_match($prefix, $id)) {
+                    $models[mb_strtolower($id)] = true;
+                }
+            }
+        }
+
+        if (preg_match_all('/`([A-Za-z0-9][A-Za-z0-9._-]{2,96})`/', $body, $matches)) {
+            foreach ($matches[1] as $id) {
+                if (preg_match($prefix, $id)) {
+                    $models[mb_strtolower($id)] = true;
+                }
             }
         }
 

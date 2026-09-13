@@ -119,6 +119,25 @@ check('5.4-nano input=0.0002', abs(($byModel['gpt-5.4-nano']['input_rate'] ?? 0)
 check('5.1/5 同价共用 0.00125', isset($byModel['gpt-5.1'], $byModel['gpt-5']) && abs(($byModel['gpt-5']['input_rate'] ?? 0) - 0.00125) < 1e-9);
 check('4.1-nano cached=0.000025', abs(($byModel['gpt-4.1-nano']['cached_rate'] ?? 0) - 0.000025) < 1e-9);
 check('openai catalog 反引号提取', in_array('gpt-5.6-sol', $o->parseCatalog('见 `gpt-5.6-sol` 与 `o4-mini` 说明'), true));
+check('openai catalog 反引号提取（旧结构兜底）', in_array('gpt-5.6-sol', $o->parseCatalog('见 `gpt-5.6-sol` 与 `o4-mini` 说明'), true));
+// 新结构（2026-09-13 官方改版）：列表项链接 /api/docs/models/<id>.md + 正文反引号特例（Rosalind 链接指 pricing）
+$oCatalogMd = <<<'MD'
+## Featured models
+
+- [GPT-6 Astra](/api/docs/models/gpt-6-astra.md): Our most capable model
+- [GPT-5.6 Sol](/api/docs/models/gpt-5.6-sol.md): Flagship model
+
+## Browse our full catalog of models
+
+- [babbage-002](/api/docs/models/babbage-002.md): Replacement for the GPT-3 ada
+- [Whisper](/api/docs/models/whisper-1.md): Speech recognition model
+- [GPT-Rosalind](/api/docs/pricing#specialized-models): Life sciences reasoning. Model ID: `gpt-rosalind-research`.
+- [Deprecations](/api/docs/deprecations.md): Deprecated models
+MD;
+$oCatalog = $o->parseCatalog($oCatalogMd);
+check('openai catalog 新结构链接提取（gpt-6-astra/babbage-002/whisper-1）', in_array('gpt-6-astra', $oCatalog, true) && in_array('babbage-002', $oCatalog, true) && in_array('whisper-1', $oCatalog, true));
+check('openai catalog 反引号特例 Rosalind 收录', in_array('gpt-rosalind-research', $oCatalog, true));
+check('openai catalog 非 models 路径与无前缀 id 拒收', ! in_array('deprecations', $oCatalog, true));
 
 // ---- Google（HTML：锚点+层级子标题+表；双价取恢复价；standard 层 only）----
 $gHtml = <<<'HTML'

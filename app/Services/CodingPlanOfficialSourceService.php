@@ -93,12 +93,12 @@ class CodingPlanOfficialSourceService
         ],
         'anthropic' => [
             'label' => 'Anthropic',
-            'pricing_url' => 'https://docs.anthropic.com/en/docs/about-claude/pricing',
-            'format' => 'html',
+            'pricing_url' => 'https://platform.claude.com/docs/en/about-claude/pricing.md',
+            'format' => 'markdown',
             'parser' => AnthropicParser::class,
             'proxy' => true,
             'catalog_from_pricing' => true,
-            'notes' => 'Next.js SSR div 表格（平铺 <tr> 扫描）；显示名转 id；Batch/1M 长上下文表与 CCU 说明跳过；catalog_from_pricing 产 model_catalog（全数据行 displayToModelId 去重，[1m] 变体白名单拒收，P1-6）',
+            'notes' => 'docs.anthropic.com 301 → platform.claude.com（域名迁移，2026-09-13）；.md 直取官方 Markdown（直连区域封锁 301 → claude.com/app-unavailable-in-region，走 PEASE_API_HTTP_PROXY）；Model pricing 主表 input/cache hits/output 三率（$/MTok ÷1000）；retired 行拒收（P1-6 目录口径收紧为在售集合）；catalog_from_pricing 产 model_catalog',
         ],
         'xai' => [
             'label' => 'xAI Grok',

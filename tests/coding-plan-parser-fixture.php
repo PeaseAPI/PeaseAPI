@@ -163,17 +163,24 @@ check('3-pro-image input=null（模态列表+每张换算价均不计）', isset
 check('3-pro-image output=0.012（图片换算价不计）', abs(($gEntries['gemini-3-pro-image']['output_rate'] ?? 0) - 0.012) < 1e-9);
 check('google 无独立目录源（catalog=空数组）', $g->parseCatalog($gHtml) === []);
 
-// ---- Anthropic（div 表格平铺 <tr>：显示名转 id；Batch 表去重；CCU 行跳过）----
-$aHtml = <<<'HTML'
-<tr><td>Model</td><td>Base input tokens</td><td>5m cache writes</td><td>1h cache writes</td><td>Cache hits and refreshes</td><td>Output tokens</td></tr>
-<tr><td>Claude Opus 4.6</td><td>$5 / MTok</td><td>$6.25 / MTok</td><td>$10 / MTok</td><td>$0.50 / MTok1</td><td>$25 / MTok</td></tr>
-<tr><td>Claude Sonnet 4.5</td><td>$3 / MTok</td><td>$3.75 / MTok</td><td>$6 / MTok</td><td>$0.30 / MTok</td><td>$15 / MTok</td></tr>
-<tr><td>Claude Haiku 3.5 (retired, except on Bedrock and Google Cloud)</td><td>$0.80 / MTok</td><td>$1 / MTok</td><td>$1.60 / MTok</td><td>$0.08 / MTok</td><td>$4 / MTok</td></tr>
-<tr><td>Concept</td><td>Details</td></tr>
-<tr><td>Billing unit</td><td>Claude Consumption Unit (CCU)</td></tr>
-<tr><td>Model</td><td>Batch input</td><td>Batch output</td></tr>
-<tr><td>Claude Opus 4.6</td><td>$2.50 / MTok</td><td>$12.50 / MTok</td></tr>
-HTML;
+// ---- Anthropic（platform.claude.com .md 直取，P3-6b：markdown 主表；retired 拒收；Batch/CCU 表跳过）----
+$aHtml = <<<'MD'
+| Model | Base input tokens | 5m cache writes | 1h cache writes | Cache hits and refreshes | Output tokens |
+| --- | --- | --- | --- | --- | --- |
+| Claude Fable 5.1 | $10 / MTok | $12.50 / MTok | $20 / MTok | $0.25 / MTok1 | $50 / MTok |
+| Claude Mythos 5.1 ([limited availability](https://anthropic.com/glasswing)) | $10 / MTok | $12.50 / MTok | $20 / MTok | $0.25 / MTok1 | $50 / MTok |
+| Claude Opus 4.7 | $5 / MTok | $6.25 / MTok | $10 / MTok | $0.50 / MTok | $25 / MTok |
+| Claude Opus 4.1 ([retired, except on Bedrock and Google Cloud](https://platform.claude.com/docs/en/about-claude/model-deprecations)) | $15 / MTok | $18.75 / MTok | $30 / MTok | $1.50 / MTok | $75 / MTok |
+| Claude Sonnet 4.5 | $3 / MTok | $3.75 / MTok | $6 / MTok | $0.30 / MTok | $15 / MTok |
+
+| Concept | Details |
+| --- | --- |
+| **Billing unit** | Claude Consumption Unit (CCU) |
+
+| Model | Batch input | Batch output |
+| --- | --- | --- |
+| Claude Opus 4.7 | $2.50 / MTok | $12.50 / MTok |
+MD;
 
 $a = new AnthropicParser;
 $aEntries = $a->parsePricing($aHtml);
@@ -181,11 +188,14 @@ $aByModel = [];
 foreach ($aEntries as $entry) {
     $aByModel[$entry['model']] = $entry;
 }
-check('anthropic 解析 3 条（Batch 表同名被首条去重；CCU 行跳过）', count($aByModel) === 3);
-check('opus-4.6 input=0.005（$5/MTok → $/1k）', abs(($aByModel['claude-opus-4.6']['input_rate'] ?? 0) - 0.005) < 1e-9);
-check('opus-4.6 cached=0.0005（脚注数字 $0.50/MTok1 截断正确）', abs(($aByModel['claude-opus-4.6']['cached_rate'] ?? 0) - 0.0005) < 1e-9);
-check('opus-4.6 output=0.025（Batch 行半价 0.0125 未覆盖首条）', abs(($aByModel['claude-opus-4.6']['output_rate'] ?? 0) - 0.025) < 1e-9);
-check('显示名转 id + 括号注释剥离（retired 行照解析）', isset($aByModel['claude-haiku-3.5']) && abs(($aByModel['claude-haiku-3.5']['input_rate'] ?? 0) - 0.0008) < 1e-9);
+check('anthropic 解析 4 条（retired 拒收；Batch/CCU 表跳过）', count($aByModel) === 4);
+check('opus-4.7 input=0.005（$5/MTok → $/1k）', abs(($aByModel['claude-opus-4.7']['input_rate'] ?? 0) - 0.005) < 1e-9);
+check('opus-4.7 cached=0.0005（脚注数字 $0.50/MTok1 截断正确）', abs(($aByModel['claude-opus-4.7']['cached_rate'] ?? 0) - 0.0005) < 1e-9);
+check('opus-4.7 output=0.025（Batch 行半价 0.0125 未覆盖首条）', abs(($aByModel['claude-opus-4.7']['output_rate'] ?? 0) - 0.025) < 1e-9);
+check('fable-5.1 input=0.01 + cached=0.00025（脚注列）', isset($aByModel['claude-fable-5.1']) && abs(($aByModel['claude-fable-5.1']['input_rate'] ?? 0) - 0.01) < 1e-9 && abs(($aByModel['claude-fable-5.1']['cached_rate'] ?? 0) - 0.00025) < 1e-9);
+check('markdown 链接剥除（limited availability 行转 id 成功）', isset($aByModel['claude-mythos-5.1']));
+check('retired 行拒收（目录口径=在售集合，P1-6 收紧）', ! isset($aByModel['claude-opus-4.1']) && ! isset($aByModel['claude-haiku-3.5']));
+check('catalog=在售 4 款（与 parsePricing 同集合）', $a->parseCatalog($aHtml) === ['claude-fable-5.1', 'claude-mythos-5.1', 'claude-opus-4.7', 'claude-sonnet-4.5']);
 check('5m/1h cache writes 列不进任何字段', ! isset($aEntries[0]['cache_write_5m']) && count($aEntries[0]) === 8);
 
 // ---- Zhipu（Mintlify .md：套餐积分配额页 → 仅 catalog；模型名含 U+2011 非断连字符）----

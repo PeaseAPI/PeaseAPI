@@ -38,8 +38,8 @@ Route::get('/install/step3', [InstallController::class, 'step3'])->name('install
 // SEO: dynamic sitemap — absolute URLs from APP_URL, docs slugs single-sourced from DocsController registry
 Route::get('/sitemap.xml', function () {
     $base = rtrim((string) config('app.url') ?: request()->schemeAndHttpHost(), '/');
-    $paths = ['/', '/register', '/login', '/about', '/docs'];
-    foreach (\App\Http\Controllers\DocsController::DOCS as $d) {
+    $paths = ['/', '/register', '/about', '/pricing', '/coding-plan', '/rankings', '/privacy-policy', '/user-agreement', '/docs'];
+    foreach (DocsController::DOCS as $d) {
         $paths[] = '/docs/'.$d['slug'];
     }
     $lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'];

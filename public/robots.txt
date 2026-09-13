@@ -2,11 +2,7 @@ User-agent: *
 Disallow: /admin
 Disallow: /dashboard
 Disallow: /api/
-Disallow: /v1/
-Disallow: /relay/
 Disallow: /mj/
 Disallow: /suno/
-Disallow: /kling/
-Disallow: /jimeng/
 Disallow: /logout
 Allow: /

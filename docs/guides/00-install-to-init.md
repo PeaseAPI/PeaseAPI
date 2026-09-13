@@ -2,7 +2,7 @@
 
 > 目标：一台干净服务器/本机，从零到「管理员登录 + 首次 API 调用成功」。
 > 部署方式选择见 [docs/deployment.md](../deployment.md)（独立服务器 / 宝塔 / Docker）。本指南假设已按部署文档装好 LNMP/Laravel 依赖。
-> 后续步骤：[01 渠道·模型·Key](01-setup-channels-models-keys.md) → [02 Coding 池](02-setup-coding-pool.md) → [03 客户·令牌·分组](03-setup-customers-tokens.md)
+> 后续步骤：[01 渠道·模型·Key](01-setup-channels-models-keys.md) → [02 Coding 池](02-setup-coding-pool.md) → [03 客户·令牌·分组](03-setup-customers-tokens.md) → [04 订阅·支付·工单](04-setup-subscriptions-payments.md)
 
 ## 第 1 步：获取代码与依赖
 

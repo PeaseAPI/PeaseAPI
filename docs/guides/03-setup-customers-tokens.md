@@ -63,4 +63,4 @@
 | 客户要单模型包 | 建独立令牌开 `model_limits_enabled` + 白名单，归专属分组配 GroupRatio |
 
 ## 系列导航
-[00 安装到初始化](00-install-to-init.md) ｜ [01 渠道·模型·Key](01-setup-channels-models-keys.md) ｜ **03 客户·令牌·分组（本篇）** ｜ 深入概念见 [usage-guide](../usage-guide.md) 与 [features](../features.md)
+[00 安装到初始化](00-install-to-init.md) ｜ [01 渠道·模型·Key](01-setup-channels-models-keys.md) ｜ [02 Coding 池](02-setup-coding-pool.md) ｜ **03 客户·令牌·分组（本篇）** ｜ [04 订阅·支付·工单](04-setup-subscriptions-payments.md) ｜ 深入概念见 [usage-guide](../usage-guide.md) 与 [features](../features.md)

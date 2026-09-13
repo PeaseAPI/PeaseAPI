@@ -19,6 +19,7 @@ class DocsController extends Controller
         ['slug' => 'guide-channels', 'title' => '分步：渠道·模型·Key', 'icon' => '🔌', 'description' => '添加渠道、配置模型与计费倍率、测试连通、健康监控的逐步操作', 'file' => 'guides/01-setup-channels-models-keys.md'],
         ['slug' => 'guide-coding-pool', 'title' => '分步：Coding 池从零到上线', 'icon' => '🏊', 'description' => '登记供应商、录入账号池、同步官方源与校对、模型倍率、促销与转换 API 发布', 'file' => 'guides/02-setup-coding-pool.md'],
         ['slug' => 'guide-customers', 'title' => '分步：客户·令牌·分组', 'icon' => '👥', 'description' => '给客户开户、归组、发令牌、配额度、充值兑换的完整流程', 'file' => 'guides/03-setup-customers-tokens.md'],
+        ['slug' => 'guide-subscriptions', 'title' => '分步：订阅·支付·工单', 'icon' => '💳', 'description' => '创建订阅套餐、接入易支付收款与验收、每日重置与自动续费、工单客服', 'file' => 'guides/04-setup-subscriptions-payments.md'],
         ['slug' => 'usage-guide', 'title' => '使用手册', 'icon' => '📖', 'description' => '系统设置、渠道配置、模型 Key 管理、Coding Plan 等全部使用文档', 'file' => 'usage-guide.md'],
         ['slug' => 'operations-guide', 'title' => '运维手册', 'icon' => '🛠️', 'description' => '设置变更 SOP、支付网关验收、定时任务、故障排查矩阵与 API 速查', 'file' => 'operations-guide.md'],
         ['slug' => 'settings-reference', 'title' => '设置键位参考', 'icon' => '⚙️', 'description' => '每个系统设置键的权威定义：类型、默认值、别名与生效链路', 'file' => 'settings-reference.md'],

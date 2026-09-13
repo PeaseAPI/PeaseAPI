@@ -452,7 +452,7 @@ class CodingPlanController extends Controller
             // 模型名：match_type=exact 全等 / prefix 前缀（前缀最长优先）
             'model' => ['required', 'string', 'max:128'],
             'match_type' => ['nullable', 'string', 'in:exact,prefix'],
-            'cost_mode' => ['nullable', 'string', 'in:per_request,per_1k_tokens,per_token_parts'],
+            'cost_mode' => ['nullable', 'string', 'in:per_request,per_1k_tokens,per_token_parts,per_image,per_video_second'],
             // 单位成本：按次/按千 token 口径消耗的供应商单位数（分段口径不参与计算）
             'unit_cost' => ['required', 'numeric', 'min:0', 'max:999999'],
             // 分段折算（per_token_parts）：输入/缓存命中/输出的千 token 折算系数
@@ -508,7 +508,7 @@ class CodingPlanController extends Controller
             'vendor' => ['sometimes', 'string', 'max:64'],
             'model' => ['sometimes', 'string', 'max:128'],
             'match_type' => ['sometimes', 'string', 'in:exact,prefix'],
-            'cost_mode' => ['sometimes', 'string', 'in:per_request,per_1k_tokens,per_token_parts'],
+            'cost_mode' => ['sometimes', 'string', 'in:per_request,per_1k_tokens,per_token_parts,per_image,per_video_second'],
             'unit_cost' => ['sometimes', 'numeric', 'min:0', 'max:999999'],
             'input_rate' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'cached_rate' => ['nullable', 'numeric', 'min:0', 'max:999999'],

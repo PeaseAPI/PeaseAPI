@@ -36,6 +36,12 @@ class CodingPlanModelRatio extends Model
     /** 计费口径：分段折算（输入/缓存命中/输出三段独立千 token 系数，如智谱 GLM、阿里云 Credits） */
     public const COST_PER_TOKEN_PARTS = 'per_token_parts';
 
+    /** 计费口径：按张（图片生成，unit_cost=算力豆/张，如移动 Token Plan Qwen-image） */
+    public const COST_PER_IMAGE = 'per_image';
+
+    /** 计费口径：按秒（视频生成，unit_cost=算力豆/秒，如移动 Token Plan happyhorse 系列；官方预扣=最高清晰度汇率 10 秒冻结、多退少补） */
+    public const COST_PER_VIDEO_SECOND = 'per_video_second';
+
     /**
      * 时段折扣判定的固定时区：官方折扣窗口均为北京时间口径
      * （智谱/DeepSeek/阿里云官方文档均按 Asia/Shanghai 描述时段），

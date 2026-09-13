@@ -199,6 +199,12 @@ class CodingPlanRatioService
         } elseif ($costMode === CodingPlanModelRatio::COST_PER_1K_TOKENS) {
             $totalTokens = max(0, $promptTokens + $completionTokens);
             $units = ($totalTokens / 1000) * $unitCost;
+        } elseif ($costMode === CodingPlanModelRatio::COST_PER_IMAGE
+            || $costMode === CodingPlanModelRatio::COST_PER_VIDEO_SECOND) {
+            // 图片（豆/张）/视频（豆/秒）：usage 维度为张数/秒数，渠道层尚未捕获（视频为
+            // 异步任务，官方预扣=最高清晰度汇率 10 秒冻结、多退少补）——预置期按次保守
+            // 兜底（unit_cost × 提交次数）；渠道适配捕获张/秒 usage 后切换真按量口径。
+            $units = $unitCost * $submits;
         } else {
             $units = $unitCost * $submits;
         }

@@ -12,6 +12,7 @@ require __DIR__.'/../vendor/autoload.php';
 
 use App\Http\Controllers\Api\TokenApiController;
 use App\Http\Controllers\Api\UserApiController;
+use App\Http\Controllers\OptionController;
 use App\Http\Controllers\RedemptionController;
 use App\Http\Controllers\SubscriptionController;
 use App\Models\Option;
@@ -20,14 +21,15 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\Token;
 use App\Models\User;
-use App\Services\SubscriptionService;
 use App\Services\OptionService;
+use App\Services\SubscriptionService;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 $fail = 0;
 function check(string $name, bool $cond, string $extra = ''): void
@@ -114,7 +116,7 @@ try {
             ]));
 
             return response()->json(['success' => false], 500); // 未抛异常即失败
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json(['success' => false], 422); // 校验拦截 ✓
         }
     }, 422);
@@ -122,7 +124,6 @@ try {
     callJson('普通用户越权建号被拒', fn () => $uc->store(Request::create('/web-api/users', 'POST', [
         'username' => 'qa_hack_'.$suffix, 'password' => 'NewUser@12345',
     ])), 403);
-
 
     echo "[B] 兑换码闭环（生成 → 兑换 → 重兑/无效/过期拦截）\n";
     Auth::login($admin);
@@ -243,7 +244,7 @@ try {
 
     echo "[G] 系统设置全量闭环 + 内容新增（Root 校验/双载荷/内容端点读回/密钥掩码）\n";
     Auth::login($admin);
-    $oc = app(\App\Http\Controllers\OptionController::class);
+    $oc = app(OptionController::class);
     // 1) 扁平 JSON 形式批量写（含内容类新增与数值类）
     $contentMap = [
         'SystemName' => '自检站名_'.$suffix,
@@ -256,13 +257,13 @@ try {
     ];
     callJson('Root 批量更新设置（扁平 JSON）', fn () => $oc->update(qaJsonReq('/web-api/options', 'POST', $contentMap)));
     foreach ($contentMap as $k => $v) {
-        check("设置落库 {$k}", (string) \App\Models\Option::get($k) === (string) $v);
+        check("设置落库 {$k}", (string) Option::get($k) === (string) $v);
     }
     // 2) options[Key] 表单形式
     callJson('Root 更新设置（options[Key] 表单形式）', fn () => $oc->update(qaJsonReq('/web-api/options', 'POST', [
         'options' => ['SystemName' => '自检站名B_'.$suffix, 'Notice' => '<b>自检公告B_'.$suffix.'</b>'],
     ])));
-    check('表单形式落库 SystemName', (string) \App\Models\Option::get('SystemName') === '自检站名B_'.$suffix);
+    check('表单形式落库 SystemName', (string) Option::get('SystemName') === '自检站名B_'.$suffix);
     // 3) 公开内容端点读回
     $pub = callJson('公开端点 /api/notice 读回', fn () => $oc->notice());
     check('公告内容一致', str_contains((string) ($pub['data'] ?? ''), '自检公告B_'.$suffix));

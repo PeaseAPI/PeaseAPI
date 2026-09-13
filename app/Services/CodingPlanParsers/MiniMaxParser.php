@@ -77,7 +77,35 @@ class MiniMaxParser extends AbstractCodingPlanParser
 
     public function parseCatalog(string $body): array
     {
-        return []; // MiniMax 无独立模型目录页
+        // 目录口径=token 计价表在售模型（与 parsePricing 同段剥离与表筛选）：
+        // Priority Tab 条件价与 Legacy Models 退役段剥离（退役模型不得进目录），
+        // 语音/视频资源包等非价格表跳过（同 parsePricing 表头定位）
+        $body = str_replace(['\\"', '\\$'], ['"', '$'], $body);
+        $body = preg_replace('/<Tab title="Priority\*?">.*?<\/Tab>/s', '', $body) ?? $body;
+        $body = preg_replace('/<Accordion title="Legacy Models">.*?<\/Accordion>/s', '', $body) ?? $body;
+
+        $models = [];
+        foreach ($this->markdownTables($body) as $table) {
+            $header = array_map(fn (string $cell): string => mb_strtolower(trim($cell)), $table['header']);
+            if (! in_array('input', $header, true) || ! in_array('output', $header, true)) {
+                continue;
+            }
+            foreach ($table['rows'] as $row) {
+                $modelCell = $row[0] ?? '';
+                if (str_contains($modelCell, '> 512k') || str_contains($modelCell, '＞ 512k')) {
+                    continue; // 长输入第二档（条件价），与 parsePricing 同口径只取首档
+                }
+                $model = preg_match('/\*\*([^*]+)\*\*/', $modelCell, $m)
+                    ? $this->modelName($m[1])
+                    : $this->modelName($this->cleanText($modelCell));
+                if ($model === null || ! str_starts_with($model, 'minimax-')) {
+                    continue;
+                }
+                $models[$model] = true;
+            }
+        }
+
+        return array_keys($models);
     }
 
     /**

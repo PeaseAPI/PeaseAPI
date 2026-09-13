@@ -60,7 +60,23 @@ class MoonshotParser extends AbstractCodingPlanParser
 
     public function parseCatalog(string $body): array
     {
-        return []; // Kimi 无独立模型目录页（模型说明以指南页链接呈现）
+        // 目录口径=DocTable rows 在售模型（batch/tools 为独立页不在本 body）；
+        // 行提取与 parsePricing 同正则，仅取首格模型 id，不依赖价格列完整性
+        $body = str_replace(['\\"', '\\$'], ['"', '$'], $body);
+        if (! preg_match_all('/^\s*\["([^"]+)",\s*"1M tokens",(.*)\]\s*,?\s*$/m', $body, $rows, PREG_SET_ORDER)) {
+            return [];
+        }
+
+        $models = [];
+        foreach ($rows as $row) {
+            $model = $this->modelName($row[1]);
+            if ($model === null || ! str_starts_with($model, 'kimi-')) {
+                continue;
+            }
+            $models[$model] = true;
+        }
+
+        return array_keys($models);
     }
 
     /**

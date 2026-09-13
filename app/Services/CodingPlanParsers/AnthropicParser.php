@@ -86,8 +86,19 @@ class AnthropicParser extends AbstractCodingPlanParser
 
     public function parseCatalog(string $body): array
     {
-        // 定价页每行即一个在售模型；目录源（docs/models 页）待接
-        return [];
+        // 目录口径=全部数据行在售模型（主表 + Batch 半价表同模型去重；Batch 只是折扣
+        // 价，模型仍在售）。1M 长上下文变体 id 含 [1m] 被 displayToModelId 白名单拒绝，
+        // CCU 说明/小节标题非模型名行同样拒收——目录即库内可配 exact 行集合
+        $models = [];
+        foreach ($this->tableRows($body) as $cells) {
+            $model = $this->displayToModelId($cells[0] ?? '');
+            if ($model === null) {
+                continue;
+            }
+            $models[$model] = true;
+        }
+
+        return array_keys($models);
     }
 
     /**

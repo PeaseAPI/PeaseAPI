@@ -66,7 +66,27 @@ class XaiMarkdownParser extends AbstractCodingPlanParser
 
     public function parseCatalog(string $body): array
     {
-        return []; // xai 无独立模型目录页
+        // 目录口径=token 计价表内的在售模型（与 parsePricing 同表筛选）：Imagine/Voice
+        // 按次计价表不产出（库内无对应行，收进目录只会制造 missing 噪音）；
+        // 长上下文 (< 200k)/(≥ 200k) 档位行剥括号后归并同名（modelName + 去重）
+        $models = [];
+        foreach ($this->markdownTables($body) as $table) {
+            $header = array_map(fn (string $cell): string => mb_strtolower(trim($cell)), $table['header']);
+            $isTokenTable = in_array('input / 1m tokens', $header, true)
+                && in_array('output / 1m tokens', $header, true);
+            if (! $isTokenTable) {
+                continue;
+            }
+            foreach ($table['rows'] as $row) {
+                $model = $this->modelName($row[0] ?? '');
+                if ($model === null || ! str_starts_with($model, 'grok')) {
+                    continue;
+                }
+                $models[$model] = true;
+            }
+        }
+
+        return array_keys($models);
     }
 
     /**

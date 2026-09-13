@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Download } from 'lucide-react'
+import { CheckCircle2, Download, History } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -31,6 +31,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 import {
   applyCatalogTemplate,
@@ -38,6 +46,7 @@ import {
   getCatalog,
   getChecks,
   getRatios,
+  getSnapshots,
   getVendors,
   ignoreCheckChange,
   updateRatio,
@@ -249,6 +258,8 @@ function renderSyncTab(props: SyncTabViewProps) {
         ))
       )}
 
+      <SnapshotHistoryCard />
+
       <Card>
         <CardHeader>
           <CardTitle className='flex items-center gap-2'>
@@ -428,6 +439,131 @@ function CheckCard({ item, vendorName, busy, onApply, onIgnore }: CheckCardProps
           )}
         </CardContent>
       )}
+    </Card>
+  )
+}
+
+// ============================================================================
+// Snapshot history (P4-2: archived official-page snapshots + recent failures)
+// ============================================================================
+
+function fmtBytes(size: number): string {
+  if (size >= 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`
+  if (size >= 1024) return `${(size / 1024).toFixed(1)} KB`
+  return `${size} B`
+}
+
+function fmtTs(ts: number | null | undefined): string {
+  if (!ts) return '-'
+  return new Date(ts * 1000).toLocaleString()
+}
+
+function shortParser(parser: string | null): string {
+  if (!parser) return '-'
+  const parts = parser.split('\\')
+  return parts[parts.length - 1] ?? parser
+}
+
+function SnapshotHistoryCard() {
+  const { t } = useTranslation()
+  const snapshotsQuery = useQuery({
+    queryKey: ['coding-plan-snapshots'],
+    queryFn: getSnapshots,
+  })
+  const items = snapshotsQuery.data?.data?.items ?? []
+  const failures = snapshotsQuery.data?.data?.failures ?? []
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className='flex items-center gap-2'>
+          <History className='h-4 w-4' /> {t('Snapshot history')}
+        </CardTitle>
+        <CardDescription>
+          {t('Last 10 archived official-page snapshots per vendor (kept in storage). A red "Parse failed" row means the raw response was also saved as .raw.txt for parser fixes.')}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className='flex flex-col gap-3'>
+        {snapshotsQuery.isLoading ? (
+          <p className='text-muted-foreground text-sm'>{t('Loading...')}</p>
+        ) : items.length === 0 ? (
+          <p className='text-muted-foreground text-sm'>
+            {t('No snapshots yet — run php artisan coding-plan:sync-official or wait for the 6-hour schedule.')}
+          </p>
+        ) : (
+          items.map((item) =>
+            item.snapshots.length === 0 ? null : (
+              <div key={item.vendor} className='flex flex-col gap-1'>
+                <div className='text-xs font-semibold'>
+                  {item.vendor_name || item.vendor}
+                  <span className='text-muted-foreground ml-2'>({item.vendor})</span>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('Fetched at')}</TableHead>
+                      <TableHead>{t('Parser')}</TableHead>
+                      <TableHead>{t('Entries')}</TableHead>
+                      <TableHead>{t('Catalog')}</TableHead>
+                      <TableHead>{t('Connection')}</TableHead>
+                      <TableHead className='text-right'>{t('Size')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {item.snapshots.map((snap) => (
+                      <TableRow key={snap.file}>
+                        <TableCell className='font-mono text-xs'>
+                          {fmtTs(snap.fetched_at)}
+                          {!snap.parsed && (
+                            <Badge variant='destructive' className='ml-2'>
+                              {t('Parse failed')}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className='text-xs'>
+                          {shortParser(snap.parser)}
+                          {snap.has_raw && !snap.parsed && (
+                            <span className='text-muted-foreground ml-1'>.raw.txt</span>
+                          )}
+                        </TableCell>
+                        <TableCell className='text-xs'>{snap.entry_count || '-'}</TableCell>
+                        <TableCell className='text-xs'>{snap.catalog_count || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant='outline'>
+                            {snap.proxy_used ? t('Proxy') : t('Direct')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className='text-right font-mono text-xs'>
+                          {fmtBytes(snap.size)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )
+          )
+        )}
+        {failures.length > 0 && (
+          <div className='flex flex-col gap-1 rounded-md border border-destructive/40 bg-destructive/5 p-3'>
+            <div className='text-destructive text-xs font-semibold'>
+              {t('Recent fetch failures (check log)')}
+            </div>
+            {failures.map((f, i) => (
+              <div
+                key={`${f.vendor}-${f.checked_at}-${i}`}
+                className='flex flex-wrap items-center gap-2 text-xs'
+              >
+                <span className='font-medium'>{f.vendor}</span>
+                <span className='text-muted-foreground'>{fmtTs(f.checked_at)}</span>
+                {f.source_status === 3 && (
+                  <Badge variant='destructive'>{t('Consecutive failure alert')}</Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
     </Card>
   )
 }

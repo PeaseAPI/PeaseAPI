@@ -5549,6 +5549,20 @@
     "in {{input}} / cache {{cached}} / out {{output}}": "入{{input}} / 缓存{{cached}} / 出{{output}}",
     "Delete rule \"{{model}}\"?": "确认删除规则「{{model}}」？",
     " template checked {{time}}": " 模板核对 {{time}}",
-    "Delete tier \"{{name}}\"?": "确认删除档位「{{name}}」？"
+    "Delete tier \"{{name}}\"?": "确认删除档位「{{name}}」？",
+    "Snapshot history": "抓取历史",
+    "Last 10 archived official-page snapshots per vendor (kept in storage). A red \"Parse failed\" row means the raw response was also saved as .raw.txt for parser fixes.": "每厂商最近 10 份官方页快照归档（保留在 storage 中）。红色「解析失败」行表示同时保存了 .raw.txt 原始响应，作为修解析器的第一手材料。",
+    "No snapshots yet — run php artisan coding-plan:sync-official or wait for the 6-hour schedule.": "暂无快照——运行 php artisan coding-plan:sync-official 或等待每 6 小时的定时任务。",
+    "Fetched at": "抓取时间",
+    "Parser": "解析器",
+    "Entries": "条目数",
+    "Catalog": "目录数",
+    "Connection": "连接方式",
+    "Size": "大小",
+    "Parse failed": "解析失败",
+    "Proxy": "代理",
+    "Direct": "直连",
+    "Recent fetch failures (check log)": "最近抓取失败（见校对流水）",
+    "Consecutive failure alert": "连续失败告警"
   }
 }

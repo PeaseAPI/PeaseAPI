@@ -443,6 +443,7 @@ Route::middleware([UserAuth::class, AdminAuth::class])->group(function () {
     Route::post('/coding_plan/catalog/{code}/apply', [CodingPlanController::class, 'applyCatalog']);
     Route::get('/coding_plan/checks', [CodingPlanController::class, 'checks']);
     Route::post('/coding_plan/checks/ignore', [CodingPlanController::class, 'ignoreCheckChange']);
+    Route::get('/coding_plan/snapshots', [CodingPlanController::class, 'snapshots']);
 
     // 供应商官方套餐档位（个人版/团队版等，公开介绍页展示，管理端维护）
     Route::get('/coding_plan/tiers', [CodingPlanController::class, 'tiers']);

@@ -44,5 +44,7 @@
   "Expires at (optional, Unix seconds or date)": "Expires at (optional, Unix seconds or date)",
   "Bind plan to account pool": "Bind plan to account pool",
   "Delete vendor \"{{name}}\"? Its ratio config is deleted too; {{total}} accounts ({{active}} active) are kept and must be re-bound to another vendor before relaying resumes.": "Delete vendor \"{{name}}\"? Its ratio config is deleted too; {{total}} accounts ({{active}} active) are kept and must be re-bound to another vendor before relaying resumes.",
-  "Delete {{code}} exchange rate? The currency will have no table value (USD still falls back to the Option).": "Delete {{code}} exchange rate? The currency will have no table value (USD still falls back to the Option)."
+  "Delete {{code}} exchange rate? The currency will have no table value (USD still falls back to the Option).": "Delete {{code}} exchange rate? The currency will have no table value (USD still falls back to the Option).",
+  "Last 10 archived official-page snapshots per vendor (kept in storage). A red \"Parse failed\" row means the raw response was also saved as .raw.txt for parser fixes.": "Last 10 archived official-page snapshots per vendor (kept in storage). A red \"Parse failed\" row means the raw response was also saved as .raw.txt for parser fixes.",
+  "No snapshots yet — run php artisan coding-plan:sync-official or wait for the 6-hour schedule.": "No snapshots yet — run php artisan coding-plan:sync-official or wait for the 6-hour schedule."
 }

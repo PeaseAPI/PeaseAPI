@@ -319,6 +319,44 @@ export interface CodingPlanChecks {
 }
 
 // ============================================================================
+// 官方源抓取历史（P4-2：快照归档 + 最近失败流水）
+// ============================================================================
+
+/** 单份快照元数据（storage coding-plan-snapshots/{vendor}/{stamp}.json） */
+export interface CodingPlanSnapshotMeta {
+  file: string
+  fetched_at: number | null
+  kind: string | null
+  parser: string | null
+  proxy_used: boolean
+  parsed: boolean
+  entry_count: number
+  catalog_count: number
+  size: number
+  has_raw: boolean
+}
+
+/** 每厂商的快照历史 */
+export interface CodingPlanSnapshotItem {
+  vendor: string
+  vendor_name: string
+  snapshots: CodingPlanSnapshotMeta[]
+}
+
+/** 最近的抓取失败校对流水（source_failed / source_failed_alert） */
+export interface CodingPlanSnapshotFailure {
+  vendor: string
+  checked_at: number
+  source_status: number
+}
+
+/** GET /coding_plan/snapshots 响应体 */
+export interface CodingPlanSnapshots {
+  items: CodingPlanSnapshotItem[]
+  failures: CodingPlanSnapshotFailure[]
+}
+
+// ============================================================================
 // 汇率维护（P7-2/P7-5：1 单位币种 = rate 人民币，基准 CNY 恒 1）
 // ============================================================================
 

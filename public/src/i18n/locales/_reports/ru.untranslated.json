@@ -272,5 +272,17 @@
   "in {{input}} / cache {{cached}} / out {{output}}": "in {{input}} / cache {{cached}} / out {{output}}",
   "Delete rule \"{{model}}\"?": "Delete rule \"{{model}}\"?",
   " template checked {{time}}": " template checked {{time}}",
-  "Delete tier \"{{name}}\"?": "Delete tier \"{{name}}\"?"
+  "Delete tier \"{{name}}\"?": "Delete tier \"{{name}}\"?",
+  "Snapshot history": "Snapshot history",
+  "Last 10 archived official-page snapshots per vendor (kept in storage). A red \"Parse failed\" row means the raw response was also saved as .raw.txt for parser fixes.": "Last 10 archived official-page snapshots per vendor (kept in storage). A red \"Parse failed\" row means the raw response was also saved as .raw.txt for parser fixes.",
+  "No snapshots yet — run php artisan coding-plan:sync-official or wait for the 6-hour schedule.": "No snapshots yet — run php artisan coding-plan:sync-official or wait for the 6-hour schedule.",
+  "Fetched at": "Fetched at",
+  "Parser": "Parser",
+  "Entries": "Entries",
+  "Catalog": "Catalog",
+  "Connection": "Connection",
+  "Parse failed": "Parse failed",
+  "Direct": "Direct",
+  "Recent fetch failures (check log)": "Recent fetch failures (check log)",
+  "Consecutive failure alert": "Consecutive failure alert"
 }

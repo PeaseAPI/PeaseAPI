@@ -25,6 +25,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 
 /**
@@ -919,6 +920,71 @@ class CodingPlanController extends Controller
             'source' => 'App\\Services\\CodingPlanCatalog',
             'models' => $models,
         ]);
+    }
+
+    /**
+     * 官方源抓取历史（快照归档 + 最近失败流水）
+     * GET /coding_plan/snapshots
+     *
+     * 快照落 storage（SNAPSHOT_DISK）/coding-plan-snapshots/{vendor}/{stamp}.json，
+     * 每厂商列最近 10 份（与 pruneSnapshots 保留数一致）；解析失败时另存 .raw.txt（has_raw=true）。
+     * failures 为最近的 source_failed / source_failed_alert 校对流水（P1-9 连续失败告警）。
+     */
+    public function snapshots(): JsonResponse
+    {
+        if (! Schema::hasTable('coding_plan_vendors')) {
+            return $this->success(['items' => [], 'failures' => []]);
+        }
+
+        $disk = Storage::disk(CodingPlanOfficialSourceService::SNAPSHOT_DISK);
+        $sources = app(CodingPlanOfficialSourceService::class);
+        $vendors = CodingPlanVendor::query()->orderBy('sort')->orderBy('id')->get(['code', 'name']);
+        $ratioVendors = Schema::hasTable('coding_plan_model_ratios')
+            ? CodingPlanModelRatio::query()->distinct()->pluck('vendor')
+            : collect();
+        $codes = $vendors->pluck('code')->merge($ratioVendors)->unique()->values();
+        $nameByCode = $vendors->pluck('name', 'code');
+
+        $items = $codes->map(function (string $code) use ($disk, $sources, $nameByCode) {
+            $snapshots = collect($sources->listSnapshots($code, 10))
+                ->map(function (string $path) use ($disk) {
+                    $payload = json_decode((string) $disk->get($path), true);
+                    $payload = is_array($payload) ? $payload : [];
+
+                    return [
+                        'file' => basename($path),
+                        'fetched_at' => $payload['fetched_at'] ?? null,
+                        'kind' => $payload['kind'] ?? null,
+                        'parser' => $payload['parser'] ?? null,
+                        'proxy_used' => (bool) ($payload['proxy_used'] ?? false),
+                        'parsed' => (bool) ($payload['parsed'] ?? false),
+                        'entry_count' => (int) ($payload['entry_count'] ?? 0),
+                        'catalog_count' => (int) ($payload['catalog_count'] ?? 0),
+                        'size' => $disk->size($path),
+                        'has_raw' => $disk->exists(substr($path, 0, -5).'.raw.txt'),
+                    ];
+                })
+                ->values()
+                ->all();
+
+            return [
+                'vendor' => $code,
+                'vendor_name' => $nameByCode[$code] ?? $code,
+                'snapshots' => $snapshots,
+            ];
+        })->values()->all();
+
+        $failures = [];
+        if (Schema::hasTable('coding_plan_ratio_checks')) {
+            $failures = CodingPlanRatioCheck::query()
+                ->whereIn('source_status', [CodingPlanRatioCheck::SOURCE_FAILED, CodingPlanRatioCheck::SOURCE_FAILED_ALERT])
+                ->orderByDesc('id')
+                ->limit(20)
+                ->get(['vendor', 'checked_at', 'source_status'])
+                ->toArray();
+        }
+
+        return $this->success(['items' => $items, 'failures' => $failures]);
     }
 
     /**

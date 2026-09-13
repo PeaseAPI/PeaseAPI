@@ -28,6 +28,7 @@ import type {
   CodingPlanModelRatio,
   CodingPlanPromotion,
   CodingPlanRates,
+  CodingPlanSnapshots,
   CodingPlanStats,
   CodingPlanUsageLog,
   CodingPlanVendor,
@@ -275,6 +276,15 @@ export async function ignoreCheckChange(
     key,
     undo,
   })
+  return res.data
+}
+
+// ============================================================================
+// Snapshots（官方源抓取历史：快照归档元数据 + 最近失败流水，P4-2）
+// ============================================================================
+
+export async function getSnapshots(): Promise<ApiResponse<CodingPlanSnapshots>> {
+  const res = await api.get(`${BASE}/snapshots`)
   return res.data
 }
 

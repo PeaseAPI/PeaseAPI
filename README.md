@@ -648,6 +648,10 @@ composer dev
 | 文档 | 内容 |
 |---|---|
 | [docs/usage-guide.md](docs/usage-guide.md) | 使用指南（管理端全功能操作）|
+| [docs/guides/00-install-to-init.md](docs/guides/00-install-to-init.md) | 分步：安装到可服务（向导/调度/加固清单）|
+| [docs/guides/01-setup-channels-models-keys.md](docs/guides/01-setup-channels-models-keys.md) | 分步：添加渠道·模型·Key·倍率·测试 |
+| [docs/guides/02-setup-coding-pool.md](docs/guides/02-setup-coding-pool.md) | 分步：Coding 池从零到上线（供应商/账号/同步/倍率/促销/转换 API）|
+| [docs/guides/03-setup-customers-tokens.md](docs/guides/03-setup-customers-tokens.md) | 分步：客户·分组·令牌·额度·充值 |
 | [docs/deployment.md](docs/deployment.md) | 部署文档（独立服务器/宝塔/Docker + 生产实况）|
 | [docs/operations-guide.md](docs/operations-guide.md) | 运维手册（SOP/定时任务/故障排查/API 速查/生产实况）|
 | [docs/settings-reference.md](docs/settings-reference.md) | 系统设置键位参考（含出站代理）|

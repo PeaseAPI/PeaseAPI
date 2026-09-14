@@ -21,6 +21,7 @@ use App\Http\Middleware\RequestId;
 use App\Http\Middleware\RootAuth;
 use App\Http\Middleware\SearchRateLimit;
 use App\Http\Middleware\SecureVerification;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SessionCookieOriginGuard;
 use App\Http\Middleware\Stats;
 use App\Http\Middleware\SystemPerformanceCheck;
@@ -55,6 +56,8 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // 全局安全响应头（web + api + relay 流式响应全覆盖）
+        $middleware->append(SecurityHeaders::class);
         $middleware->api(prepend: [
             AddQueuedCookiesToResponse::class,
         ]);

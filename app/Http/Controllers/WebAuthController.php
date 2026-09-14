@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Services\OptionService;
 use App\Services\SmsCodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -88,6 +89,11 @@ class WebAuthController extends Controller
             return redirect()->route('dashboard');
         }
 
+        // 注册总开关（对齐 API 侧口径，关闭时入口与端点一并失效）
+        if (! OptionService::get('RegisterEnabled', true)) {
+            abort(404);
+        }
+
         return view('auth.register');
     }
 
@@ -96,9 +102,19 @@ class WebAuthController extends Controller
      */
     public function register(Request $request)
     {
+        // 注册总开关：防止关闭注册后仍可直接 POST 端点绕过
+        if (! OptionService::get('RegisterEnabled', true)) {
+            abort(404);
+        }
+
         $registerType = $request->input('register_type', 'email');
 
         if ($registerType === 'phone') {
+            // 手机号注册独立开关
+            if (! OptionService::get('PhoneRegisterEnabled', false)) {
+                abort(404);
+            }
+
             $validated = $request->validate([
                 'phone' => ['required', 'string', 'regex:/^1[3-9]\d{9}$/', Rule::unique('users', 'phone')],
                 'sms_code' => ['required', 'string', 'digits:6'],
@@ -135,6 +151,11 @@ class WebAuthController extends Controller
             $request->session()->regenerate();
 
             return redirect()->route('dashboard');
+        }
+
+        // 邮箱/密码注册独立开关
+        if (! OptionService::get('PasswordRegisterEnabled', true)) {
+            abort(404);
         }
 
         // 邮箱注册

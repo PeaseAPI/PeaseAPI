@@ -414,21 +414,7 @@ class AdminController extends Controller
         $status = (string) $request->query('status', 'all');
         $userId = $request->query('user_id');
         $planId = $request->query('plan_id');
-        $query = SubscriptionOrder::query()->with(['user', 'plan']);
-
-        $query = match ($status) {
-            'paid' => $query->where('status', 1),
-            'pending' => $query->where('status', 0),
-            'cancelled' => $query->where('status', 2),
-            default => $query,
-        };
-
-        if (is_numeric($userId) && (int) $userId > 0) {
-            $query->where('user_id', (int) $userId);
-        }
-        if (is_numeric($planId) && (int) $planId > 0) {
-            $query->where('plan_id', (int) $planId);
-        }
+        $query = $this->filteredOrderQuery($request);
 
         $orders = $query->orderByDesc('id')->limit(200)->get();
 
@@ -457,6 +443,64 @@ class AdminController extends Controller
             'orderUsers' => $orderUsers,
             'plans' => $plans,
             'paidSum' => $orders->where('status', 1)->sum('amount'),
+        ]);
+    }
+
+    /**
+     * 订单列表/导出共用的筛选条件（status 四态 + user_id/plan_id 精确值，非数字安全忽略）
+     */
+    private function filteredOrderQuery(Request $request)
+    {
+        $query = SubscriptionOrder::query()->with(['user', 'plan']);
+        $query = match ((string) $request->query('status', 'all')) {
+            'paid' => $query->where('status', 1),
+            'pending' => $query->where('status', 0),
+            'cancelled' => $query->where('status', 2),
+            default => $query,
+        };
+        $userId = $request->query('user_id');
+        $planId = $request->query('plan_id');
+        if (is_numeric($userId) && (int) $userId > 0) {
+            $query->where('user_id', (int) $userId);
+        }
+        if (is_numeric($planId) && (int) $planId > 0) {
+            $query->where('plan_id', (int) $planId);
+        }
+
+        return $query;
+    }
+
+    /**
+     * 导出订阅订单 CSV（沿用列表页筛选，BOM 头保证 Excel 中文不乱码）
+     */
+    public function exportSubscriptionOrders(Request $request)
+    {
+        $statusNames = [0 => '待支付', 1 => '已支付', 2 => '已取消'];
+        $orders = $this->filteredOrderQuery($request)->orderByDesc('id')->limit(5000)->get();
+
+        $fh = fopen('php://temp', 'r+');
+        fputcsv($fh, ['订单号', 'UID', '用户名', '邮箱', '套餐', '金额', '状态', '支付方式', '创建时间', '支付时间']);
+        foreach ($orders as $o) {
+            fputcsv($fh, [
+                $o->trade_no,
+                $o->user_id,
+                $o->user?->username ?? '',
+                $o->user?->email ?? '',
+                $o->plan?->name ?? ('#'.$o->plan_id),
+                number_format($o->amount, 2, '.', ''),
+                $statusNames[$o->status] ?? (string) $o->status,
+                (string) ($o->payment_method ?: $o->payment_provider ?: ''),
+                $o->created_at ? date('Y-m-d H:i:s', $o->created_at) : '',
+                $o->paid_at ? date('Y-m-d H:i:s', $o->paid_at) : '',
+            ]);
+        }
+        rewind($fh);
+        $csv = (string) stream_get_contents($fh);
+        fclose($fh);
+
+        return response("\xEF\xBB\xBF".$csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="subscription-orders-'.date('Ymd-His').'.csv"',
         ]);
     }
 

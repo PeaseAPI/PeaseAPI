@@ -62,6 +62,9 @@
     <button type="submit" class="rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600 transition">
         <i class="fas fa-filter mr-1"></i>筛选
     </button>
+    <button type="submit" formaction="/admin/subscription-orders/export" class="rounded-lg border border-primary-200 bg-primary-50 px-4 py-2 text-sm font-medium text-primary-600 hover:bg-primary-100 transition">
+        <i class="fas fa-file-csv mr-1"></i>导出 CSV
+    </button>
     @if($userIdFilter !== '' || $planIdFilter !== '' || $statusFilter !== 'all')
         <a href="/admin/subscription-orders" class="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 transition">重置</a>
     @endif

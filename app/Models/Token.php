@@ -11,9 +11,9 @@ class Token extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'user_id', 'key', 'name', 'status', 'quota', 'used_quota', 'remain_quota',
+        'user_id', 'key', 'name', 'status', 'used_quota', 'remain_quota',
         'unlimited_quota', 'model_limits_enabled', 'model_limits', 'allow_ips',
-        'used_today', 'group', 'cross_group_retry', 'setting', 'expired_time',
+        'group', 'cross_group_retry', 'expired_time',
         'created_time', 'accessed_time',
     ];
 
@@ -23,12 +23,10 @@ class Token extends Model
 
     protected $casts = [
         'user_id' => 'integer',
-        'quota' => 'integer',
         'used_quota' => 'integer',
         'remain_quota' => 'integer',
         'unlimited_quota' => 'boolean',
         'model_limits_enabled' => 'boolean',
-        'used_today' => 'integer',
         'cross_group_retry' => 'boolean',
         'status' => 'integer',
         'expired_time' => 'integer',

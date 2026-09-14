@@ -139,7 +139,9 @@ html{scroll-behavior:smooth}
                 <span>注册即送体验额度，几分钟完成第一次 API 调用。</span>
             </div>
             <div class="doc-cta-actions">
-                <a href="/register" class="doc-cta-btn primary">免费注册</a>
+                @if ($registerEnabled)
+                    <a href="/register" class="doc-cta-btn primary">免费注册</a>
+                @endif
                 <a href="/login" class="doc-cta-btn">登录控制台</a>
             </div>
         </div>

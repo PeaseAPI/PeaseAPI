@@ -38,13 +38,18 @@ Route::get('/install/step3', [InstallController::class, 'step3'])->name('install
 // SEO: dynamic sitemap — absolute URLs from APP_URL, docs slugs single-sourced from DocsController registry
 Route::get('/sitemap.xml', function () {
     $base = rtrim((string) config('app.url') ?: request()->schemeAndHttpHost(), '/');
-    $paths = ['/', '/register', '/about', '/pricing', '/coding-plan', '/rankings', '/privacy-policy', '/user-agreement', '/docs'];
+    $entries = [];
+    foreach (['/', '/register', '/about', '/pricing', '/coding-plan', '/rankings', '/privacy-policy', '/user-agreement', '/docs'] as $p) {
+        $entries[] = ['loc' => $p, 'lastmod' => null];
+    }
     foreach (DocsController::DOCS as $d) {
-        $paths[] = '/docs/'.$d['slug'];
+        $m = @filemtime(base_path('docs/'.$d['file']));
+        $entries[] = ['loc' => '/docs/'.$d['slug'], 'lastmod' => $m ? gmdate('Y-m-d', $m) : null];
     }
     $lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'];
-    foreach ($paths as $p) {
-        $lines[] = '  <url><loc>'.htmlspecialchars($base.$p, ENT_XML1).'</loc></url>';
+    foreach ($entries as $e) {
+        $lines[] = '  <url><loc>'.htmlspecialchars($base.$e['loc'], ENT_XML1).'</loc></url>'
+            .($e['lastmod'] !== null ? '<lastmod>'.$e['lastmod'].'</lastmod>' : '');
     }
     $lines[] = '</urlset>';
 

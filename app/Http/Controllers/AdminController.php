@@ -432,12 +432,14 @@ class AdminController extends Controller
 
         $orders = $query->orderByDesc('id')->limit(200)->get();
 
-        $counts = [
-            'paid' => SubscriptionOrder::query()->where('status', 1)->count(),
-            'pending' => SubscriptionOrder::query()->where('status', 0)->count(),
-            'cancelled' => SubscriptionOrder::query()->where('status', 2)->count(),
-            'all' => SubscriptionOrder::query()->count(),
-        ];
+        $counts = ['paid' => 0, 'pending' => 0, 'cancelled' => 0, 'all' => 0];
+        $statusNames = [1 => 'paid', 0 => 'pending', 2 => 'cancelled'];
+        foreach (SubscriptionOrder::query()->selectRaw('status, count(*) as c')->groupBy('status')->get() as $row) {
+            if (isset($statusNames[$row->status])) {
+                $counts[$statusNames[$row->status]] = (int) $row->c;
+            }
+            $counts['all'] += (int) $row->c;
+        }
 
         // 筛选下拉数据：订单中出现过的用户（客服定位「已付款未到账」）+ 全部套餐
         $orderUsers = User::query()

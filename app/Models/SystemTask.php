@@ -16,10 +16,9 @@ class SystemTask extends Model
         'status',
         'params',
         'result',
-        'error',
         'started_at',
-        'finished_at',
-        'user_id',
+        'completed_at',
+        'created_by',
     ];
 
     protected $casts = [
@@ -28,11 +27,11 @@ class SystemTask extends Model
         'params' => 'array',
         'result' => 'array',
         'started_at' => 'datetime',
-        'finished_at' => 'datetime',
+        'completed_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

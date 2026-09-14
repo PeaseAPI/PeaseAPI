@@ -26,12 +26,17 @@ class SystemTaskService
      */
     public function create(SystemTaskType $type, array $params = [], ?int $userId = null): SystemTask
     {
-        return SystemTask::create([
+        $payload = [
             'type' => $type,
             'status' => SystemTaskStatus::Pending,
             'params' => $params,
-            'user_id' => $userId,
-        ]);
+        ];
+        // created_by 列 NOT NULL(default 0)：未指定时省略键，避免显式传 null 触发 1048（QA-27）
+        if ($userId !== null) {
+            $payload['created_by'] = $userId;
+        }
+
+        return SystemTask::create($payload);
     }
 
     public function current(): ?SystemTask
@@ -60,7 +65,7 @@ class SystemTaskService
         $task->update([
             'status' => SystemTaskStatus::Done,
             'result' => $result,
-            'finished_at' => now(),
+            'completed_at' => now(),
         ]);
 
         return $task->refresh();
@@ -70,8 +75,9 @@ class SystemTaskService
     {
         $task->update([
             'status' => SystemTaskStatus::Failed,
-            'error' => $error,
-            'finished_at' => now(),
+            // 表无 error 列：错误信息并入 result JSON（QA-27）
+            'result' => ['error' => $error],
+            'completed_at' => now(),
         ]);
 
         return $task->refresh();

@@ -22,8 +22,6 @@ class Passkey extends Model
         'credential_id',
         'public_key',
         'counter',
-        'device_type',
-        'backed_up',
         'transports',
         'created_at',
         'updated_at',
@@ -32,7 +30,6 @@ class Passkey extends Model
     protected $casts = [
         'user_id' => 'integer',
         'counter' => 'integer',
-        'backed_up' => 'boolean',
         'created_at' => 'integer',
         'updated_at' => 'integer',
         'transports' => 'array',
